@@ -319,7 +319,7 @@ class ShopUser(HttpUser):
     def on_start(self):
         res = self.client.post("/api/v1/auth/login/", json={
             "email": "test@lsbshop.com",
-            "password": "testpass123",
+            "password": "testpass123", # pragma: allowlist secret
         })
         if res.status_code == 200:
             self.token = res.json()["access"]

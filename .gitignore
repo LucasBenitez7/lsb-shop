@@ -31,3 +31,7 @@ Thumbs.db
 # IDE
 .vscode/settings.json
 .idea/
+
+# Coverage
+.coverage
+htmlcov/

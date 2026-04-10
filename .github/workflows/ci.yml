@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, "feat/**"]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  backend-lint:
+    name: Backend — Lint & Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.2"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format
+        run: uv run ruff format . --check
+
+      - name: Mypy
+        run: uv run mypy
+
+  backend-security:
+    name: Backend — Security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Bandit
+        run: uv run bandit -c pyproject.toml -r apps/
+
+      - name: Safety
+        run: uv run safety check
+
+  backend-tests:
+    name: Backend — Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: lsb_shop_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres # pragma: allowlist secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.2"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run tests
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          SECRET_KEY: ci-secret-key-not-real # pragma: allowlist secret
+          DB_NAME: lsb_shop_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres # pragma: allowlist secret
+          DB_HOST: localhost
+          DB_PORT: 5432
+          REDIS_URL: redis://localhost:6379/0
+          CLOUDINARY_CLOUD_NAME: test # pragma: allowlist secret
+          CLOUDINARY_API_KEY: test # pragma: allowlist secret
+          CLOUDINARY_API_SECRET: test # pragma: allowlist secret
+          STRIPE_SECRET_KEY: sk_test_dummy # pragma: allowlist secret
+          STRIPE_WEBHOOK_SECRET: whsec_dummy # pragma: allowlist secret
+          RESEND_API_KEY: re_dummy # pragma: allowlist secret
+        run: uv run pytest --cov=apps --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: backend/coverage.xml
+          flags: backend

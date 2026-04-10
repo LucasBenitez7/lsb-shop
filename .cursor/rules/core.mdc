@@ -158,28 +158,28 @@ log.error("payment.failed", user_id=user.id, order_id=order.id, error=str(e))
 
 ```python
 # apps/core/exceptions.py
-class ShopException(Exception):
+class ShopError(Exception):
     status_code: int = 500
     default_message: str = "Ha ocurrido un error. Inténtalo de nuevo."
 
-class InsufficientStock(ShopException):
+class InsufficientStock(ShopError):
     status_code = 400
     def __init__(self, product_name: str) -> None:
         self.default_message = f"Stock insuficiente para '{product_name}'."
 
-class ResourceNotFound(ShopException):
+class ResourceNotFound(ShopError):
     status_code = 404
     default_message = "El recurso solicitado no existe."
 
-class PaymentFailed(ShopException):
+class PaymentFailed(ShopError):
     status_code = 402
     default_message = "El pago no pudo procesarse. Verifica tus datos."
 
-class PermissionDenied(ShopException):
+class PermissionDenied(ShopError):
     status_code = 403
     default_message = "No tienes permisos para realizar esta acción."
 
-class CartExpired(ShopException):
+class CartExpired(ShopError):
     status_code = 400
     default_message = "Tu carrito ha expirado. Por favor agrégalo de nuevo."
 ```
