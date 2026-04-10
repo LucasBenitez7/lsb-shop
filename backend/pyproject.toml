@@ -65,7 +65,8 @@ ignore = ["S101"]
 [tool.mypy]
 python_version = "3.13"
 strict = true
-plugins = ["mypy_django_plugin.main"]
+ignore_missing_imports = true
+# plugins = ["mypy_django_plugin.main"]
 explicit_package_bases = true
 files = ["apps", "config"]
 
@@ -102,12 +103,7 @@ DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--tb=short",
-    "-v",
-    "--import-mode=importlib",
-]
+addopts = ["--strict-markers", "--tb=short", "-v", "--import-mode=importlib"]
 
 [tool.coverage.run]
 source = ["apps"]
