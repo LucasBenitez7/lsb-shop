@@ -1,0 +1,117 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "celery[redis]>=5.6.3",
+    "cloudinary>=1.44.1",
+    "dj-rest-auth>=7.2.0",
+    "django==5.2.12",
+    "django-allauth>=65.15.1",
+    "django-cors-headers>=4.9.0",
+    "django-filter>=25.2",
+    "django-health-check>=4.2.2",
+    "django-ratelimit>=4.1.0",
+    "django-redis>=6.0.0",
+    "django-storages>=1.14.6",
+    "django-unfold>=0.89.0",
+    "djangorestframework==3.15.2",
+    "djangorestframework-simplejwt>=5.5.1",
+    "drf-spectacular>=0.29.0",
+    "flower>=2.0.1",
+    "pillow>=12.2.0",
+    "psycopg[binary]>=3.3.3",
+    "python-decouple>=3.8",
+    "stripe>=15.0.1",
+    "structlog>=25.5.0",
+    "whitenoise>=6.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "bandit>=1.9.4",
+    "detect-secrets>=1.5.0",
+    "django-debug-toolbar>=6.3.0",
+    "django-extensions>=4.1",
+    "django-stubs>=6.0.2",
+    "factory-boy>=3.3.3",
+    "faker>=40.13.0",
+    "ipython>=9.12.0",
+    "locust>=2.43.4",
+    "mypy>=1.20.0",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.12.0",
+    "ruff>=0.15.10",
+    "safety>=3.7.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "S", "B"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"config/settings/*.py" = ["F403", "F405", "E402"]
+"apps/*/tests/*" = ["S101"]
+"apps/core/exceptions.py" = ["N818"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["mypy_django_plugin.main"]
+explicit_package_bases = true
+files = ["apps", "config"]
+
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "allauth.*",
+    "health_check.*",
+    "structlog.*",
+    "decouple.*",
+    "rest_framework.*",
+    "config.celery",
+    "config.settings.base",
+    "config.settings.development",
+    "config.settings.production",
+    "config.settings.test",
+    "apps.core.health",
+    "apps.core.pagination",
+    "apps.cart.tasks",
+    "apps.orders.tasks",
+    "apps.users.urls",
+    "apps.products.urls",
+    "apps.cart.urls",
+    "apps.orders.urls",
+    "apps.payments.urls",
+]
+ignore_errors = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["--strict-markers", "--tb=short", "-v", "--import-mode=importlib"]
+
+[tool.coverage.run]
+source = ["apps"]
+omit = ["*/tests/*", "*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101"]
