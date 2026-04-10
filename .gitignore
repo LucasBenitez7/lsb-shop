@@ -33,5 +33,6 @@ Thumbs.db
 .idea/
 
 # Coverage
+backend/coverage.xml
 .coverage
 htmlcov/

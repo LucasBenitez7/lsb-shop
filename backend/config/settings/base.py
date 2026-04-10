@@ -10,7 +10,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = config("SECRET_KEY")
 DEBUG = False
 ALLOWED_HOSTS = config(
-    "ALLOWED_HOSTS", cast=lambda v: [s.strip() for s in v.split(",")]
+    "ALLOWED_HOSTS",
+    default="localhost,127.0.0.1",
+    cast=lambda v: [s.strip() for s in v.split(",")],
 )
 
 DJANGO_APPS = [
@@ -164,8 +166,8 @@ SPECTACULAR_SETTINGS = {
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    cast=lambda v: [s.strip() for s in v.split(",")],
     default="http://localhost:3000",
+    cast=lambda v: [s.strip() for s in v.split(",")],
 )
 
 # Celery

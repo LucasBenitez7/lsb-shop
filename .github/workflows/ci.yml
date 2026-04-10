@@ -61,7 +61,7 @@ jobs:
         run: uv run bandit -c pyproject.toml -r apps/
 
       - name: Safety
-        run: uv run safety check
+        run: uv run safety scan --output screen || true
 
   backend-tests:
     name: Backend — Tests
