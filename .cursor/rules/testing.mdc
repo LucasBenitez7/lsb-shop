@@ -1,0 +1,358 @@
+---
+description: Testing rules for lsb-shop — active when editing test files
+globs:
+  [
+    "backend/**/tests/**/*.py",
+    "backend/**/test_*.py",
+    "frontend/**/*.test.ts",
+    "frontend/**/*.test.tsx",
+    "frontend/**/e2e/**/*.ts",
+    "locustfile.py",
+  ]
+alwaysApply: false
+---
+
+# Testing stack
+
+Backend: pytest + pytest-django + factory_boy + Faker + pytest-cov
+Frontend: Vitest + Testing Library + MSW (HTTP mocking)
+E2E: Playwright
+Load: Locust
+
+# conftest.py — shared fixtures, never repeat in test files
+
+```python
+# backend/conftest.py — root, available to ALL apps
+import pytest
+from rest_framework.test import APIClient
+
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+
+@pytest.fixture
+def user(db):
+    from apps.users.tests.factories import UserFactory
+    return UserFactory()
+
+
+@pytest.fixture
+def admin_user(db):
+    from apps.users.tests.factories import UserFactory
+    return UserFactory(is_staff=True)
+
+
+@pytest.fixture
+def auth_client(api_client, user):
+    api_client.force_authenticate(user=user)
+    return api_client
+
+
+@pytest.fixture
+def admin_client(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+    return admin_client
+```
+
+```python
+# apps/products/tests/conftest.py — product-specific fixtures
+import pytest
+
+
+@pytest.fixture
+def category(db):
+    from apps.products.tests.factories import CategoryFactory
+    return CategoryFactory()
+
+
+@pytest.fixture
+def product(db):
+    from apps.products.tests.factories import ProductFactory
+    return ProductFactory()
+
+
+@pytest.fixture
+def product_list(db):
+    from apps.products.tests.factories import ProductFactory
+    return ProductFactory.create_batch(5)
+```
+
+# factory_boy — always, never create objects manually in tests
+
+```python
+# apps/products/tests/factories.py
+import factory
+from factory.django import DjangoModelFactory
+from factory import Faker, SubFactory, LazyAttribute
+from apps.products.models import Product, Category
+
+
+class CategoryFactory(DjangoModelFactory):
+    class Meta:
+        model = Category
+
+    name = Faker("word")
+    slug = LazyAttribute(lambda o: o.name.lower().replace(" ", "-"))
+    is_active = True
+
+
+class ProductFactory(DjangoModelFactory):
+    class Meta:
+        model = Product
+
+    name = Faker("sentence", nb_words=3)
+    description = Faker("paragraph")
+    price = Faker("pydecimal", left_digits=3, right_digits=2, positive=True)
+    stock = Faker("random_int", min=1, max=100)
+    is_active = True
+    category = SubFactory(CategoryFactory)
+
+
+# apps/users/tests/factories.py
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = User
+
+    email = Faker("email")
+    first_name = Faker("first_name")
+    last_name = Faker("last_name")
+    is_active = True
+    is_staff = False
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        return model_class.objects.create_user(**kwargs)
+
+
+class AdminFactory(UserFactory):
+    is_staff = True
+```
+
+# test_services.py — most important tests, no HTTP
+
+```python
+# apps/orders/tests/test_services.py
+import pytest
+from apps.orders.services import OrderService
+from apps.orders.tests.factories import OrderFactory
+from apps.products.tests.factories import ProductFactory
+from apps.core.exceptions import InsufficientStock
+
+
+@pytest.mark.django_db
+class TestOrderService:
+
+    def test_create_order_reduces_stock(self, user, product):
+        product.stock = 10
+        product.price = "25.00"
+        product.save()
+
+        order = OrderService.create_order(
+            user=user,
+            items=[{"product_id": product.id, "quantity": 3}]
+        )
+
+        product.refresh_from_db()
+        assert product.stock == 7
+        assert order.status == "pending"
+        assert order.total == pytest.approx(75.00, rel=1e-2)
+
+    def test_create_order_raises_on_insufficient_stock(self, user):
+        product = ProductFactory(stock=2)
+
+        with pytest.raises(InsufficientStock):
+            OrderService.create_order(
+                user=user,
+                items=[{"product_id": product.id, "quantity": 5}]
+            )
+
+    def test_create_order_is_atomic_on_partial_failure(self, user):
+        """If one item fails, no order created and no stock modified."""
+        good = ProductFactory(stock=10)
+        low = ProductFactory(stock=1)
+
+        with pytest.raises(InsufficientStock):
+            OrderService.create_order(
+                user=user,
+                items=[
+                    {"product_id": good.id, "quantity": 2},
+                    {"product_id": low.id, "quantity": 5},
+                ]
+            )
+
+        good.refresh_from_db()
+        assert good.stock == 10  # rolled back — atomic transaction
+```
+
+# test_views.py — integration tests with APIClient
+
+```python
+# apps/products/tests/test_views.py
+import pytest
+
+
+@pytest.mark.django_db
+class TestProductViewSet:
+
+    def test_list_requires_auth(self, api_client):
+        response = api_client.get("/api/v1/products/")
+        assert response.status_code == 401
+
+    def test_list_returns_active_only(self, auth_client, db):
+        ProductFactory.create_batch(3, is_active=True)
+        ProductFactory.create_batch(2, is_active=False)
+
+        response = auth_client.get("/api/v1/products/")
+
+        assert response.status_code == 200
+        assert response.data["count"] == 3
+
+    def test_create_requires_admin(self, auth_client, category):
+        data = {"name": "Camiseta", "price": "29.99", "stock": 10, "category": category.id}
+        response = auth_client.post("/api/v1/products/", data)
+        assert response.status_code == 403
+
+    def test_create_as_admin(self, admin_client, category):
+        data = {"name": "Camiseta", "price": "29.99", "stock": 10, "category": category.id}
+        response = admin_client.post("/api/v1/products/", data)
+        assert response.status_code == 201
+        assert response.data["name"] == "Camiseta"
+```
+
+# Celery tasks — test synchronously with CELERY_TASK_ALWAYS_EAGER
+
+```python
+@pytest.mark.django_db
+def test_send_order_confirmation(settings):
+    settings.CELERY_TASK_ALWAYS_EAGER = True  # run sync, no broker needed
+    order = OrderFactory(status="pending")
+
+    send_order_confirmation(order.id)
+
+    from django.core import mail
+    assert len(mail.outbox) == 1
+    assert order.user.email in mail.outbox[0].to
+```
+
+# Frontend — Vitest unit tests
+
+```typescript
+// features/catalog/components/__tests__/ProductCard.test.tsx
+import { render, screen } from "@testing-library/react"
+import { ProductCard } from "../ProductCard"
+
+function createProduct(overrides = {}) {
+  return {
+    id: 1,
+    name: "Camiseta Básica",
+    price: "29.99",
+    stock: 10,
+    image_url: "/test.jpg",
+    category_name: "Tops",
+    ...overrides,
+  }
+}
+
+describe("ProductCard", () => {
+  it("renders product name and price", () => {
+    render(<ProductCard product={createProduct()} />)
+    expect(screen.getByText("Camiseta Básica")).toBeInTheDocument()
+    expect(screen.getByText(/29/)).toBeInTheDocument()
+  })
+
+  it("shows out of stock badge when stock is 0", () => {
+    render(<ProductCard product={createProduct({ stock: 0 })} />)
+    expect(screen.getByText("Sin stock")).toBeInTheDocument()
+  })
+})
+```
+
+# Playwright E2E — critical flows only
+
+```typescript
+// e2e/checkout.spec.ts
+import { test, expect } from "@playwright/test"
+
+test.describe("Checkout flow", () => {
+  test.beforeEach(async ({ page }) => {
+    // Login via API to avoid testing login in every spec
+    await page.request.post("/api/v1/auth/login/", {
+      data: { email: process.env.E2E_USER_EMAIL, password: process.env.E2E_USER_PASSWORD }
+    })
+  })
+
+  test("user can complete checkout with Stripe test card", async ({ page }) => {
+    await page.goto("/catalogo")
+    await page.click("[data-testid='add-to-cart']")
+    await page.goto("/checkout")
+
+    const stripeFrame = page.frameLocator("iframe[title='Stripe Payment Element']")
+    await stripeFrame.locator("[placeholder='Card number']").fill("4242424242424242")
+    await stripeFrame.locator("[placeholder='MM / YY']").fill("12/26")
+    await stripeFrame.locator("[placeholder='CVC']").fill("123")
+
+    await page.click("[data-testid='place-order']")
+    await page.waitForURL("/checkout/success")
+    await expect(page.locator("h1")).toContainText("¡Orden confirmada!")
+  })
+})
+```
+
+# Locust — load testing
+
+```python
+# locustfile.py
+from locust import HttpUser, task, between
+
+
+class ShopUser(HttpUser):
+    wait_time = between(1, 3)
+    token: str = ""
+
+    def on_start(self):
+        res = self.client.post("/api/v1/auth/login/", json={
+            "email": "test@lsbshop.com",
+            "password": "testpass123",
+        })
+        if res.status_code == 200:
+            self.token = res.json()["access"]
+
+    def auth_headers(self):
+        return {"Authorization": f"Bearer {self.token}"}
+
+    @task(5)
+    def browse_products(self):
+        self.client.get("/api/v1/products/", headers=self.auth_headers())
+
+    @task(3)
+    def view_product(self):
+        self.client.get("/api/v1/products/1/", headers=self.auth_headers())
+
+    @task(2)
+    def view_cart(self):
+        self.client.get("/api/v1/cart/", headers=self.auth_headers())
+
+    @task(1)
+    def browse_categories(self):
+        self.client.get("/api/v1/categories/", headers=self.auth_headers())
+
+# CI smoke: locust -f locustfile.py --headless --users 10 --spawn-rate 2 --run-time 30s --host http://localhost:8000
+```
+
+# Coverage requirements
+
+| Area | Minimum |
+|---|---|
+| `apps/*/services.py` | 85% |
+| `apps/*/selectors.py` | 80% |
+| `apps/*/views.py` | 75% |
+| `apps/*/models.py` | 70% |
+| Frontend hooks | 75% |
+| Frontend components | 60% |

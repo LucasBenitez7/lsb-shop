@@ -1,0 +1,235 @@
+---
+description: Core rules for lsb-shop — always active in this project
+globs:
+  [
+    "**/*.py",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.toml",
+    "**/*.yml",
+    "**/*.yaml",
+    "**/*.json",
+    "Dockerfile",
+  ]
+alwaysApply: true
+---
+
+# Project
+
+lsb-shop — full-stack e-commerce platform for a clothing store.
+Monorepo: `backend/` (Django 5.2 + DRF · Python 3.13.2) + `frontend/` (Next.js 15 · TypeScript 5)
+Backend: Apps + Services Layer. Frontend: pure UI — no business logic, no DB.
+
+# Architecture overview
+
+```
+backend/apps/
+├── core/       → TimeStampedModel, SoftDeleteModel, exceptions, pagination, utils
+├── users/      → User custom, Address, roles, auth
+├── products/   → Product, Category, Variant, ProductImage
+├── cart/       → Cart in Redis with TTL (no DB model)
+├── orders/     → Order, OrderItem, OrderHistory, Return
+└── payments/   → Stripe, webhooks, refunds
+```
+
+# App structure — every Django app has exactly these files
+
+```
+app/
+├── models.py       → ORM only, no business logic
+├── serializers.py  → input/output validation only, no logic
+├── views.py        → ViewSets/APIView — orchestrate only, call services
+├── urls.py         → router.register() or urlpatterns
+├── services.py     → ALL business logic lives here, no HTTP context
+├── selectors.py    → complex read queries only, no mutations
+├── tasks.py        → Celery tasks for this domain
+├── filters.py      → django-filter FilterSet classes
+├── permissions.py  → custom DRF permission classes
+├── admin.py        → django-unfold admin registration
+└── tests/
+    ├── conftest.py         → shared fixtures for this app
+    ├── factories.py        → factory_boy factories
+    ├── test_models.py
+    ├── test_services.py    ← most important
+    └── test_views.py       ← integration tests with APIClient
+```
+
+# Which view type to use — no exceptions
+
+- **ModelViewSet** → any CRUD resource (Product, Order, User, Category, Cart)
+- **@action on ViewSet** → sub-actions on a resource (archive, cancel, apply-coupon)
+- **APIView** → non-resource endpoints only (login, checkout process, Stripe webhook)
+
+Never put business logic in views. Views only: validate → call service → return response.
+
+# services.py owns ALL business logic
+
+```python
+# CORRECT — view delegates everything to service
+class OrderViewSet(viewsets.ModelViewSet):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = OrderService.create_order(
+            user=request.user,
+            items=serializer.validated_data["items"],
+        )
+        return Response(OrderSerializer(order).data, status=201)
+
+# WRONG — business logic in view
+class OrderViewSet(viewsets.ModelViewSet):
+    def create(self, request, *args, **kwargs):
+        product = Product.objects.get(...)  # ← query in view
+        if product.stock < qty:             # ← business rule in view
+            return Response(...)
+```
+
+# N+1 queries — mandatory prevention
+
+Always use `select_related` (ForeignKey/OneToOne) and `prefetch_related` (ManyToMany/reverse FK) in selectors. Never return a queryset that will cause N+1 in the serializer.
+
+```python
+# CORRECT
+def get_orders_for_user(user_id: int) -> QuerySet[Order]:
+    return (
+        Order.objects.filter(user_id=user_id)
+        .select_related("user")
+        .prefetch_related("items__product__images")
+        .order_by("-created_at")
+    )
+
+# WRONG — N+1: 1 query for orders + 1 per order for items
+def get_orders_for_user(user_id: int) -> QuerySet[Order]:
+    return Order.objects.filter(user_id=user_id)
+```
+
+Check django-debug-toolbar in dev — it highlights N+1 queries automatically.
+
+# select_for_update — mandatory for stock and numeric mutations
+
+```python
+# Any read-then-modify on a quantity MUST use select_for_update
+@transaction.atomic
+def reserve_stock(product_id: int, quantity: int) -> None:
+    # Locks the row until transaction ends — prevents race conditions
+    product = Product.objects.select_for_update().get(id=product_id)
+    if product.stock < quantity:
+        raise InsufficientStock(product.name)
+    product.stock -= quantity
+    product.save()
+```
+
+# Cache invalidation — invalidate on write, always in service layer
+
+```python
+# Define cache key constants
+PRODUCT_LIST_PATTERN = "products:list:*"
+PRODUCT_DETAIL_KEY = "products:detail:{product_id}"
+CART_KEY = "cart:{user_id}"  # TTL 7 days
+
+class ProductService:
+    @staticmethod
+    def update_product(product_id: int, data: dict) -> Product:
+        product = Product.objects.get(id=product_id)
+        for key, value in data.items():
+            setattr(product, key, value)
+        product.save()
+        cache.delete_pattern(PRODUCT_LIST_PATTERN)
+        cache.delete(PRODUCT_DETAIL_KEY.format(product_id=product_id))
+        log.info("product.updated", product_id=product_id)
+        return product
+```
+
+# Logging — structlog always, include relevant context
+
+```python
+import structlog
+log = structlog.get_logger()
+
+log.info("order.created", user_id=user.id, order_id=order.id, total=str(order.total))
+log.info("cart.item.added", user_id=user_id, product_id=product_id, quantity=quantity)
+log.warning("stock.low", product_id=product.id, stock=product.stock)
+log.error("payment.failed", user_id=user.id, order_id=order.id, error=str(e))
+
+# NEVER log: passwords, tokens, card numbers, email content, personal data
+```
+
+# Exceptions — custom hierarchy, never expose technical errors
+
+```python
+# apps/core/exceptions.py
+class ShopException(Exception):
+    status_code: int = 500
+    default_message: str = "Ha ocurrido un error. Inténtalo de nuevo."
+
+class InsufficientStock(ShopException):
+    status_code = 400
+    def __init__(self, product_name: str) -> None:
+        self.default_message = f"Stock insuficiente para '{product_name}'."
+
+class ResourceNotFound(ShopException):
+    status_code = 404
+    default_message = "El recurso solicitado no existe."
+
+class PaymentFailed(ShopException):
+    status_code = 402
+    default_message = "El pago no pudo procesarse. Verifica tus datos."
+
+class PermissionDenied(ShopException):
+    status_code = 403
+    default_message = "No tienes permisos para realizar esta acción."
+
+class CartExpired(ShopException):
+    status_code = 400
+    default_message = "Tu carrito ha expirado. Por favor agrégalo de nuevo."
+```
+
+Never let Django ORM, Redis, or Stripe exceptions reach the user.
+
+# pyproject.toml — single config file for all tools
+
+All tool config lives in `backend/pyproject.toml`. Never create separate `.flake8`, `mypy.ini`, or `bandit.yaml`.
+
+# API URL structure — always /api/v1/ prefix
+
+```
+/api/v1/auth/login/             /api/v1/products/
+/api/v1/auth/register/          /api/v1/products/{id}/
+/api/v1/auth/refresh/           /api/v1/products/{id}/archive/
+/api/v1/auth/logout/            /api/v1/categories/
+/api/v1/auth/google/            /api/v1/cart/
+/api/v1/users/me/               /api/v1/cart/items/
+/api/v1/orders/                 /api/v1/payments/webhook/stripe/
+/api/v1/orders/{id}/cancel/     /health/  /api/docs/  /api/redoc/
+```
+
+# Code standards — Python
+
+- Python 3.13 syntax · full type hints on every function · mypy strict must pass
+- `type: ignore` only with comment explaining why
+- Absolute imports always (`from apps.products.models import Product`)
+- `uv` only — never bare `pip`
+- Naming: files/folders `snake_case` · classes `PascalCase` · constants `UPPER_SNAKE_CASE`
+
+# Code standards — TypeScript / Next.js
+
+- TypeScript strict — no `any` without comment
+- `app/` contains ONLY routing files: `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`
+- Components in `features/{domain}/components/` — never inside `app/`
+- No business logic, no Prisma, no Server Actions with business logic, no NextAuth
+- All API calls via `lib/api/` functions
+- Zustand for UI state only (modals, sheets) — never server state
+
+# Agent autonomy
+
+May run without asking:
+- `uv run pytest` · `uv run ruff check .` · `uv run ruff format .` · `uv run mypy apps/`
+- `python manage.py check` · `python manage.py showmigrations`
+- Any read: cat, view, ls, tree, grep, find, git status, git log
+
+Must always ask before:
+- `git commit` or `git push`
+- Creating or modifying any file
+- `python manage.py migrate` or `makemigrations`
+- Any destructive operation (delete, drop table, migration downgrade)
+- Opening or modifying a PR

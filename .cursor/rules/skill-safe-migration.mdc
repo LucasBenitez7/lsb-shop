@@ -1,0 +1,161 @@
+---
+alwaysApply: false
+---
+# Skill: Safe Django migrations
+
+Use when adding, modifying, or removing fields or models.
+
+## Basic flow — always in this order
+
+```bash
+# 1. Make the change in models.py
+
+# 2. Generate the migration with a descriptive name
+python manage.py makemigrations --name "add_product_discount_field"
+python manage.py makemigrations --name "create_order_history_model"
+python manage.py makemigrations --name "remove_legacy_status_field"
+
+# 3. Review the generated file before applying
+# Open the migration file — verify it does exactly what you expect
+
+# 4. Apply locally
+python manage.py migrate
+
+# 5. Verify
+python manage.py showmigrations  # should show [X] on the new migration
+```
+
+## Naming convention — always descriptive
+
+```bash
+# CORRECT — says exactly what it does
+python manage.py makemigrations --name "add_product_discount_percentage"
+python manage.py makemigrations --name "create_order_return_model"
+python manage.py makemigrations --name "add_index_to_product_is_active"
+
+# WRONG — generated name, tells nothing
+python manage.py makemigrations
+# → 0005_auto_20250101_1234 (useless)
+```
+
+## Zero-downtime migrations — for production
+
+Adding a new required field requires 2 deployments, not 1.
+
+### Adding a required field (wrong — breaks prod)
+
+```python
+# WRONG — will break if old code is still running during deployment
+class Product(TimeStampedModel):
+    discount = models.DecimalField(max_digits=5, decimal_places=2)  # NOT NULL — breaks
+```
+
+### Adding a required field (correct — 2 phases)
+
+**Phase 1 — add as nullable, deploy**
+
+```python
+class Product(TimeStampedModel):
+    discount = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        null=True, blank=True,   # nullable first
+        default=None
+    )
+```
+
+**Backfill existing rows (data migration or management command):**
+
+```python
+# management/commands/backfill_discount.py
+from django.core.management.base import BaseCommand
+from apps.products.models import Product
+
+class Command(BaseCommand):
+    def handle(self, *args, **options):
+        Product.objects.filter(discount__isnull=True).update(discount=0)
+        self.stdout.write("Done.")
+```
+
+**Phase 2 — make required, deploy**
+
+```python
+class Product(TimeStampedModel):
+    discount = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        default=0  # all rows have values now — safe to remove null=True
+    )
+```
+
+## Removing a field — also 2 phases
+
+**Phase 1 — stop using the field in code, deploy**
+
+- Remove all references from serializers, services, views, templates
+- Don't touch models.py yet
+
+**Phase 2 — remove from model, deploy**
+
+```python
+# Now safe to remove from models.py and create the migration
+```
+
+## Renaming a field — use RenameField
+
+```python
+# Instead of remove + add (loses data), use RenameField:
+from django.db import migrations
+
+class Migration(migrations.Migration):
+    operations = [
+        migrations.RenameField(
+            model_name="product",
+            old_name="old_field_name",
+            new_name="new_field_name",
+        ),
+    ]
+```
+
+## Adding an index — always non-concurrent in development
+
+```python
+# models.py
+class Product(TimeStampedModel):
+    class Meta:
+        indexes = [
+            models.Index(fields=["is_active", "category"], name="product_active_category_idx"),
+        ]
+```
+
+For large tables in production, add `CONCURRENTLY` via raw SQL migration to avoid table lock.
+
+## Useful commands
+
+```bash
+# Check if there are pending migrations (use in CI to catch forgotten migrations)
+python manage.py makemigrations --check
+
+# See all migrations and their status
+python manage.py showmigrations
+
+# See the SQL a migration would execute (review before prod)
+python manage.py sqlmigrate products 0005
+
+# Roll back one migration (local development only)
+python manage.py migrate products 0004
+
+# See current state of all apps
+python manage.py showmigrations --list
+```
+
+## Rules — never break these
+
+```
+❌ Never edit a migration file after it has been applied to any environment (dev, staging, prod)
+❌ Never delete a migration file — squash instead if history is too long
+❌ Never apply migrations directly in production without testing in staging first
+❌ Never add a NOT NULL field without a default in a single deployment to a table with existing data
+✅ Always review the generated migration file before applying
+✅ Always name migrations descriptively
+✅ Always run `python manage.py makemigrations --check` in CI
+✅ Always test rollback locally before deploying to production
+```

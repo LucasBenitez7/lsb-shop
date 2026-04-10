@@ -1,0 +1,343 @@
+---
+alwaysApply: false
+---
+# Skill: Creating a new Django app
+
+Use this skill when asked to create a new app, add a new domain, or scaffold a new module in the backend.
+
+## Step 1 — Create the app
+
+```bash
+cd backend
+python manage.py startapp {app_name} apps/{app_name}
+```
+
+## Step 2 — Register in settings
+
+```python
+# config/settings/base.py
+INSTALLED_APPS = [
+    ...
+    "apps.{app_name}",
+]
+```
+
+## Step 3 — Create all required files
+
+Every app MUST have exactly these files. Generate all of them:
+
+### models.py
+```python
+from django.db import models
+from apps.core.models import TimeStampedModel
+
+
+class {ModelName}(TimeStampedModel):
+    # fields here
+    name = models.CharField(max_length=255, db_index=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["is_active"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+```
+
+### serializers.py
+```python
+from rest_framework import serializers
+from apps.{app_name}.models import {ModelName}
+
+
+class {ModelName}Serializer(serializers.ModelSerializer):
+    class Meta:
+        model = {ModelName}
+        fields = ["id", "name", "is_active", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class {ModelName}CreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = {ModelName}
+        fields = ["name"]
+```
+
+### selectors.py
+```python
+from django.db.models import QuerySet
+from apps.{app_name}.models import {ModelName}
+
+
+def get_{model_name}_list() -> QuerySet[{ModelName}]:
+    return (
+        {ModelName}.objects
+        .filter(is_active=True)
+        .order_by("-created_at")
+    )
+
+
+def get_{model_name}_by_id({model_name}_id: int) -> {ModelName}:
+    return {ModelName}.objects.get(id={model_name}_id, is_active=True)
+```
+
+### services.py
+```python
+import structlog
+from apps.core.exceptions import ResourceNotFound
+from apps.{app_name}.models import {ModelName}
+from apps.{app_name}.selectors import get_{model_name}_list, get_{model_name}_by_id
+
+log = structlog.get_logger()
+
+
+class {ModelName}Service:
+
+    @staticmethod
+    def get_list():
+        return get_{model_name}_list()
+
+    @staticmethod
+    def create(data: dict) -> {ModelName}:
+        instance = {ModelName}.objects.create(**data)
+        log.info("{model_name}.created", {model_name}_id=instance.id)
+        return instance
+
+    @staticmethod
+    def update({model_name}_id: int, data: dict) -> {ModelName}:
+        try:
+            instance = get_{model_name}_by_id({model_name}_id)
+        except {ModelName}.DoesNotExist:
+            raise ResourceNotFound()
+        for key, value in data.items():
+            setattr(instance, key, value)
+        instance.save()
+        log.info("{model_name}.updated", {model_name}_id=instance.id)
+        return instance
+
+    @staticmethod
+    def delete({model_name}_id: int) -> None:
+        try:
+            instance = get_{model_name}_by_id({model_name}_id)
+        except {ModelName}.DoesNotExist:
+            raise ResourceNotFound()
+        instance.is_active = False
+        instance.save()
+        log.info("{model_name}.deleted", {model_name}_id={model_name}_id)
+```
+
+### views.py
+```python
+from rest_framework import viewsets, filters
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from django_filters.rest_framework import DjangoFilterBackend
+
+from apps.{app_name}.models import {ModelName}
+from apps.{app_name}.serializers import {ModelName}Serializer, {ModelName}CreateSerializer
+from apps.{app_name}.services import {ModelName}Service
+from apps.core.pagination import StandardPagination
+
+
+class {ModelName}ViewSet(viewsets.ModelViewSet):
+    queryset = {ModelName}.objects.none()
+    pagination_class = StandardPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name"]
+    ordering_fields = ["created_at", "name"]
+
+    def get_queryset(self):
+        return {ModelName}Service.get_list()
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return {ModelName}CreateSerializer
+        return {ModelName}Serializer
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        {ModelName}Service.create(serializer.validated_data)
+```
+
+### urls.py
+```python
+from rest_framework.routers import DefaultRouter
+from apps.{app_name}.views import {ModelName}ViewSet
+
+router = DefaultRouter()
+router.register("{app_name}", {ModelName}ViewSet, basename="{model_name}")
+
+urlpatterns = router.urls
+```
+
+### filters.py
+```python
+import django_filters
+from apps.{app_name}.models import {ModelName}
+
+
+class {ModelName}Filter(django_filters.FilterSet):
+    class Meta:
+        model = {ModelName}
+        fields = ["is_active"]
+```
+
+### tasks.py
+```python
+from celery import shared_task
+import structlog
+
+log = structlog.get_logger()
+
+
+# Add Celery tasks for this domain here
+# Example:
+# @shared_task
+# def process_{model_name}(id: int) -> None:
+#     log.info("{model_name}.task.started", id=id)
+```
+
+### admin.py
+```python
+from django.contrib import admin
+from unfold.admin import ModelAdmin
+from apps.{app_name}.models import {ModelName}
+
+
+@admin.register({ModelName})
+class {ModelName}Admin(ModelAdmin):
+    list_display = ["name", "is_active", "created_at"]
+    list_filter = ["is_active"]
+    search_fields = ["name"]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-created_at"]
+```
+
+### permissions.py
+```python
+from rest_framework.permissions import BasePermission
+
+# Add custom permissions here if needed
+# Example:
+# class IsOwner(BasePermission):
+#     def has_object_permission(self, request, view, obj):
+#         return obj.user == request.user
+```
+
+### tests/conftest.py
+```python
+import pytest
+
+
+@pytest.fixture
+def {model_name}(db):
+    from apps.{app_name}.tests.factories import {ModelName}Factory
+    return {ModelName}Factory()
+```
+
+### tests/factories.py
+```python
+import factory
+from factory.django import DjangoModelFactory
+from factory import Faker
+from apps.{app_name}.models import {ModelName}
+
+
+class {ModelName}Factory(DjangoModelFactory):
+    class Meta:
+        model = {ModelName}
+
+    name = Faker("sentence", nb_words=3)
+    is_active = True
+```
+
+### tests/test_services.py
+```python
+import pytest
+from apps.{app_name}.services import {ModelName}Service
+from apps.{app_name}.tests.factories import {ModelName}Factory
+from apps.core.exceptions import ResourceNotFound
+
+
+@pytest.mark.django_db
+class Test{ModelName}Service:
+
+    def test_create_{model_name}(self):
+        data = {"name": "Test Name"}
+        instance = {ModelName}Service.create(data)
+        assert instance.name == "Test Name"
+        assert instance.is_active is True
+
+    def test_delete_{model_name}_soft_deletes(self):
+        instance = {ModelName}Factory()
+        {ModelName}Service.delete(instance.id)
+        instance.refresh_from_db()
+        assert instance.is_active is False
+
+    def test_update_{model_name}_raises_on_not_found(self):
+        with pytest.raises(ResourceNotFound):
+            {ModelName}Service.update(99999, {"name": "New"})
+```
+
+### tests/test_views.py
+```python
+import pytest
+from apps.{app_name}.tests.factories import {ModelName}Factory
+
+
+@pytest.mark.django_db
+class Test{ModelName}ViewSet:
+
+    def test_list_requires_auth(self, api_client):
+        response = api_client.get("/api/v1/{app_name}/")
+        assert response.status_code == 401
+
+    def test_list_returns_results(self, auth_client):
+        {ModelName}Factory.create_batch(3)
+        response = auth_client.get("/api/v1/{app_name}/")
+        assert response.status_code == 200
+        assert response.data["count"] == 3
+
+    def test_create_requires_admin(self, auth_client):
+        response = auth_client.post("/api/v1/{app_name}/", {"name": "Test"})
+        assert response.status_code == 403
+
+    def test_create_as_admin(self, admin_client):
+        response = admin_client.post("/api/v1/{app_name}/", {"name": "Test"})
+        assert response.status_code == 201
+```
+
+## Step 4 — Register URLs in config/urls.py
+
+```python
+# config/urls.py
+urlpatterns = [
+    ...
+    path("api/v1/", include("apps.{app_name}.urls")),
+]
+```
+
+## Step 5 — Create and apply migration
+
+```bash
+python manage.py makemigrations --name "create_{app_name}_model"
+python manage.py migrate
+```
+
+## Checklist before considering the app done
+
+- [ ] Model extends TimeStampedModel
+- [ ] Model has `__str__` method
+- [ ] Model has proper indexes in Meta
+- [ ] Selectors use `select_related`/`prefetch_related` if needed
+- [ ] Services are tested without HTTP (test_services.py)
+- [ ] ViewSet tests check auth (401) and admin-only (403)
+- [ ] Admin is registered with django-unfold
+- [ ] URLs registered in config/urls.py
+- [ ] Migration created and applied

@@ -1,0 +1,196 @@
+---
+alwaysApply: false
+---
+# Skill: Adding a Celery task
+
+Use when adding async tasks, scheduled jobs, or background processing.
+
+## Two types of tasks
+
+**Async task** — triggered by a service, runs in the background immediately
+```python
+# Called from service: send_welcome_email.delay(user.id)
+```
+
+**Scheduled task (Celery Beat)** — runs automatically on a schedule
+```python
+# Configured in settings — runs every 15 minutes, daily, etc.
+```
+
+## Async task — full pattern
+
+```python
+# apps/{app_name}/tasks.py
+from celery import shared_task
+import structlog
+
+log = structlog.get_logger()
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_order_confirmation(self, order_id: int) -> None:
+    """
+    Send order confirmation email.
+    Retries up to 3 times with 60s delay on failure.
+    """
+    try:
+        from apps.orders.models import Order  # import inside task to avoid circular imports
+        from apps.email.services import EmailService
+
+        order = Order.objects.select_related("user").get(id=order_id)
+        EmailService.send_order_confirmation(order)
+        log.info("order.email.sent", order_id=order_id, user_id=order.user.id)
+
+    except Exception as exc:
+        log.error("order.email.failed", order_id=order_id, error=str(exc))
+        raise self.retry(exc=exc)
+```
+
+**Calling from service:**
+```python
+# apps/orders/services.py
+from apps.orders.tasks import send_order_confirmation
+
+class OrderService:
+    @staticmethod
+    @transaction.atomic
+    def create_order(user, items) -> Order:
+        ...
+        order = Order.objects.create(...)
+        # Always call .delay() — never call the function directly
+        send_order_confirmation.delay(order.id)
+        return order
+```
+
+## Scheduled task (Celery Beat) — full pattern
+
+```python
+# apps/orders/tasks.py
+@shared_task
+def expire_pending_orders() -> None:
+    """
+    Expires orders in PENDING state older than 30 minutes.
+    Celery Beat: runs every 15 minutes.
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+
+    cutoff = timezone.now() - timedelta(minutes=30)
+    expired = Order.objects.filter(
+        status="pending",
+        created_at__lt=cutoff
+    )
+    count = expired.update(status="expired")
+    log.info("orders.expired", count=count)
+
+
+@shared_task
+def cleanup_expired_carts() -> None:
+    """
+    Celery Beat: runs daily.
+    Redis TTL handles expiration automatically — this cleans up any orphaned keys.
+    """
+    log.info("carts.cleanup.started")
+    # implementation here
+```
+
+**Register in settings:**
+```python
+# config/settings/base.py
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    "expire-pending-orders": {
+        "task": "apps.orders.tasks.expire_pending_orders",
+        "schedule": crontab(minute="*/15"),  # every 15 minutes
+    },
+    "cleanup-expired-carts": {
+        "task": "apps.cart.tasks.cleanup_expired_carts",
+        "schedule": crontab(hour=3, minute=0),  # daily at 3am
+    },
+}
+```
+
+## Rules — always follow these
+
+```python
+# 1. Always use .delay() — never call tasks directly in production code
+send_order_confirmation.delay(order.id)          # CORRECT
+send_order_confirmation(order.id)                # WRONG — runs synchronously
+
+# 2. Always pass primitive types — never pass model instances
+send_order_confirmation.delay(order.id)          # CORRECT — pass the ID
+send_order_confirmation.delay(order)             # WRONG — not serializable
+
+# 3. Fetch the object inside the task — never outside
+@shared_task
+def process_order(order_id: int) -> None:
+    order = Order.objects.get(id=order_id)       # CORRECT — fetch inside
+    ...
+
+# 4. Always add logging — task start and result
+@shared_task
+def process_order(order_id: int) -> None:
+    log.info("order.processing.started", order_id=order_id)
+    ...
+    log.info("order.processing.completed", order_id=order_id)
+
+# 5. Always add retry logic for external API calls (email, Stripe, etc.)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def call_external_api(self, resource_id: int) -> None:
+    try:
+        ...
+    except Exception as exc:
+        raise self.retry(exc=exc)
+```
+
+## Testing tasks
+
+```python
+# apps/orders/tests/test_tasks.py
+import pytest
+from apps.orders.tasks import send_order_confirmation, expire_pending_orders
+from apps.orders.tests.factories import OrderFactory
+
+
+@pytest.mark.django_db
+def test_send_order_confirmation(settings):
+    settings.CELERY_TASK_ALWAYS_EAGER = True  # run synchronously, no broker
+    order = OrderFactory(status="pending")
+
+    send_order_confirmation(order.id)
+
+    from django.core import mail
+    assert len(mail.outbox) == 1
+    assert order.user.email in mail.outbox[0].to
+
+
+@pytest.mark.django_db
+def test_expire_pending_orders():
+    from django.utils import timezone
+    from datetime import timedelta
+
+    # Create old pending order
+    old_order = OrderFactory(
+        status="pending",
+        created_at=timezone.now() - timedelta(hours=1)
+    )
+    # Create recent pending order
+    recent_order = OrderFactory(status="pending")
+
+    expire_pending_orders()
+
+    old_order.refresh_from_db()
+    recent_order.refresh_from_db()
+    assert old_order.status == "expired"
+    assert recent_order.status == "pending"
+```
+
+## Monitoring with Flower
+
+After adding a task, verify it appears in Flower:
+```
+http://localhost:5555 → Tasks tab → should see your task registered
+```
+
+For Beat tasks: `http://localhost:5555/tasks` → verify scheduled tasks appear.

@@ -1,0 +1,375 @@
+---
+description: Backend rules for lsb-shop — active when editing backend files
+globs: ["backend/**/*.py", "backend/**/*.toml", "backend/Dockerfile"]
+alwaysApply: false
+---
+
+# Backend stack
+
+Django 5.2 · DRF 3.15 · Python 3.13.2 · uv · mise (.python-version = 3.13.2)
+Settings: `config/settings/base.py` + `development.py` + `production.py`
+Select via `DJANGO_SETTINGS_MODULE` env var.
+
+# ViewSet — standard CRUD (use for every resource)
+
+```python
+# apps/products/views.py
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+import structlog
+
+from apps.products.filters import ProductFilter
+from apps.products.models import Product
+from apps.products.serializers import ProductSerializer, ProductCreateSerializer
+from apps.products.services import ProductService
+
+log = structlog.get_logger()
+
+
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.none()  # always overridden in get_queryset
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = ProductFilter
+    search_fields = ["name", "description"]
+    ordering_fields = ["price", "created_at", "name"]
+
+    def get_queryset(self):
+        return ProductService.get_product_list()
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return ProductCreateSerializer
+        return ProductSerializer
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy", "archive"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        ProductService.create_product(serializer.validated_data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def archive(self, request, pk=None):
+        product = self.get_object()
+        ProductService.archive_product(product)
+        log.info("product.archived", product_id=product.id, admin_id=request.user.id)
+        return Response({"status": "archived"})
+```
+
+# Router — always register via DefaultRouter
+
+```python
+# apps/products/urls.py
+from rest_framework.routers import DefaultRouter
+from apps.products.views import CategoryViewSet, ProductViewSet
+
+router = DefaultRouter()
+router.register("products", ProductViewSet, basename="product")
+router.register("categories", CategoryViewSet, basename="category")
+
+urlpatterns = router.urls
+```
+
+# APIView — only for non-resource endpoints
+
+```python
+# apps/payments/views.py
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+import stripe
+import structlog
+
+from apps.payments.tasks import process_stripe_webhook
+from django.conf import settings
+
+log = structlog.get_logger()
+
+
+class StripeWebhookView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []  # no JWT on webhooks
+
+    def post(self, request):
+        payload = request.body
+        sig_header = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+            )
+        except (ValueError, stripe.error.SignatureVerificationError):
+            log.warning("stripe.webhook.invalid_signature")
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        # Always async — never block the webhook response
+        process_stripe_webhook.delay(event["type"], event["data"])
+        return Response({"received": True})
+```
+
+# Serializers — validation only, zero business logic
+
+```python
+# apps/products/serializers.py
+from rest_framework import serializers
+from apps.products.models import Product
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source="category.name", read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ["id", "name", "description", "price", "stock",
+                  "category", "category_name", "is_active", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class ProductCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ["name", "description", "price", "stock", "category"]
+
+    def validate_price(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El precio debe ser mayor a 0.")
+        return value
+
+    def validate_stock(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El stock no puede ser negativo.")
+        return value
+```
+
+# Services — all business logic, atomic transactions
+
+```python
+# apps/orders/services.py
+from django.db import transaction
+import structlog
+
+from apps.core.exceptions import InsufficientStock, ResourceNotFound
+from apps.orders.models import Order, OrderItem
+from apps.orders.tasks import send_order_confirmation
+from apps.products.models import Product
+
+log = structlog.get_logger()
+
+
+class OrderService:
+
+    @staticmethod
+    @transaction.atomic
+    def create_order(user, items: list[dict]) -> Order:
+        total = 0
+        validated_items = []
+
+        for item in items:
+            try:
+                product = Product.objects.select_for_update().get(id=item["product_id"])
+            except Product.DoesNotExist:
+                raise ResourceNotFound()
+
+            if product.stock < item["quantity"]:
+                raise InsufficientStock(product.name)
+
+            product.stock -= item["quantity"]
+            product.save()
+            total += product.price * item["quantity"]
+            validated_items.append((product, item["quantity"]))
+
+        order = Order.objects.create(user=user, total=total, status="pending")
+        OrderItem.objects.bulk_create([
+            OrderItem(order=order, product=p, quantity=q, price=p.price)
+            for p, q in validated_items
+        ])
+
+        send_order_confirmation.delay(order.id)
+        log.info("order.created", user_id=user.id, order_id=order.id, total=str(total))
+        return order
+```
+
+# Models — always extend TimeStampedModel, always add indexes
+
+```python
+# apps/products/models.py
+from django.db import models
+from apps.core.models import TimeStampedModel
+
+
+class Product(TimeStampedModel):
+    name = models.CharField(max_length=255, db_index=True)
+    description = models.TextField(blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    stock = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True, db_index=True)
+    category = models.ForeignKey(
+        "Category", on_delete=models.PROTECT, related_name="products"
+    )
+    image = models.ImageField(upload_to="products/", blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["is_active", "category"]),
+            models.Index(fields=["price"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+```
+
+# Pagination — always use the standard paginator from core
+
+```python
+# apps/core/pagination.py
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+
+
+class StandardPagination(PageNumberPagination):
+    page_size = 24
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+    def get_paginated_response(self, data):
+        return Response({
+            "count": self.page.paginator.count,
+            "next": self.get_next_link(),
+            "previous": self.get_previous_link(),
+            "results": data,
+        })
+
+# In ViewSet — set globally in settings or per ViewSet:
+class ProductViewSet(viewsets.ModelViewSet):
+    pagination_class = StandardPagination
+```
+
+# Filters — django-filter, always for ViewSets with list
+
+```python
+# apps/products/filters.py
+import django_filters
+from apps.products.models import Product
+
+
+class ProductFilter(django_filters.FilterSet):
+    min_price = django_filters.NumberFilter(field_name="price", lookup_expr="gte")
+    max_price = django_filters.NumberFilter(field_name="price", lookup_expr="lte")
+    in_stock = django_filters.BooleanFilter(method="filter_in_stock")
+
+    class Meta:
+        model = Product
+        fields = ["category", "is_active", "min_price", "max_price"]
+
+    def filter_in_stock(self, queryset, name, value):
+        return queryset.filter(stock__gt=0) if value else queryset
+```
+
+# conftest.py — shared fixtures, never repeat in tests
+
+```python
+# backend/conftest.py — root fixtures available to all apps
+import pytest
+from rest_framework.test import APIClient
+
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+
+@pytest.fixture
+def user(db):
+    from apps.users.tests.factories import UserFactory
+    return UserFactory()
+
+
+@pytest.fixture
+def admin_user(db):
+    from apps.users.tests.factories import UserFactory
+    return UserFactory(is_staff=True)
+
+
+@pytest.fixture
+def auth_client(api_client, user):
+    api_client.force_authenticate(user=user)
+    return api_client
+
+
+@pytest.fixture
+def admin_client(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+    return admin_client
+
+
+# apps/products/tests/conftest.py — product-specific fixtures
+@pytest.fixture
+def product(db):
+    from apps.products.tests.factories import ProductFactory
+    return ProductFactory()
+
+
+@pytest.fixture
+def category(db):
+    from apps.products.tests.factories import CategoryFactory
+    return CategoryFactory()
+```
+
+# django-unfold admin — always use for admin registration
+
+```python
+# apps/products/admin.py
+from django.contrib import admin
+from unfold.admin import ModelAdmin
+from apps.products.models import Product
+
+
+@admin.register(Product)
+class ProductAdmin(ModelAdmin):
+    list_display = ["name", "price", "stock", "is_active", "category", "created_at"]
+    list_filter = ["is_active", "category"]
+    search_fields = ["name"]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-created_at"]
+    list_editable = ["is_active", "stock"]
+```
+
+# drf-spectacular — document every ViewSet action
+
+```python
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+
+
+@extend_schema(
+    summary="List products",
+    description="Paginated list of active products with filters.",
+    parameters=[
+        OpenApiParameter("min_price", float, description="Minimum price"),
+        OpenApiParameter("max_price", float, description="Maximum price"),
+        OpenApiParameter("category", int, description="Category ID"),
+        OpenApiParameter("in_stock", bool, description="Only show in-stock items"),
+    ],
+)
+def list(self, request, *args, **kwargs):
+    return super().list(request, *args, **kwargs)
+```
+
+# Migrations — naming and safety rules
+
+```bash
+# Always name migrations descriptively
+python manage.py makemigrations --name "add_product_discount_field"
+python manage.py makemigrations --name "create_order_history_model"
+
+# Check for pending migrations in CI (fails if any exist uncommitted)
+python manage.py makemigrations --check
+
+# Never edit a migration file after it has been applied to any environment
+# For zero-downtime: add nullable column → deploy → backfill → make required → deploy
+```

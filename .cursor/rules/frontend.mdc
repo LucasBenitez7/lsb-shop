@@ -1,0 +1,368 @@
+---
+description: Frontend rules for lsb-shop — active when editing frontend files
+globs: ["frontend/**/*.ts", "frontend/**/*.tsx", "frontend/**/*.css"]
+alwaysApply: false
+---
+
+# Frontend stack
+
+Next.js 15 · React 19 · TypeScript 5 · Tailwind CSS v4 · Radix UI · App Router
+State: Zustand (UI only) · Forms: React Hook Form + Zod
+HTTP: `lib/api/` (fetch with JWT interceptor) · Payments: Stripe.js Elements
+Icons: Lucide React · Animations: Framer Motion
+
+# The most important rule — where things live
+
+```
+app/           → ONLY routing files: page.tsx, layout.tsx, loading.tsx, error.tsx, not-found.tsx
+features/      → ALL components organized by domain
+components/    → ONLY truly shared UI (used in 3+ features)
+lib/api/       → ALL fetch calls to Django API
+store/         → Zustand UI state only
+```
+
+**There are NO `_components` folders inside `app/`.** That was the main problem in the old project. If a component exists, it goes in `features/{domain}/components/`, not next to its page.
+
+# Complete project structure
+
+```
+frontend/
+├── app/                            → routing ONLY
+│   ├── layout.tsx                  → root layout + providers
+│   ├── page.tsx                    → / → imports from features/home/
+│   ├── globals.css
+│   ├── fonts.ts
+│   ├── providers.tsx
+│   ├── not-found.tsx
+│   │
+│   ├── (auth)/
+│   │   ├── layout.tsx
+│   │   ├── login/page.tsx          → imports LoginForm from features/auth/
+│   │   ├── register/page.tsx
+│   │   ├── forgot-password/page.tsx
+│   │   └── reset-password/page.tsx
+│   │
+│   ├── (site)/
+│   │   ├── layout.tsx              → Header + Footer
+│   │   ├── (public)/
+│   │   │   ├── catalogo/
+│   │   │   │   ├── page.tsx        → Server Component — fetch products
+│   │   │   │   └── loading.tsx
+│   │   │   ├── cat/[slug]/page.tsx
+│   │   │   ├── product/[slug]/
+│   │   │   │   ├── page.tsx        → Server Component — fetch product
+│   │   │   │   └── loading.tsx
+│   │   │   ├── search/page.tsx
+│   │   │   └── rebajas/page.tsx
+│   │   ├── (shop)/
+│   │   │   ├── cart/page.tsx
+│   │   │   ├── checkout/
+│   │   │   │   ├── page.tsx
+│   │   │   │   └── success/page.tsx
+│   │   │   └── tracking/[orderId]/page.tsx
+│   │   └── (account)/              → requires auth
+│   │       ├── layout.tsx
+│   │       └── account/
+│   │           ├── page.tsx
+│   │           ├── orders/page.tsx
+│   │           ├── addresses/page.tsx
+│   │           ├── favoritos/page.tsx
+│   │           └── security/page.tsx
+│   │
+│   ├── (admin)/                    → requires is_staff
+│   │   ├── layout.tsx              → AdminSidebar + AdminHeader
+│   │   └── admin/
+│   │       ├── page.tsx
+│   │       ├── products/
+│   │       │   ├── page.tsx
+│   │       │   ├── new/page.tsx
+│   │       │   └── [id]/page.tsx
+│   │       ├── categories/page.tsx
+│   │       ├── orders/
+│   │       │   ├── page.tsx
+│   │       │   └── [id]/page.tsx
+│   │       ├── users/page.tsx
+│   │       └── settings/page.tsx
+│   │
+│   └── api/webhooks/stripe/route.ts   → only API Route that remains
+│
+├── features/                       → components organized by domain
+│   ├── home/components/
+│   │   ├── HeroSection.tsx
+│   │   ├── FeaturedGrid.tsx
+│   │   ├── ProductCarousel.tsx
+│   │   └── SaleBanner.tsx
+│   ├── catalog/
+│   │   ├── components/
+│   │   │   ├── ProductGrid.tsx
+│   │   │   ├── ProductCard.tsx
+│   │   │   ├── FilterSheet.tsx
+│   │   │   └── PaginationNav.tsx
+│   │   └── hooks/
+│   │       └── useProductFilters.ts
+│   ├── product/components/
+│   │   ├── ProductDetail.tsx
+│   │   ├── Gallery.tsx
+│   │   ├── VariantSelector.tsx
+│   │   └── AddToCartButton.tsx     ← 'use client'
+│   ├── cart/
+│   │   ├── components/
+│   │   │   ├── CartSheet.tsx
+│   │   │   ├── CartItem.tsx
+│   │   │   └── CartSummary.tsx
+│   │   └── hooks/useCart.ts
+│   ├── checkout/
+│   │   ├── components/
+│   │   │   ├── CheckoutForm.tsx
+│   │   │   ├── ShippingSection.tsx
+│   │   │   ├── PaymentSection.tsx  ← Stripe Elements
+│   │   │   └── OrderSummary.tsx
+│   │   └── hooks/useCheckout.ts
+│   ├── orders/
+│   │   ├── components/
+│   │   │   ├── OrderCard.tsx
+│   │   │   ├── OrderTimeline.tsx
+│   │   │   └── ReturnForm.tsx
+│   │   └── hooks/useOrderActions.ts
+│   ├── account/components/
+│   │   ├── ProfileForm.tsx
+│   │   ├── AddressCard.tsx
+│   │   └── ChangePasswordForm.tsx
+│   ├── auth/components/
+│   │   ├── LoginForm.tsx
+│   │   ├── RegisterForm.tsx
+│   │   └── GoogleOAuthButton.tsx
+│   └── admin/
+│       ├── components/
+│       │   ├── AdminSidebar.tsx
+│       │   ├── AdminHeader.tsx
+│       │   ├── StatCard.tsx
+│       │   ├── products/
+│       │   │   ├── ProductTable.tsx
+│       │   │   ├── ProductForm.tsx
+│       │   │   └── ProductFilters.tsx
+│       │   ├── orders/
+│       │   │   ├── OrderTable.tsx
+│       │   │   └── OrderActions.tsx
+│       │   └── categories/
+│       │       └── CategoryTable.tsx
+│       └── hooks/
+│           ├── useAdminProducts.ts
+│           └── useAdminOrders.ts
+│
+├── components/                     → shared across 3+ features only
+│   ├── ui/                         → Radix/shadcn base — never edit
+│   └── layout/
+│       ├── Header.tsx
+│       ├── Footer.tsx
+│       └── Sidebar.tsx
+│
+├── lib/
+│   ├── api/
+│   │   ├── client.ts               → fetch base, JWT headers, refresh
+│   │   ├── auth.ts
+│   │   ├── products.ts
+│   │   ├── cart.ts
+│   │   ├── orders.ts
+│   │   └── users.ts
+│   ├── schemas/                    → Zod — form validation only
+│   └── utils.ts                    → cn(), formatPrice(), formatDate()
+│
+├── hooks/                          → cross-feature hooks (3+ consumers)
+│   ├── useDebounce.ts
+│   └── useScrollDirection.ts
+│
+├── store/
+│   └── useUIStore.ts               → isCartOpen, isSearchOpen, isMobileMenuOpen
+│
+├── types/
+│   ├── product.ts
+│   ├── order.ts
+│   ├── cart.ts
+│   └── user.ts
+│
+└── middleware.ts                   → route protection
+```
+
+# Server Components vs Client Components — the core rule
+
+**Every component is a Server Component by default.**
+Add `'use client'` ONLY when the component needs: browser events, useState, useEffect, browser APIs.
+
+```typescript
+// app/catalogo/page.tsx — Server Component (no 'use client')
+// Can fetch data directly, has access to cookies/headers
+import { getProducts } from "@/lib/api/products"
+import { ProductGrid } from "@/features/catalog/components/ProductGrid"
+
+export default async function CatalogPage({ searchParams }) {
+  const products = await getProducts(searchParams)  // server-side fetch
+  return <ProductGrid products={products} />
+}
+
+// features/catalog/components/FilterSheet.tsx — Client Component
+"use client"  // needs state for open/close, user interaction
+import { useState } from "react"
+
+export function FilterSheet() {
+  const [isOpen, setIsOpen] = useState(false)
+  ...
+}
+```
+
+**Rule:** if you need `useState`, `useEffect`, `onClick`, `onChange` → `'use client'`.
+If you only render data → Server Component, no directive needed.
+
+# Special files — use them, don't skip them
+
+```typescript
+// app/(site)/(public)/catalogo/loading.tsx — shown while page.tsx fetches
+export default function CatalogLoading() {
+  return <ProductGridSkeleton />
+}
+
+// app/(site)/(public)/catalogo/error.tsx — shown on fetch error
+"use client"
+export default function CatalogError({ error, reset }) {
+  return <ErrorState message="No pudimos cargar los productos." onRetry={reset} />
+}
+
+// app/not-found.tsx — shown on 404
+export default function NotFound() {
+  return <div>Página no encontrada</div>
+}
+```
+
+Every route that fetches data MUST have a `loading.tsx` and `error.tsx`.
+
+# Images — always next/image, never <img>
+
+```typescript
+// CORRECT — next/image handles optimization, lazy loading, WebP conversion
+import Image from "next/image"
+
+<Image
+  src={product.image_url}
+  alt={product.name}
+  width={400}
+  height={400}
+  className="object-cover rounded-lg"
+/>
+
+// WRONG — raw <img> tag
+<img src={product.image_url} alt={product.name} />
+```
+
+For Cloudinary images use the `fill` prop with a relative container:
+```typescript
+<div className="relative aspect-square">
+  <Image src={cloudinaryUrl} alt={name} fill className="object-cover" />
+</div>
+```
+
+# Metadata and SEO — always export generateMetadata
+
+```typescript
+// app/(site)/(public)/product/[slug]/page.tsx
+import type { Metadata } from "next"
+import { getProduct } from "@/lib/api/products"
+
+export async function generateMetadata({ params }): Promise<Metadata> {
+  const product = await getProduct(params.slug)
+  return {
+    title: `${product.name} | LSB Shop`,
+    description: product.description,
+    openGraph: {
+      images: [product.image_url],
+    },
+  }
+}
+```
+
+All public pages (catalog, product detail, home) must export `generateMetadata`.
+
+# API client — always lib/api/, never raw fetch in components
+
+```typescript
+// lib/api/client.ts
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL
+
+export class APIError extends Error {
+  constructor(public message: string, public status: number) {
+    super(message)
+  }
+}
+
+export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getAccessToken()
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  })
+
+  if (res.status === 401) {
+    await refreshToken()
+    return apiFetch(path, options)  // retry once
+  }
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new APIError(error.detail ?? "Algo salió mal.", res.status)
+  }
+
+  return res.json()
+}
+
+// lib/api/products.ts
+export async function getProducts(params?: ProductFilters) {
+  const query = new URLSearchParams(params as Record<string, string>)
+  return apiFetch<PaginatedResponse<Product>>(`/api/v1/products/?${query}`)
+}
+```
+
+# Naming conventions
+
+- Components: `PascalCase` → `ProductCard.tsx`
+- Hooks: `camelCase` with `use` prefix → `useCartActions.ts`
+- Store: `camelCase` with `Store` suffix → `useUIStore.ts`
+- Utils: `camelCase` · Types: `PascalCase` · Constants: `UPPER_SNAKE_CASE`
+- Route segments: `kebab-case`
+
+# Forms — React Hook Form + Zod always
+
+```typescript
+const loginSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(8, "Mínimo 8 caracteres"),
+})
+type LoginForm = z.infer<typeof loginSchema>
+
+// Submit button disabled while pending, field errors shown below each input
+// Never use uncontrolled inputs for forms
+```
+
+# UI rules
+
+- Loading: always show `<ComponentSkeleton />` while fetching
+- Error: always show `<ErrorState message="..." onRetry={refetch} />`
+- Empty: always show `<EmptyState title="..." description="..." />`
+- Toasts: always human language — never `toast.error(error.message)`
+- Images: always `next/image` — never `<img>`
+- Styles: only Tailwind — never inline styles
+- `cn()` from `lib/utils.ts` for conditional classes
+
+# Error messages shown to users
+
+| Situation | Message |
+|---|---|
+| Session expired | "Tu sesión ha expirado. Vuelve a iniciar sesión." |
+| No permissions | "No tienes permisos para realizar esta acción." |
+| Out of stock | "Este producto no tiene stock disponible." |
+| Payment failed | "El pago no pudo procesarse. Verifica tus datos." |
+| Network error | "Sin conexión. Comprueba tu red." |
+| Generic error | "Algo salió mal. Inténtalo de nuevo en unos minutos." |
