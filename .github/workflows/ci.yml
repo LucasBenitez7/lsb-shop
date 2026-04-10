@@ -37,7 +37,19 @@ jobs:
         run: uv run ruff format . --check
 
       - name: Mypy
-        run: uv run mypy apps/ --ignore-missing-imports
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          SECRET_KEY: ci-mypy-not-secret # pragma: allowlist secret
+          DB_NAME: test
+          DB_USER: test
+          DB_PASSWORD: test # pragma: allowlist secret
+          CLOUDINARY_CLOUD_NAME: test # pragma: allowlist secret
+          CLOUDINARY_API_KEY: test # pragma: allowlist secret
+          CLOUDINARY_API_SECRET: test # pragma: allowlist secret
+          STRIPE_SECRET_KEY: sk_test_ci_dummy # pragma: allowlist secret
+          STRIPE_WEBHOOK_SECRET: whsec_ci_dummy # pragma: allowlist secret
+          RESEND_API_KEY: re_ci_dummy # pragma: allowlist secret
+        run: uv run mypy
 
   backend-security:
     name: Backend — Security
