@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import (
@@ -29,3 +30,9 @@ urlpatterns = [
     path("api/v1/payments/", include("apps.payments.urls")),
     path("api/v1/users/", include("apps.users.urls")),
 ]
+
+if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:
+    urlpatterns = [
+        path("__debug__/", include("debug_toolbar.urls")),
+        *urlpatterns,
+    ]
