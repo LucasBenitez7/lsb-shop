@@ -45,7 +45,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "apps.core",
-    "apps.users",
+    "apps.users.apps.UsersConfig",
     "apps.products",
     "apps.cart",
     "apps.orders",
@@ -131,6 +131,46 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SITE_ID = 1
 
+# Custom User model — SIEMPRE antes de cualquier migración
+AUTH_USER_MODEL = "users.User"
+
+# Allauth — email como login (django-allauth 65+; evita settings deprecados)
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+# Google ya marca el email como verificado; evita bloquear el login social.
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+# Cola Celery para el email de verificación (apps.users.adapters.AccountAdapter).
+ACCOUNT_ADAPTER = "apps.users.adapters.AccountAdapter"
+
+# dj-rest-auth — JWT en httpOnly cookies
+REST_AUTH = {
+    "USE_JWT": True,
+    "JWT_AUTH_COOKIE": "lsb-access-token",
+    "JWT_AUTH_REFRESH_COOKIE": "lsb-refresh-token",
+    "JWT_AUTH_HTTPONLY": True,
+    "USER_DETAILS_SERIALIZER": "apps.users.serializers.UserSerializer",
+    "REGISTER_SERIALIZER": "apps.users.serializers.RegisterSerializer",
+    "PASSWORD_RESET_SERIALIZER": "apps.users.serializers.PasswordResetSerializer",  # pragma: allowlist secret  # noqa: E501
+}
+
+# Google OAuth (callback = URL del front o backend que Google redirige tras OAuth)
+GOOGLE_CALLBACK_URL = config("GOOGLE_CALLBACK_URL")
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": config("GOOGLE_CLIENT_ID"),
+            "secret": config("GOOGLE_CLIENT_SECRET"),
+            "key": "",
+        },
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "VERIFIED_EMAIL": True,
+    }
+}
+
 # DRF
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -209,6 +249,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="resend")
 EMAIL_HOST_PASSWORD = config("RESEND_API_KEY")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@lsbshop.com")
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
 
 # structlog
 LOGGING = {
