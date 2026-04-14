@@ -15,7 +15,11 @@ ALLOWED_HOSTS = config(
     cast=lambda v: [s.strip() for s in v.split(",")],
 )
 
+# unfold MUST load before django.contrib.admin so its ready() replaces admin.site
+# before autodiscover runs;
+# otherwise @admin.register targets a discarded site (empty admin).
 DJANGO_APPS = [
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -33,7 +37,6 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "django_filters",
     "drf_spectacular",
-    "unfold",
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
@@ -145,11 +148,16 @@ SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_ADAPTER = "apps.users.adapters.AccountAdapter"
 
 # dj-rest-auth — JWT en httpOnly cookies
+# En producción con shop. y api. bajo el mismo root (p. ej. .lsbstack.com), fija
+# JWT_AUTH_COOKIE_DOMAIN para que el navegador envíe las cookies al API.
+_jwt_auth_cookie_domain = config("JWT_AUTH_COOKIE_DOMAIN", default="").strip() or None
+
 REST_AUTH = {
     "USE_JWT": True,
     "JWT_AUTH_COOKIE": "lsb-access-token",
     "JWT_AUTH_REFRESH_COOKIE": "lsb-refresh-token",
     "JWT_AUTH_HTTPONLY": True,
+    "JWT_AUTH_COOKIE_DOMAIN": _jwt_auth_cookie_domain,
     "USER_DETAILS_SERIALIZER": "apps.users.serializers.UserSerializer",
     "REGISTER_SERIALIZER": "apps.users.serializers.RegisterSerializer",
     "PASSWORD_RESET_SERIALIZER": "apps.users.serializers.PasswordResetSerializer",  # pragma: allowlist secret  # noqa: E501
@@ -171,9 +179,11 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-# DRF
+# DRF — cookie JWT first
+# (dj-rest-auth login/google set httpOnly cookies); then Bearer header.
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "dj_rest_auth.jwt_auth.JWTCookieAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -203,12 +213,13 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-# CORS
+# CORS — obligatorio con credentials: include desde el front (cookies JWT)
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
     default="http://localhost:3000",
     cast=lambda v: [s.strip() for s in v.split(",")],
 )
+CORS_ALLOW_CREDENTIALS = True
 
 # Celery
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")

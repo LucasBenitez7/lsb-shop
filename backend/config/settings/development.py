@@ -1,3 +1,5 @@
+import sys
+
 from .base import *
 
 DEBUG = True
@@ -17,8 +19,13 @@ INTERNAL_IPS = ["127.0.0.1"]
 # Email — ver emails en consola en dev
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-# Celery — ejecutar tareas síncronamente en tests
+# Celery — opción B: False + Redis + worker:
+#   uv run celery -A config.celery worker -l info
+# Tests: CELERY_TASK_ALWAYS_EAGER=True en config.settings.test.
 CELERY_TASK_ALWAYS_EAGER = False
+# Windows: prefork/billiard suele fallar (PermissionError); usar pool solo.
+if sys.platform == "win32":
+    CELERY_WORKER_POOL = "solo"
 
 # structlog — output legible con colores en dev
 import structlog
