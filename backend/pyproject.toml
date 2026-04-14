@@ -59,7 +59,7 @@ ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
 "config/settings/*.py" = ["F403", "F405", "E402"]
-"apps/*/tests/*" = ["S101"]
+"apps/*/tests/*" = ["S101", "S105", "S106"]
 "apps/core/exceptions.py" = ["N818"]
 "apps/users/services.py" = ["N818"]
 

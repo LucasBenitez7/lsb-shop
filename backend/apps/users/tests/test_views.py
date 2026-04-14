@@ -5,6 +5,8 @@ import pytest
 from allauth.account.forms import default_token_generator
 from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 from allauth.account.utils import user_pk_to_url_str
+from dj_rest_auth.registration.views import SocialLoginView
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.urls import reverse
@@ -14,7 +16,6 @@ from rest_framework.test import APIClient
 
 from apps.users.models import GuestSession
 from apps.users.tests.factories import GuestSessionFactory, UserFactory
-from apps.users.views import SocialLoginView
 
 User = get_user_model()
 
@@ -107,7 +108,44 @@ class TestRegistrationEmailVerification:
         "email": "newuser@example.com",
         "password1": "RegistrPass123!",  # pragma: allowlist secret
         "password2": "RegistrPass123!",  # pragma: allowlist secret
+        "first_name": "New",
+        "last_name": "User",
+        "phone": "600111222",
     }
+
+    def test_register_duplicate_email_returns_400(self, api_client: APIClient) -> None:
+        UserFactory(email="dup@example.com")
+        url = reverse("rest_register")
+        response = api_client.post(
+            url,
+            {
+                "email": "dup@example.com",
+                "password1": "RegistrPass123!",  # pragma: allowlist secret
+                "password2": "RegistrPass123!",  # pragma: allowlist secret
+                "first_name": "Dup",
+                "last_name": "Try",
+                "phone": "600000000",
+            },
+            format="json",
+        )
+        assert response.status_code == 400
+        assert "email" in response.data
+
+    def test_register_without_phone_returns_400(self, api_client: APIClient) -> None:
+        url = reverse("rest_register")
+        response = api_client.post(
+            url,
+            {
+                "email": "nophone@example.com",
+                "password1": "RegistrPass123!",  # pragma: allowlist secret
+                "password2": "RegistrPass123!",  # pragma: allowlist secret
+                "first_name": "No",
+                "last_name": "Phone",
+            },
+            format="json",
+        )
+        assert response.status_code == 400
+        assert "phone" in response.data
 
     @patch("apps.users.adapters.send_verification_email.delay")
     def test_register_enqueues_verification_email_task(
@@ -119,6 +157,9 @@ class TestRegistrationEmailVerification:
         assert response.status_code == 201
         assert mock_delay.called
         user = User.objects.get(email="newuser@example.com")
+        assert user.first_name == "New"
+        assert user.last_name == "User"
+        assert user.phone == "600111222"
         args, _kwargs = mock_delay.call_args
         assert args[0] == user.id
         assert isinstance(args[1], str) and len(args[1]) > 0
@@ -158,12 +199,13 @@ class TestPasswordResetEmail:
         assert isinstance(token, str) and len(token) > 0
 
     @patch("apps.users.adapters.send_password_reset_email.delay")
-    def test_password_reset_unknown_email_does_not_enqueue_task(
+    def test_password_reset_unknown_email_returns_400_and_does_not_enqueue_task(
         self, mock_delay, api_client: APIClient
     ) -> None:
         url = reverse("rest_password_reset")
         response = api_client.post(url, {"email": "nobody@example.com"}, format="json")
-        assert response.status_code == 200
+        assert response.status_code == 400
+        assert "email" in response.data
         mock_delay.assert_not_called()
 
 
@@ -187,15 +229,21 @@ class TestUserViewSetMe:
         url = reverse("user-me")
         response = auth_client.patch(
             url,
-            {"first_name": "Patched", "last_name": "Name"},
+            {
+                "first_name": "Patched",
+                "last_name": "Name",
+                "phone": "600888777",
+            },
             format="json",
         )
         assert response.status_code == 200
         assert response.data["first_name"] == "Patched"
         assert response.data["last_name"] == "Name"
+        assert response.data["phone"] == "600888777"
         user.refresh_from_db()
         assert user.first_name == "Patched"
         assert user.last_name == "Name"
+        assert user.phone == "600888777"
 
 
 @pytest.mark.django_db
@@ -284,3 +332,83 @@ class TestPasswordResetConfirm:
         assert response.status_code == 400
         user.refresh_from_db()
         assert user.check_password("KeepPass123!")
+
+
+@pytest.mark.django_db
+class TestJwtCookieAuthFlow:
+    """JWT login, refresh and logout via dj-rest-auth httpOnly cookies."""
+
+    _password = "JwtTestPass123!"  # pragma: allowlist secret
+
+    def test_login_success_sets_cookies_and_user(
+        self, api_client: APIClient, user_with_password
+    ) -> None:
+        url = reverse("rest_login")
+        response = api_client.post(
+            url,
+            {"email": user_with_password.email, "password": self._password},
+            format="json",
+        )
+        assert response.status_code == 200
+        assert response.data["user"]["email"] == user_with_password.email
+        access_name = settings.REST_AUTH["JWT_AUTH_COOKIE"]
+        refresh_name = settings.REST_AUTH["JWT_AUTH_REFRESH_COOKIE"]
+        assert access_name in response.cookies
+        assert refresh_name in response.cookies
+
+    def test_login_wrong_password_returns_400(
+        self, api_client: APIClient, user_with_password
+    ) -> None:
+        url = reverse("rest_login")
+        response = api_client.post(
+            url,
+            {
+                "email": user_with_password.email,
+                "password": "not-the-password",  # pragma: allowlist secret
+            },
+            format="json",
+        )
+        assert response.status_code == 400
+
+    def test_me_authenticated_via_access_cookie(
+        self, api_client: APIClient, user_with_password
+    ) -> None:
+        api_client.post(
+            reverse("rest_login"),
+            {"email": user_with_password.email, "password": self._password},
+            format="json",
+        )
+        me_url = reverse("user-me")
+        response = api_client.get(me_url)
+        assert response.status_code == 200
+        assert response.data["email"] == user_with_password.email
+
+    def test_refresh_with_refresh_cookie_returns_new_access(
+        self, api_client: APIClient, user_with_password
+    ) -> None:
+        api_client.post(
+            reverse("rest_login"),
+            {"email": user_with_password.email, "password": self._password},
+            format="json",
+        )
+        refresh_url = reverse("token_refresh")
+        response = api_client.post(refresh_url, {}, format="json")
+        assert response.status_code == 200
+        assert "access" in response.data
+        access_name = settings.REST_AUTH["JWT_AUTH_COOKIE"]
+        assert access_name in response.cookies
+
+    def test_logout_blacklists_refresh_so_refresh_fails(
+        self, api_client: APIClient, user_with_password
+    ) -> None:
+        api_client.post(
+            reverse("rest_login"),
+            {"email": user_with_password.email, "password": self._password},
+            format="json",
+        )
+        logout_url = reverse("rest_logout")
+        out = api_client.post(logout_url, {}, format="json")
+        assert out.status_code == 200
+
+        retry = api_client.post(reverse("token_refresh"), {}, format="json")
+        assert retry.status_code == 401

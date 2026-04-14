@@ -24,13 +24,19 @@ class TestUserService:
         with pytest.raises(ResourceNotFound):
             UserService.get_user_by_id(9_999_999)
 
-    def test_update_profile_only_first_and_last_name(self) -> None:
-        user = UserFactory(first_name="A", last_name="B", email="keep@example.com")
+    def test_update_profile_allowed_fields_only(self) -> None:
+        user = UserFactory(
+            first_name="A",
+            last_name="B",
+            phone="111",
+            email="keep@example.com",
+        )
         UserService.update_profile(
             user,
             {
                 "first_name": "X",
                 "last_name": "Y",
+                "phone": "600999888",
                 "email": "other@example.com",
                 "is_staff": True,
             },
@@ -38,6 +44,7 @@ class TestUserService:
         user.refresh_from_db()
         assert user.first_name == "X"
         assert user.last_name == "Y"
+        assert user.phone == "600999888"
         assert user.email == "keep@example.com"
         assert user.is_staff is False
 

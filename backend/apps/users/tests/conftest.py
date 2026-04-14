@@ -1,4 +1,5 @@
 import pytest
+from allauth.account.models import EmailAddress
 from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAdminUser
 from rest_framework.test import APIClient
 
@@ -46,6 +47,18 @@ def api_client() -> APIClient:
 @pytest.fixture
 def user(db):  # noqa: ARG001
     return UserFactory()
+
+
+@pytest.fixture
+def user_with_password(db):  # noqa: ARG001
+    """Active user with known password for JWT login / cookie integration tests."""
+    user = UserFactory(password="JwtTestPass123!")  # pragma: allowlist secret
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email.lower(),
+        defaults={"primary": True, "verified": True},
+    )
+    return user
 
 
 @pytest.fixture
