@@ -1,3 +1,5 @@
+"""Shared pytest fixtures and DRF permission helpers (loaded via root conftest)."""
+
 import pytest
 from allauth.account.models import EmailAddress
 from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAdminUser
