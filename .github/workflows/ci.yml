@@ -1,3 +1,5 @@
+# Backend only — frontend lint/test/typecheck are not gated here until Vitest
+# debt is cleared (see CONTEXT.md). Run locally: cd frontend && pnpm test:run
 name: CI
 
 on:
