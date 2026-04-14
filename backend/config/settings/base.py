@@ -50,6 +50,7 @@ LOCAL_APPS = [
     "apps.core",
     "apps.users.apps.UsersConfig",
     "apps.products",
+    "apps.favorites.apps.FavoritesConfig",
     "apps.cart",
     "apps.orders",
     "apps.payments",
