@@ -97,7 +97,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    credentials: "include", 
+    credentials: "include",
     headers: buildRequestHeaders(options),
   });
 
