@@ -1,3 +1,4 @@
+import re
 from urllib.parse import urlencode
 
 from allauth.account.utils import user_pk_to_url_str
@@ -9,6 +10,8 @@ from dj_rest_auth.serializers import (
 )
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from apps.users.models import GuestSession
@@ -25,6 +28,20 @@ def _frontend_password_reset_link(request, user, temp_key: str) -> str:
 
 
 class PasswordResetSerializer(DjPasswordResetSerializer):
+    """
+    dj-rest-auth's ``AllAuthPasswordResetForm`` skips allauth's ``unknown_email``
+    check (always 200). We reject unknown emails here so the API can return 400.
+    """
+
+    def validate_email(self, value: str) -> str:
+        validated = super().validate_email(value)
+        users = getattr(self.reset_form, "users", [])
+        if not users:
+            raise serializers.ValidationError(
+                _("No hay ninguna cuenta registrada con este correo electrónico."),
+            )
+        return validated
+
     def get_email_options(self) -> dict:
         return {
             **super().get_email_options(),
@@ -38,9 +55,69 @@ class RegisterSerializer(DjRegisterSerializer):
     ``username`` so it does not appear in the API schema — DRF drops parent
     fields when the subclass sets ``field_name = None``. Parent
     ``get_cleaned_data`` still uses ``validated_data.get("username", "")``.
+
+    Extra write-only fields are applied in ``custom_signup`` so profile data
+    persists when email verification is mandatory (no immediate JWT / PATCH).
     """
 
     username = None
+    first_name = serializers.CharField(
+        max_length=150,
+        required=True,
+        trim_whitespace=True,
+        write_only=True,
+    )
+    last_name = serializers.CharField(
+        max_length=150,
+        required=True,
+        trim_whitespace=True,
+        write_only=True,
+    )
+    phone = serializers.CharField(
+        max_length=32,
+        required=True,
+        allow_blank=False,
+        trim_whitespace=True,
+        write_only=True,
+    )
+
+    def validate_phone(self, value: str) -> str:
+        normalized = re.sub(r"\s+", "", value.strip())
+        if len(normalized) < 6:
+            raise serializers.ValidationError(
+                _("Phone number must be at least 6 digits."),
+            )
+        if not re.fullmatch(r"\+?[\d]+", normalized):
+            raise serializers.ValidationError(
+                _("Phone number must contain only digits (optional leading +)."),
+            )
+        return normalized[:32]
+
+    def custom_signup(self, request, user):  # type: ignore[no-untyped-def]
+        user.first_name = self.validated_data.get("first_name", "") or ""
+        user.last_name = self.validated_data.get("last_name", "") or ""
+        user.phone = self.validated_data["phone"]
+        user.save(update_fields=["first_name", "last_name", "phone"])
+
+    def validate_email(self, email: str) -> str:
+        email = super().validate_email(email)
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError(
+                _("A user is already registered with this e-mail address."),
+            )
+        return email
+
+    def save(self, request):  # type: ignore[no-untyped-def]
+        try:
+            return super().save(request)
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {
+                    "email": [
+                        _("A user is already registered with this e-mail address."),
+                    ],
+                },
+            ) from None
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -56,6 +133,7 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "phone",
             "role",
             "is_staff",
             "is_superuser",

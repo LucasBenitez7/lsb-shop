@@ -1,5 +1,6 @@
 import structlog
 from allauth.account.adapter import DefaultAccountAdapter
+from django.utils.translation import gettext_lazy as _
 
 from apps.users.tasks import send_password_reset_email, send_verification_email
 
@@ -18,6 +19,13 @@ class AccountAdapter(DefaultAccountAdapter):
     - Password reset: front reads ``uid`` + ``token`` from the query string and
       POSTs to /api/v1/auth/password/reset/confirm/.
     """
+
+    error_messages = {
+        **DefaultAccountAdapter.error_messages,
+        "unknown_email": _(
+            "No hay ninguna cuenta registrada con este correo electrónico.",
+        ),
+    }
 
     def send_confirmation_mail(self, request, emailconfirmation, signup) -> None:
         user = emailconfirmation.email_address.user

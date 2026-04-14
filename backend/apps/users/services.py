@@ -28,7 +28,7 @@ class UserService:
 
     @staticmethod
     def update_profile(user, data: dict):
-        allowed = {"first_name", "last_name"}
+        allowed = {"first_name", "last_name", "phone"}
         updated: list[str] = []
         for key, value in data.items():
             if key in allowed:
