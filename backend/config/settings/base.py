@@ -15,7 +15,11 @@ ALLOWED_HOSTS = config(
     cast=lambda v: [s.strip() for s in v.split(",")],
 )
 
+# unfold MUST load before django.contrib.admin so its ready() replaces admin.site
+# before autodiscover runs;
+# otherwise @admin.register targets a discarded site (empty admin).
 DJANGO_APPS = [
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -33,7 +37,6 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "django_filters",
     "drf_spectacular",
-    "unfold",
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
@@ -45,7 +48,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "apps.core",
-    "apps.users",
+    "apps.users.apps.UsersConfig",
     "apps.products",
     "apps.cart",
     "apps.orders",
@@ -131,9 +134,56 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SITE_ID = 1
 
-# DRF
+# Custom User model — SIEMPRE antes de cualquier migración
+AUTH_USER_MODEL = "users.User"
+
+# Allauth — email como login (django-allauth 65+; evita settings deprecados)
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+# Google ya marca el email como verificado; evita bloquear el login social.
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+# Cola Celery para el email de verificación (apps.users.adapters.AccountAdapter).
+ACCOUNT_ADAPTER = "apps.users.adapters.AccountAdapter"
+
+# dj-rest-auth — JWT en httpOnly cookies
+# En producción con shop. y api. bajo el mismo root (p. ej. .lsbstack.com), fija
+# JWT_AUTH_COOKIE_DOMAIN para que el navegador envíe las cookies al API.
+_jwt_auth_cookie_domain = config("JWT_AUTH_COOKIE_DOMAIN", default="").strip() or None
+
+REST_AUTH = {
+    "USE_JWT": True,
+    "JWT_AUTH_COOKIE": "lsb-access-token",
+    "JWT_AUTH_REFRESH_COOKIE": "lsb-refresh-token",
+    "JWT_AUTH_HTTPONLY": True,
+    "JWT_AUTH_COOKIE_DOMAIN": _jwt_auth_cookie_domain,
+    "USER_DETAILS_SERIALIZER": "apps.users.serializers.UserSerializer",
+    "REGISTER_SERIALIZER": "apps.users.serializers.RegisterSerializer",
+    "PASSWORD_RESET_SERIALIZER": "apps.users.serializers.PasswordResetSerializer",  # pragma: allowlist secret  # noqa: E501
+}
+
+# Google OAuth (callback = URL del front o backend que Google redirige tras OAuth)
+GOOGLE_CALLBACK_URL = config("GOOGLE_CALLBACK_URL")
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": config("GOOGLE_CLIENT_ID"),
+            "secret": config("GOOGLE_CLIENT_SECRET"),
+            "key": "",
+        },
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "VERIFIED_EMAIL": True,
+    }
+}
+
+# DRF — cookie JWT first
+# (dj-rest-auth login/google set httpOnly cookies); then Bearer header.
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "dj_rest_auth.jwt_auth.JWTCookieAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -163,12 +213,13 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-# CORS
+# CORS — obligatorio con credentials: include desde el front (cookies JWT)
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
     default="http://localhost:3000",
     cast=lambda v: [s.strip() for s in v.split(",")],
 )
+CORS_ALLOW_CREDENTIALS = True
 
 # Celery
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")
@@ -209,6 +260,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="resend")
 EMAIL_HOST_PASSWORD = config("RESEND_API_KEY")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@lsbshop.com")
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
 
 # structlog
 LOGGING = {

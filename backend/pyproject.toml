@@ -59,8 +59,9 @@ ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
 "config/settings/*.py" = ["F403", "F405", "E402"]
-"apps/*/tests/*" = ["S101"]
+"apps/*/tests/*" = ["S101", "S105", "S106"]
 "apps/core/exceptions.py" = ["N818"]
+"apps/users/services.py" = ["N818"]
 
 [tool.mypy]
 python_version = "3.13"
@@ -91,6 +92,15 @@ module = [
     "apps.cart.urls",
     "apps.orders.urls",
     "apps.payments.urls",
+]
+ignore_errors = true
+
+# Third-party stubs (allauth, DRF, Celery, factory_boy) + heavy DRF patterns:
+# strict checking this app yields hundreds of noise errors without djangorestframework-stubs.
+[[tool.mypy.overrides]]
+module = [
+    "apps.users",
+    "apps.users.*",
 ]
 ignore_errors = true
 
