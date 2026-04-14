@@ -21,6 +21,9 @@ interface GenericCatalogClientProps {
   categorySlug?: string;
   query?: string;
   onlyOnSale?: boolean;
+  /** Forwarded to load-more so pagination matches the storefront filter. */
+  recentDays?: number;
+  recentFallback?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
 }
@@ -36,6 +39,8 @@ export function GenericCatalogClient({
   categorySlug,
   query,
   onlyOnSale,
+  recentDays,
+  recentFallback,
   emptyTitle,
   emptyDescription,
 }: GenericCatalogClientProps) {
@@ -45,8 +50,8 @@ export function GenericCatalogClient({
   });
 
   const gridResetKey = useMemo(() => {
-    return `${categorySlug || ""}-${query || ""}-${onlyOnSale ? "sale" : ""}-${title}`;
-  }, [categorySlug, query, onlyOnSale, title]);
+    return `${categorySlug || ""}-${query || ""}-${onlyOnSale ? "sale" : ""}-${recentDays ?? ""}-${recentFallback ? "fb" : ""}-${title}`;
+  }, [categorySlug, query, onlyOnSale, recentDays, recentFallback, title]);
 
   useEffect(() => {
     setGridSize({
@@ -75,6 +80,8 @@ export function GenericCatalogClient({
           categorySlug={categorySlug}
           query={query}
           onlyOnSale={onlyOnSale}
+          recentDays={recentDays}
+          recentFallback={recentFallback}
           gridSize={gridSize}
         />
       ) : (

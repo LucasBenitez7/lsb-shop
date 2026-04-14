@@ -1,6 +1,6 @@
 "use client";
 
-import { GenericCatalogClient } from "../../../components/catalog/sections/GenericCatalogClient";
+import { GenericCatalogClient } from "./GenericCatalogClient";
 
 import type {
   FilterOptions,

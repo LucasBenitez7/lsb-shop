@@ -51,7 +51,7 @@ export default async function SearchPage({ searchParams }: Props) {
   const { sizes, colors, minPrice, maxPrice, sort } =
     parseSearchParamFilters(sp);
 
-  const [{ items: rows, total }, favoriteIds, filterOptions] = await Promise.all([
+  const [{ rows, total }, favoriteIds, filterOptions] = await Promise.all([
     getPublicProducts({
       page: 1,
       limit: PER_PAGE,

@@ -2,8 +2,15 @@ import { GenericCatalogClient } from "@/features/catalog/components/GenericCatal
 
 import { getUserFavoriteIds } from "@/lib/api/favorites";
 import { PER_PAGE } from "@/lib/pagination";
-import { getFilterOptions, getPublicProducts } from "@/lib/api/products";
-import { parseSearchParamFilters } from "@/lib/products/utils";
+import {
+  getFilterOptions,
+  getPublicProducts,
+  NOVEDADES_RECENT_DAYS,
+} from "@/lib/api/products";
+import {
+  parseSearchParamFilters,
+  parseSort,
+} from "@/lib/products/utils";
 
 import type { Metadata } from "next";
 
@@ -34,19 +41,24 @@ export default async function NovedadesPage({
 }) {
   const sp = await searchParams;
 
-  const { sizes, colors, minPrice, maxPrice, sort } =
-    parseSearchParamFilters(sp);
+  const { sizes, colors, minPrice, maxPrice } = parseSearchParamFilters(sp);
+  const sort =
+    typeof sp.sort === "string"
+      ? parseSort(sp.sort)
+      : "date_desc";
 
   const [{ rows: products, total }, favoriteIds, filterOptions] =
     await Promise.all([
       getPublicProducts({
         page: 1,
         limit: PER_PAGE,
-        sort: { createdAt: "desc" },
+        sort,
         sizes,
         colors,
         minPrice,
         maxPrice,
+        recentDays: NOVEDADES_RECENT_DAYS,
+        recentFallback: true,
       }),
       getUserFavoriteIds(),
       getFilterOptions(),
@@ -60,6 +72,8 @@ export default async function NovedadesPage({
         initialTotal={total}
         favoriteIds={favoriteIds}
         filterOptions={filterOptions}
+        recentDays={NOVEDADES_RECENT_DAYS}
+        recentFallback
         emptyTitle="Sin novedades por ahora"
         emptyDescription="Estamos preparando nuevas colecciones. ¡Vuelve pronto!"
       />

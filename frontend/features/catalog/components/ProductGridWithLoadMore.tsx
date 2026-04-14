@@ -16,6 +16,8 @@ type Props = {
   categorySlug?: string;
   query?: string;
   onlyOnSale?: boolean;
+  recentDays?: number;
+  recentFallback?: boolean;
   gridSize?: { mobile: 1 | 2; desktop: 2 | 4 };
 };
 
@@ -26,6 +28,8 @@ export function ProductGridWithLoadMore({
   categorySlug,
   query,
   onlyOnSale,
+  recentDays,
+  recentFallback,
   gridSize,
 }: Props) {
   const searchParams = useSearchParams();
@@ -51,6 +55,12 @@ export function ProductGridWithLoadMore({
       if (categorySlug) params.set("categorySlug", categorySlug);
       if (query) params.set("query", query);
       if (onlyOnSale) params.set("onlyOnSale", "true");
+      if (recentDays != null && recentDays > 0) {
+        params.set("recentDays", String(recentDays));
+      }
+      if (recentFallback === false) {
+        params.set("recentFallback", "false");
+      }
 
       // Añadir filtros actuales desde URL
       searchParams.getAll("sizes").forEach((s) => params.append("sizes", s));
