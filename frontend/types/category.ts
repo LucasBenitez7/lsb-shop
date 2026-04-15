@@ -27,6 +27,8 @@ export type AdminCategoryItem = Category & {
 export interface CategoryLink {
   slug: string;
   label: string;
+  /** Child categories (API `parent` / `children`); sidebar renders nested. */
+  children?: CategoryLink[];
 }
 
 // ─── Filters ──────────────────────────────────────────────────────────────────

@@ -12,8 +12,8 @@ import {
 import { canWriteAdmin } from "@/lib/roles";
 import { auth } from "@/lib/auth/server";
 import {
+  getAdminProductById,
   getProductFormDependencies,
-  getProductForEdit,
   getProductSalesAndReturns,
 } from "@/lib/api/products";
 
@@ -30,7 +30,7 @@ export default async function EditProductPage({
   const { id } = await params;
 
   const [product, formDeps, salesStats, session] = await Promise.all([
-    getProductForEdit(id),
+    getAdminProductById(id),
     getProductFormDependencies(),
     getProductSalesAndReturns(id),
     auth(),

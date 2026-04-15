@@ -1,25 +1,36 @@
 import type { FavoriteProductItem } from "@/types/product";
 
-import { APIError, apiPost } from "@/lib/api/client";
+import { APIError, apiPost, type PaginatedResponse } from "@/lib/api/client";
+import { mapDrfProductListItem } from "@/lib/api/products";
+import { serverFetchJson } from "@/lib/api/server-django";
 
-/** Result shape expected by `FavoriteButton` (legacy server-action contract). */
+/** Result shape expected by `FavoriteButton`. */
 export type ToggleFavoriteResult = {
   error?: string;
   isFavorite?: boolean;
 };
 
+interface FavoriteListRow {
+  id: number;
+  created_at: string;
+  product: Parameters<typeof mapDrfProductListItem>[0];
+}
+
 /**
- * Toggle favorite for a product via Django (endpoint arrives in catalog phase).
- * Until then, expect 404 and a clear error for the UI.
+ * Toggle favorite (client / mutations). Uses cookie session via `apiPost`.
  */
 export async function toggleFavorite(
   productId: string,
 ): Promise<ToggleFavoriteResult> {
+  const numericId = Number.parseInt(productId, 10);
+  if (!Number.isFinite(numericId) || numericId < 1) {
+    return { error: "Identificador de producto no válido." };
+  }
   try {
     const data = await apiPost<{
       is_favorite?: boolean;
       isFavorite?: boolean;
-    }>("/api/v1/favorites/toggle/", { product_id: productId });
+    }>("/api/v1/favorites/toggle/", { product_id: numericId });
     const next =
       typeof data.is_favorite === "boolean"
         ? data.is_favorite
@@ -32,12 +43,6 @@ export async function toggleFavorite(
           error: "Debes iniciar sesión para guardar favoritos.",
         };
       }
-      if (e.status === 404 || e.status === 405) {
-        return {
-          error:
-            "Favoritos aún no están disponibles en el API (fase catálogo).",
-        };
-      }
       return { error: e.message };
     }
     return { error: "Error de conexión." };
@@ -45,27 +50,52 @@ export async function toggleFavorite(
 }
 
 /**
- * Returns the set of product IDs the current user has favorited.
- * Returns empty set if the user is not authenticated.
+ * Favorited product IDs for the current browser session.
+ * Call only from Server Components / route handlers (forwards `Cookie`).
  */
 export async function getUserFavoriteIds(): Promise<Set<string>> {
-  // TODO: apiFetch<string[]>("/api/v1/favorites/ids/").then(ids => new Set(ids))
-  return new Set();
+  try {
+    const data = await serverFetchJson<{ product_ids: number[] }>(
+      "/api/v1/favorites/ids/",
+    );
+    return new Set(data.product_ids.map(String));
+  } catch {
+    return new Set();
+  }
 }
 
 /**
- * Returns the full list of favorited products for the favorites page.
+ * Full favorites list for `/account/favoritos`. Server-only (forwards cookies).
  */
 export async function getUserFavorites(): Promise<FavoriteProductItem[]> {
-  // TODO: apiFetch<FavoriteProductItem[]>("/api/v1/favorites/")
-  return [];
+  try {
+    const res = await serverFetchJson<PaginatedResponse<FavoriteListRow>>(
+      "/api/v1/favorites/?page_size=100",
+    );
+    return res.results.map((row) => ({
+      ...mapDrfProductListItem(row.product),
+      favoriteId: String(row.id),
+      addedAt: new Date(row.created_at),
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /**
- * Returns whether a specific product is favorited by the current user.
+ * Whether this product is favorited. Server-only (forwards cookies).
  */
 export async function checkIsFavorite(productId: string): Promise<boolean> {
-  // TODO: apiFetch<{ isFavorite: boolean }>(`/api/v1/favorites/${productId}/check/`)
-  void productId;
-  return false;
+  const numericId = Number.parseInt(productId, 10);
+  if (!Number.isFinite(numericId) || numericId < 1) {
+    return false;
+  }
+  try {
+    const data = await serverFetchJson<{ is_favorite: boolean }>(
+      `/api/v1/favorites/check/?product_id=${encodeURIComponent(String(numericId))}`,
+    );
+    return data.is_favorite;
+  } catch {
+    return false;
+  }
 }

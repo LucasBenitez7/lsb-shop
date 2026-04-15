@@ -58,6 +58,7 @@ select = ["E", "F", "I", "N", "W", "UP", "S", "B"]
 ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
+"**/migrations/*.py" = ["E501"]
 "config/settings/*.py" = ["F403", "F405", "E402"]
 "apps/*/tests/*" = ["S101", "S105", "S106"]
 "apps/core/exceptions.py" = ["N818"]
@@ -96,11 +97,15 @@ module = [
 ignore_errors = true
 
 # Third-party stubs (allauth, DRF, Celery, factory_boy) + heavy DRF patterns:
-# strict checking this app yields hundreds of noise errors without djangorestframework-stubs.
+# strict checking these apps yields hundreds of noise errors without djangorestframework-stubs.
 [[tool.mypy.overrides]]
 module = [
     "apps.users",
     "apps.users.*",
+    "apps.products",
+    "apps.products.*",
+    "apps.favorites",
+    "apps.favorites.*",
 ]
 ignore_errors = true
 

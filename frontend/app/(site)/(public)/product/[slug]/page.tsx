@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ProductClient } from "@/components/catalog/product-detail/ProductClient";
+import { ProductClient } from "@/features/product/components";
 import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
 
 import { checkIsFavorite } from "@/lib/api/favorites";
@@ -92,11 +92,9 @@ export default async function ProductPage({
 
 // Generación estática de rutas (opcional, para ISR)
 export async function generateStaticParams() {
-  const db = process.env.DATABASE_URL ?? "";
-  if (!db || db.includes("localhost")) return [];
   try {
-    const rows = await getProductSlugs(100);
-    return rows.map((r) => ({ slug: r.slug }));
+    const slugs = await getProductSlugs(100);
+    return slugs.map((slug) => ({ slug }));
   } catch {
     return [];
   }

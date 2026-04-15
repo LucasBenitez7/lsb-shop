@@ -1,6 +1,7 @@
 "use client";
 
-import { Gallery, ProductActions } from "@/components/catalog/product-detail";
+import { Gallery } from "./Gallery";
+import { ProductActions } from "./ProductActions";
 
 import { formatCurrency } from "@/lib/currency";
 

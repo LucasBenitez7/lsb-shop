@@ -5,7 +5,7 @@ import { FaArrowLeft } from "react-icons/fa6";
 import { canWriteAdmin } from "@/lib/roles";
 import { auth } from "@/lib/auth/server";
 import {
-  getCategoryForEdit,
+  getCategoryById,
   getCategoryOrderList,
 } from "@/lib/api/categories";
 
@@ -20,7 +20,7 @@ export default async function EditCategoryPage({ params }: Props) {
   const { id } = await params;
 
   const [category, orderList, session] = await Promise.all([
-    getCategoryForEdit(id),
+    getCategoryById(id),
     getCategoryOrderList(),
     auth(),
   ]);

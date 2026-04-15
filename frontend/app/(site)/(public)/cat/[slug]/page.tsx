@@ -51,7 +51,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       sort,
     }),
     getUserFavoriteIds(),
-    getFilterOptions(slug),
+    getFilterOptions({ categorySlug: slug }),
   ]);
 
   return (

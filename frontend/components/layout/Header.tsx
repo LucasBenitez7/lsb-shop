@@ -22,7 +22,7 @@ import { useMounted } from "@/hooks/common/use-mounted";
 import { useHeaderSheets } from "@/hooks/ui/use-header-sheets";
 import { useCartStore } from "@/store/useCartStore";
 
-import { SiteSidebar } from "./SiteSidebar";
+import { SidebarCloseProvider, SiteSidebar } from "./sidebar";
 
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { formatUserDisplayName } from "@/lib/users/utils";
@@ -132,11 +132,12 @@ export function Header({
             >
               <div className="overflow-y-auto h-full focus:outline-none">
                 <SheetTitle className="hidden">Menu</SheetTitle>
-                <SiteSidebar
-                  categories={categories}
-                  maxDiscount={maxDiscount}
-                  onNavigate={closeMenu}
-                />
+                <SidebarCloseProvider onCloseAction={closeMenu}>
+                  <SiteSidebar
+                    categories={categories}
+                    maxDiscount={maxDiscount}
+                  />
+                </SidebarCloseProvider>
               </div>
             </SheetContent>
           </Sheet>

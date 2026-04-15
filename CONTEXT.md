@@ -263,29 +263,31 @@ Mocks de **`useAuth`** / API donde aplica — sin NextAuth (ver `CONTEXT` Fase 1
 
 **Objetivo:** login, registro, Google OAuth, roles y JWT funcionando en frontend y backend.
 
+**Estado:** **cerrada** — mergeada en `dev` (PR squash desde `feat/phase-1-auth`). La deuda explícita queda listada abajo para no perder responsabilidades.
+
 ### Tareas
 
 **Backend**
 
-- [ ]  User model custom con roles (admin, user, demo)
-- [ ]  JWT con simplejwt — login, register, refresh, logout
-- [ ]  Google OAuth con allauth + dj-rest-auth
-- [ ]  Email verification (tarea Celery async)
-- [ ]  Password reset (tarea Celery async)
-- [ ]  Guest access con OTP para tracking de órdenes
-- [ ]  Role-based permissions (IsAdmin, IsOwner, etc.)
-- [ ]  Tests: factories + test_services + test_views
+- [x]  User model custom con roles (admin, user, demo) + campo `phone` + migración
+- [x]  JWT con simplejwt — login, register, refresh, logout (cookies httpOnly; tests de flujo cookie en pytest)
+- [x]  Google OAuth con allauth + dj-rest-auth
+- [x]  Email verification (tarea Celery async); dev: consola + worker (pool `solo` en Windows)
+- [x]  Password reset (Celery); API devuelve 400 si el email no está registrado (UX tienda)
+- [x]  Guest access con OTP para tracking de órdenes (API + tests)
+- [x]  Permisos en `UserViewSet` (`is_staff` para listar/ver usuarios); clases `IsAdmin`/`IsOwner` en `permissions.py` listas para otros ViewSets
+- [x]  Tests: factories + test_services + test_views (incl. JWT cookie flow)
 
 **Frontend**
 
-- [ ]  Eliminar NextAuth.js completamente (auditoría; no debe quedar en código TS/TSX)
-- [ ]  JWT client en `lib/api/auth.ts` + `lib/api/client.ts` (refresh en 401, `credentials: "include"`)
-- [ ]  Access / refresh en cookies httpOnly según `REST_AUTH` en Django
-- [ ]  Sesión servidor: `lib/auth/server.ts` + `middleware.ts` para rutas `/account`, `/admin`
-- [ ]  Páginas login, register, forgot-password, reset-password alineadas con DRF/dj-rest-auth
-- [ ]  **Google OAuth en UI:** `GoogleOAuthButton` + `GoogleOAuthProvider` en `app/providers.tsx` cuando exista `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
-- [ ]  Protección de rutas por rol (admin, user, demo; guest OTP en flujos de tracking cuando toque)
-- [ ]  **Tests:** `app/(auth)/auth/__tests__/forms.test.tsx` y `features/cart/hooks/__tests__/use-cart-logic.test.tsx` (mocks `useAuth` / API; ver comando arriba en “Step 4”)
+- [x]  Stack sin NextAuth en dependencias; auditoría puntual de restos en comentarios / `.env.example` (ver pendientes)
+- [x]  JWT client en `lib/api/auth.ts` + `lib/api/client.ts` (refresh en 401, `credentials: "include"`)
+- [x]  Access / refresh en cookies httpOnly según `REST_AUTH` en Django
+- [x]  Sesión servidor: `lib/auth/server.ts` + `middleware.ts` para rutas `/account`, `/admin`
+- [x]  Páginas login, register, forgot-password, reset-password alineadas con DRF/dj-rest-auth
+- [x]  **Google OAuth en UI** con `NEXT_PUBLIC_GOOGLE_CLIENT_ID` cuando exista
+- [x]  Protección de rutas por rol vía middleware + helpers de rol
+- [x]  **Tests Vitest** de auth/cart referenciados en doc; ejecución local / CI parcial (ver pendientes)
 
 ### **1. Auditoría rápida de restos viejos**
 
@@ -302,9 +304,26 @@ Mocks de **`useAuth`** / API donde aplica — sin NextAuth (ver `CONTEXT` Fase 1
 - **`pnpm run typecheck`** / `tsc --noEmit` **por fase**, cuando el bloque activo compile; no como gate de todo el repo hasta reducir deuda de rutas no migradas.
 - **E2E** (Playwright: auth, cart-checkout) cuando backend y `.env` estén alineados.
 
-**Referencia ya implementada en repo (ir tachando con pruebas manuales):** endpoint `POST /api/v1/auth/google/`, CORS con credenciales, `JWT_AUTH_COOKIE_DOMAIN` opcional por env, UI Google en login/registro, tests Vitest citados en Step 4.
+**Referencia:** `POST /api/v1/auth/google/`, CORS con credenciales, `JWT_AUTH_COOKIE_DOMAIN` opcional por env, UI Google, Celery + Redis en dev.
 
-**Rama:** `feat/phase-1-auth`
+**Rama histórica:** `feat/phase-1-auth` (ya mergeada).
+
+### Pendientes y deuda técnica (Fase 1 — limpiar en PRs dedicados o al final de sprint)
+
+Responsabilidades que **no bloquean** Fase 2 pero hay que cerrar para no arrastrar sorpresas:
+
+| Área | Qué queda |
+|------|-----------|
+| **CI** | Workflow solo **backend**; añadir job **frontend** (lint / `typecheck` / Vitest acotado) cuando la suite o el scope estén acordados. |
+| **Vitest** | `pnpm test:run` completo aún falla en tests **fuera de auth** por mocks desalineados con imports reales (p. ej. `OrderSummaryCard` en `features/orders` vs mock en `SuccessClient.test`; `useCartStore`/`useUIStore` vs mocks `@/store/cart`). Corregir en un PR de “test hygiene”. |
+| **E2E** | Playwright (auth, checkout) como gate opcional cuando `.env` e API estén estables en CI. |
+| **Typecheck** | `pnpm run typecheck` en CI para **todo** el front cuando el árbol compile sin deuda grande. |
+| **Auditoría** | `grep` periódico: `next-auth`, `Prisma`, Server Actions que toquen negocio/BD. |
+| **Deploy** | Railway/Vercel: `CORS`, `JWT_AUTH_COOKIE_DOMAIN`, secrets, email real (Resend). |
+| **Guest / tracking** | Validar UI de tracking + OTP de punta a punta cuando el flujo y API estén listos (puede solaparse con fases de pedidos). |
+| **Permisos** | Usar `IsAdmin` / `IsOwner` en ViewSets de **products/orders** cuando existan (hoy solo lógica explícita en users). |
+| **Secret scanning** | `detect-secrets` excluye `pnpm-lock.yaml` y rutas Vitest; no commitear secretos reales en tests. |
+| **Docs env** | Revisar `frontend/.env.e2e.example` (comentarios vs stack JWT + Django). |
 
 ---
 
@@ -312,40 +331,78 @@ Mocks de **`useAuth`** / API donde aplica — sin NextAuth (ver `CONTEXT` Fase 1
 
 **Objetivo:** productos y categorías completos con filtros y cache.
 
+**Estado:** **casi cerrada en API + tienda pública** — revisar pendientes explícitos abajo. Throttling DRF no forma parte de esta fase salvo decisión explícita del equipo.
+
 ### Tareas
 
 **Backend**
 
-- [ ]  Modelos: Product, Category, Variant, ProductImage
-- [ ]  ModelViewSet completo para products y categories
-- [ ]  Filtros con django-filter (precio, color, talla, categoría)
-- [ ]  Búsqueda por nombre
-- [ ]  Cache en Redis para listados (TTL configurable)
-- [ ]  Cloudinary con django-storages para imágenes
-- [ ]  Paginación estándar
-- [ ]  `@action` para archivar producto, productos destacados
-- [ ]  Tests: factories + test_services + test_views
+- [x]  Modelos: Product, Category, Variant, ProductImage
+- [x]  ModelViewSet completo para products y categories
+- [x]  Filtros con django-filter (precio, color, talla, categoría, `recent_days` + fallback)
+- [x]  Búsqueda por nombre (DRF `SearchFilter` + `search` en listado)
+- [x]  Cache en Redis para listados públicos (TTL `PRODUCT_LIST_CACHE_TTL`, invalidación por versión en servicios)
+- [x]  Cloudinary con django-storages para imágenes (`DEFAULT_FILE_STORAGE` en `base.py`; validar env y flujo en cada entorno)
+- [x]  Paginación estándar (`StandardPagination`)
+- [x]  `@action` / rutas: `featured`, `archive`, `unarchive`
+- [x]  App **favoritos**: modelo, servicios, endpoints, tests
+- [x]  Tests: factories + test_services + test_views (products + favorites)
 
 **Frontend**
 
-- [ ]  Eliminar Server Actions del catálogo
-- [ ]  Eliminar queries Prisma del frontend
-- [ ]  Implementar `lib/api/products.ts` (+ `categories` si aplica)
-- [ ]  Conectar páginas de catálogo, detalle, búsqueda
+- [x]  Catálogo público sin Prisma / sin Server Actions en rutas `(public)` revisadas
+- [x]  `lib/api/products/` (barrel `@/lib/api/products`) + `lib/api/categories.ts` + favoritos con cookies en RSC (`server-django.ts`)
+- [x]  Páginas catálogo, categoría, detalle, búsqueda, novedades, rebajas conectadas al API
+- [x]  Menú lateral: **categorías jerárquicas** (`parent` → árbol en `getHeaderCategories`)
 
 ### Paridad con `acme-commerce-starter` (no olvidar al migrar)
 
-- [ ]  **Favoritos / wishlist** (`lib/api/favorites.ts` + UI existente)
-- [ ]  **Categorías jerárquicas** (parent / children) si el front las asume
-- [ ]  **PresetSize / PresetColor** (u equivalente) en admin de atributos si sigue en UI
-- [ ]  **StoreConfig / home / hero / rebajas** — decidir: API en Django + `lib/api/settings.ts` vs solo Django Admin
-- [ ]  **Búsqueda:** paridad con lo que hacía `app/api/search` del starter → endpoint DRF o búsqueda server-side acordada
-
-**Rama:** `feat/phase-2-catalog`
+- [x]  **Favoritos / wishlist** — API Django + `lib/api/favorites.ts` + UI
+- [x]  **Categorías jerárquicas** — árbol en sidebar (`CategoryLink.children`)
+- [ ]  **PresetSize / PresetColor** — pospuesto a **Fase 6** (admin atributos / Unfold) salvo que la UI lo exija antes; no hay modelo equivalente en Django aún
+- [x]  **StoreConfig / home / hero / editorial** — **fuera de Fase 2 a propósito**: no implementar aún en Unfold ni API solo para tienda, para **no duplicar trabajo** que luego habría que desechar. Se aborda cuando **admin Next + settings** estén en marcha (ver **Fase 3** y **Fase 6**). Hasta entonces home/rebajas siguen con catálogo + stubs (`getMaxDiscountPercentage`, etc.).
+- [x]  **Búsqueda** — listado vía `getPublicProducts({ query })` → `search` en DRF; URL tienda `/search?q=…` (paridad estricta con el starter solo si hace falta mismo contrato legacy)
 
 ---
 
-## Fase 3 — Carrito en Redis
+### Reordenación de fases (abril 2026)
+
+Tras cerrar **Fase 2 (catálogo tienda)**, el orden de trabajo pasa a priorizar el **panel admin Next** para operar catálogo y productos contra DRF. El resto del plan original se desplaza una posición.
+
+| Fase | Contenido |
+|------|-----------|
+| **3** | **Admin completo (superficie Next)** — todo `app/(admin)/admin/*` cableado a DRF donde el backend exista; `lib/api` admin + tipos + rol demo; `tsc` admin sano. *No* sustituye Unfold ni observabilidad (Fase 6). |
+| **4** | Carrito en Redis (antigua Fase 3) |
+| **5** | Órdenes + Stripe (antigua Fase 4) |
+| **6** | django-unfold + observabilidad + docs API (resto de la antigua Fase 5) |
+| **7** | Testing amplio + CI/CD + deploy (antigua Fase 6) |
+
+---
+
+## Fase 3 — Admin completo (panel Next)
+
+En este repo **“admin” son dos cosas distintas** (ver tabla *Paneles admin* arriba):
+
+1. **Panel Next** (`app/(admin)/admin/`) — **UI principal de operación**: listados, formularios, dashboard. Todo el fetch va a **DRF** vía `lib/api/*`; **ninguna** regla de negocio en el front.
+2. **django-unfold** — admin Django para **soporte**, correcciones rápidas y lo que **no** merezca pantalla React. Se trabaja en **Fase 6**, sin duplicar torpemente el mismo CRUD largo en ambos sitios.
+
+**Objetivo de Fase 3:** el panel Next queda **usable de punta a punta** para lo que ya tenga backend: en la práctica **productos, categorías, dashboard**, y **pantallas que ya existan** (pedidos, devoluciones, etc.) al menos **conectadas o en modo seguro** (lectura, placeholders honestos) hasta que **Fase 5** cierre API de órdenes/pagos; entonces se rematan flujos profundos en admin sin bloquear el resto del panel.
+
+### Tareas
+
+- [ ]  Inventariar rutas bajo `app/(admin)/admin/` y marcar cada una: *listo / parcial / bloqueado por API*.
+- [ ]  Conectar listados y formularios a DRF (**prioridad: catálogo** — productos y categorías).
+- [ ]  Tipos y clientes en `lib/api/admin.ts` (y relacionados) alineados con serializers Django.
+- [ ]  Rol **demo**: solo lectura en UI donde corresponda.
+- [ ]  **TypeScript:** `tsc` verde en admin o exclusiones documentadas en `CONTEXT`/README.
+- [ ]  Pantallas **órdenes / devoluciones / pagos:** alinear con estado real del backend; si Fase 5 aún no está, dejar UX coherente (p. ej. vacío + mensaje o solo lectura) en lugar de datos falsos.
+- [ ]  **StoreConfig / hero / editorial:** si no hay modelo + API aún, sigue en **Fase 6** junto a Unfold/settings.
+
+**Rama sugerida:** `feat/phase-3-admin`
+
+---
+
+## Fase 4 — Carrito en Redis
 
 **Objetivo:** carrito persistente entre dispositivos con TTL y limpieza automática.
 
@@ -366,11 +423,11 @@ Mocks de **`useAuth`** / API donde aplica — sin NextAuth (ver `CONTEXT` Fase 1
 - [ ]  Zustand solo para estado UI (sheet carrito, modales)
 - [ ]  **Fusión carrito invitado ↔ usuario** e invalidación / sync de stock con backend (paridad con lógica tipo `syncMaxStock` del cliente legacy)
 
-**Rama:** `feat/phase-3-cart`
+**Rama:** `feat/phase-4-cart`
 
 ---
 
-## Fase 4 — Órdenes + Pagos Stripe
+## Fase 5 — Órdenes + Pagos Stripe
 
 **Objetivo:** flujo de compra completo desde checkout hasta confirmación.
 
@@ -401,21 +458,19 @@ Mocks de **`useAuth`** / API donde aplica — sin NextAuth (ver `CONTEXT` Fase 1
 - [ ]  Guest checkout + OTP donde el flujo actual lo exija (`lib/guest-access` → API Django)
 - [ ]  Emails transaccionales: en Django **Celery** + plantillas; migrar o rehacer desde plantillas React/Resend del monolito según decisión de producto
 
-**Rama:** `feat/phase-4-orders`
+**Rama:** `feat/phase-5-orders`
 
 ---
 
-## Fase 5 — Admin + Observabilidad
+## Fase 6 — django-unfold + observabilidad + docs API
 
-**Objetivo:** operación de tienda + observabilidad. **Dos superficies:** panel Next (`app/(admin)/admin/*`) + Unfold.
+**Objetivo:** soporte operativo en Django, observabilidad y documentación de API. El **admin Next** de catálogo se cubre en **Fase 3**.
 
 ### Tareas
 
-**Admin Next (producto)**
+**StoreConfig / contenido (si no entró en Fase 3)**
 
-- [ ]  Conectar listados y formularios admin existentes a DRF (sin lógica de negocio en el front)
-- [ ]  Tipos y clientes en `lib/api/admin.ts` (y relacionados) alineados con serializers Django
-- [ ]  Rol **demo**: solo lectura en UI donde corresponda
+- [ ]  **StoreConfig / site / hero / contenido editorial:** modelo + endpoints DRF + `lib/api/settings.ts` (o nombre acordado) + pantallas admin Next; **único sitio de edición “de producto”** donde aplique, para no duplicar con Unfold
 
 **Admin Django (django-unfold)**
 
@@ -442,11 +497,11 @@ Mocks de **`useAuth`** / API donde aplica — sin NextAuth (ver `CONTEXT` Fase 1
 - [ ]  ReDoc en `/api/redoc/`
 - [ ]  Colecciones Bruno completas en `bruno/`
 
-**Rama:** `feat/phase-5-admin-observability`
+**Rama:** `feat/phase-6-unfold-observability`
 
 ---
 
-## Fase 6 — Testing completo + CI/CD + Deploy
+## Fase 7 — Testing completo + CI/CD + Deploy
 
 **Objetivo:** proyecto production-ready con CI completo y deploy funcionando.
 
@@ -488,7 +543,7 @@ Mocks de **`useAuth`** / API donde aplica — sin NextAuth (ver `CONTEXT` Fase 1
 - [ ]  Archivar repo `acme-commerce-starter`
 - [ ]  Actualizar portfolio y LinkedIn con lsb-shop
 
-**Rama:** `feat/phase-6-deploy`
+**Rama:** `feat/phase-7-deploy`
 
 ## Tooling — mypy and pre-commit
 
@@ -501,14 +556,17 @@ For a **manual** `uv run mypy` from `backend/` without `.env`, export those vari
 
 ## Current status
 
-**Current phase:** Fase 1 — Auth
+**Current phase:** Cierre **Fase 2 — Catálogo** (`feat/phase-2-catalog`): merge a `dev` cuando CI backend esté verde y el PR revisado.
 
-**Próximos pasos inmediatos (orden):**
+**Siguiente fase:** **Fase 3 — Admin Next** (`feat/phase-3-admin`): panel admin operable para catálogo/productos vía DRF (ver tabla de reordenación arriba).
 
-1. Completar **Step 1** (Google en local) y tachar checklist backend/front de Fase 1 con pruebas reales.
-2. Ejecutar **Step 4** (Vitest forms + use-cart-logic) en CI o antes de cada PR que toque auth.
-3. Cuando haya deploy: aplicar **Step 3** (variables Railway/Vercel).
-4. Pasar a **Fase 2** solo tras cerrar Fase 1 (catálogo / `lib/api/products.ts`).
+**Próximos pasos inmediatos:**
+
+1. Mergear Fase 2 en `dev` (commits convencionales por bloque si aplica).
+2. Abrir rama `feat/phase-3-admin` y priorizar `lib/api` admin + páginas `app/(admin)/admin/*` + `tsc` admin.
+3. Frontend: deuda Vitest (p. ej. `SuccessClient`) sigue fuera del gate del workflow actual; conviene arreglarla antes de exigir CI front.
+
+**Fase 1:** cerrada en `dev`; la deuda explícita vive en la tabla de pendientes bajo la sección Fase 1.
 
 **Git strategy:**
 
