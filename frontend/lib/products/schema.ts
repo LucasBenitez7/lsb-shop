@@ -55,6 +55,19 @@ export const productSchema = z
       .min(1, "Debes añadir al menos una variante"),
   })
   .superRefine((data, ctx) => {
+    if (
+      data.compareAtPrice != null &&
+      data.compareAtPrice > 0 &&
+      data.compareAtPrice <= data.priceCents
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "El precio oferta no puede ser mayor que el precio base.",
+        path: ["compareAtPrice"],
+      });
+    }
+
     const activeVariantColors = new Set(
       data.variants.map((v) => v.color).filter(Boolean),
     );

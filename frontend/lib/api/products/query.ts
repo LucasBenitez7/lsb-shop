@@ -40,7 +40,8 @@ export type AdminProductsParams = {
 };
 
 function sortToOrdering(sort?: string): string {
-  if (!sort || sort === "sort_asc,date_desc") return "-created_at";
+  // Default: respect the manual sort_order set in admin, then newest first.
+  if (!sort || sort === "sort_asc,date_desc") return "sort_order,-created_at";
   switch (sort) {
     case "price_asc":
       return "min_price";
@@ -53,7 +54,7 @@ function sortToOrdering(sort?: string): string {
     case "date_desc":
       return "-created_at";
     default:
-      return "-created_at";
+      return "sort_order,-created_at";
   }
 }
 
@@ -86,7 +87,8 @@ export function buildProductsListQuery(
   if (params.maxPrice != null && params.maxPrice >= 0) {
     q.set("max_price", String(params.maxPrice / 100));
   }
-  void params.sale;
-  void params.onlyOnSale;
+  if (params.onlyOnSale || params.sale) {
+    q.set("on_sale", "true");
+  }
   return q.toString();
 }

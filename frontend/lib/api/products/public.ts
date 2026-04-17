@@ -148,8 +148,26 @@ export async function getProductSlugs(max = 500): Promise<string[]> {
   return out;
 }
 
-export async function getMaxDiscountPercentage(): Promise<number> {
-  return 0;
+/**
+ * Max whole-number discount % among published products with `compare_at_price`
+ * above cheapest active variant (same rule as Prisma monolith). Optional
+ * `categorySlug` scopes the pool to that category (rebajas copy / sidebar).
+ */
+export async function getMaxDiscountPercentage(
+  categorySlug?: string,
+): Promise<number> {
+  try {
+    const url = categorySlug?.trim()
+      ? `/api/v1/products/max-discount/?category_slug=${encodeURIComponent(
+          categorySlug.trim(),
+        )}`
+      : `/api/v1/products/max-discount/`;
+    const data = await apiGet<{ max_discount_percent: number }>(url);
+    const n = data.max_discount_percent;
+    return Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), 100) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 function aggregateFilterOptions(
