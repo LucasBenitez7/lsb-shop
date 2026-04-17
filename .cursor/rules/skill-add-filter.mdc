@@ -1,0 +1,209 @@
+---
+alwaysApply: false
+---
+# Skill: Adding a filter (backend + frontend)
+
+Use when adding a new filter to any list — products, categories, orders, etc.
+
+## Decision: backend filter vs frontend filter
+
+```
+Dataset is large (products, orders) → filter in BACKEND (never bring all rows to filter client-side)
+Dataset is small (≤50 rows, e.g. categories) → frontend filter is acceptable
+Filter needs DB data (stock count, join) → MUST be backend
+Filter is UI-only (grid size, collapsed section) → frontend only, never involves API
+```
+
+When in doubt: **backend first**.
+
+---
+
+## Backend filter — full pattern
+
+### Step 1 — Add the filter to `filters.py`
+
+```python
+# apps/{app}/filters.py
+import django_filters
+from django.db.models import Exists, OuterRef, Q
+from apps.{app}.models import {Model}, {RelatedModel}
+
+
+class {Model}Filter(django_filters.FilterSet):
+    # Simple field filter
+    is_featured = django_filters.BooleanFilter(field_name="is_featured")
+
+    # Custom method filter (use when logic can't map to a single field)
+    on_sale = django_filters.BooleanFilter(method="filter_on_sale")
+    out_of_stock = django_filters.BooleanFilter(method="filter_out_of_stock")
+
+    class Meta:
+        model = {Model}
+        fields = [
+            "is_featured",
+            "on_sale",
+            "out_of_stock",
+        ]
+
+    def filter_on_sale(self, queryset, name, value):
+        """Products with compare_at_price set (active sale price)."""
+        del name
+        if value is None:
+            return queryset
+        if value:
+            return queryset.filter(compare_at_price__isnull=False)
+        return queryset.filter(compare_at_price__isnull=True)
+
+    def filter_out_of_stock(self, queryset, name, value):
+        """Products with no active variant that has stock > 0."""
+        del name
+        if value is None:
+            return queryset
+        has_stock = {RelatedModel}.objects.filter(
+            product_id=OuterRef("pk"),
+            is_active=True,
+            stock__gt=0,
+        )
+        if value:
+            return queryset.filter(~Exists(has_stock))
+        return queryset.filter(Exists(has_stock))
+```
+
+### Step 2 — Verify FilterSet is registered on the ViewSet
+
+```python
+# apps/{app}/views.py
+class {Model}ViewSet(viewsets.ModelViewSet):
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = {Model}Filter  # ← must be set
+```
+
+### Step 3 — Test the filter manually
+
+```bash
+# Verify the filter works before writing frontend code
+curl "http://localhost:8000/api/v1/{endpoint}/?on_sale=true"
+curl "http://localhost:8000/api/v1/{endpoint}/?out_of_stock=true"
+```
+
+---
+
+## Frontend wiring
+
+### Step 4 — Add the query param in the query builder
+
+```typescript
+// lib/api/{domain}/query.ts or admin.ts
+function build{Domain}Query(params: {Domain}Params): string {
+  const q = new URLSearchParams()
+
+  // ✅ CORRECT — always wire the param, never leave it as void
+  if (params.onSale) q.set("on_sale", "true")
+  if (params.outOfStock) q.set("out_of_stock", "true")
+
+  // ❌ WRONG — this silently ignores the filter
+  // void params.onSale
+  // void params.outOfStock
+
+  return q.toString()
+}
+```
+
+### Step 5 — Add to the TypeScript params type
+
+```typescript
+// lib/api/{domain}/query.ts
+export type {Domain}Params = {
+  page?: number
+  // ... existing params ...
+  onSale?: boolean          // ← add here
+  outOfStock?: boolean      // ← add here
+}
+```
+
+### Step 6 — Read from URL in the page (Server Component)
+
+```typescript
+// app/(admin)/admin/{domain}/page.tsx
+export default async function {Domain}Page({ searchParams }: Props) {
+  const sp = await searchParams
+
+  const onSale = sp.on_sale === "true"
+  const outOfStock = sp.stock === "out"
+
+  const data = await getAdmin{Domain}({
+    onSale,
+    outOfStock,
+    // ...
+  })
+  // ...
+}
+```
+
+### Step 7 — Wire UI toggle to URL param
+
+```typescript
+// features/admin/hooks/use-{domain}-filters.ts
+"use client"
+import { useRouter, useSearchParams } from "next/navigation"
+
+export function use{Domain}Filters() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const onSale = searchParams.get("on_sale") === "true"
+
+  const updateParams = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) params.set(key, value)
+      else params.delete(key)
+    })
+    params.set("page", "1")  // reset pagination on filter change
+    router.push(`/admin/{domain}?${params.toString()}`, { scroll: false })
+  }
+
+  const handleOnSaleToggle = () =>
+    updateParams({ on_sale: !onSale ? "true" : null })
+
+  return { onSale, handleOnSaleToggle }
+}
+```
+
+---
+
+## Frontend-only filter (small collections)
+
+Only acceptable when all rows are already loaded (≤50 items):
+
+```typescript
+// lib/api/{domain}/server.ts
+export async function getAdmin{Domain}(filters?: {Domain}Filters) {
+  const res = await serverFetchJson<PaginatedResponse<Drf{Domain}>>(
+    "/api/v1/{domain}/?page_size=500"  // fetch all
+  )
+  let items = res.results.map(mapRow)
+
+  // Frontend-only filters (no backend param needed)
+  if (filters?.filter === "featured") {
+    items = items.filter((c) => c.isFeatured)
+  } else if (filters?.filter === "empty") {
+    items = items.filter((c) => c._count.products === 0)
+  }
+
+  return { items, total: filters?.filter ? items.length : res.count }
+}
+```
+
+---
+
+## Checklist — never ship a filter without this
+
+- [ ] Backend `FilterSet` has the method implemented and added to `fields`
+- [ ] `ViewSet` has `filterset_class` set
+- [ ] Manually tested with `curl` or browser before writing frontend
+- [ ] Query builder passes the param — no `void params.xxx`
+- [ ] TypeScript type includes the new param
+- [ ] Page reads the URL param and passes it to the fetch function
+- [ ] UI toggle updates the URL param (not local state)
+- [ ] If using load-more pagination: Route Handler also forwards the param
