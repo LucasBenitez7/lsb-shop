@@ -1,19 +1,21 @@
 "use client";
 
-import { CldUploadWidget } from "next-cloudinary";
+import { CldUploadWidget, type CloudinaryUploadWidgetResults } from "next-cloudinary";
 import { useEffect, useState } from "react";
 import { FaCloudArrowUp } from "react-icons/fa6";
 import { ImSpinner8 } from "react-icons/im";
 
 import { Button } from "@/components/ui/button";
 
+import { getCloudinarySignatureEndpoint } from "@/lib/cloudinary-upload-presets";
+
 type Props = {
   uploadPreset: string | undefined;
   colorName: string;
-  onUpload: (result: any) => void;
+  onUploadAction: (result: CloudinaryUploadWidgetResults) => void;
 };
 
-export function ColorUploadButton({ uploadPreset, onUpload }: Props) {
+export function ColorUploadButton({ uploadPreset, colorName, onUploadAction }: Props) {
   const [isOpening, setIsOpening] = useState(false);
 
   const fixScrollLock = () => {
@@ -28,15 +30,15 @@ export function ColorUploadButton({ uploadPreset, onUpload }: Props) {
   return (
     <CldUploadWidget
       uploadPreset={uploadPreset}
-      signatureEndpoint="/api/sign-cloudinary-params"
+      signatureEndpoint={getCloudinarySignatureEndpoint()}
       options={{
         maxFiles: 10,
         sources: ["local", "url", "camera"],
       }}
-      onSuccess={(result) => {
+      onSuccess={(result: CloudinaryUploadWidgetResults) => {
         setIsOpening(false);
         fixScrollLock();
-        onUpload(result);
+        onUploadAction(result);
       }}
       onOpen={() => {
         setIsOpening(false);
@@ -56,6 +58,7 @@ export function ColorUploadButton({ uploadPreset, onUpload }: Props) {
         return (
           <Button
             type="button"
+            aria-label={`Add images for color ${colorName}`}
             onClick={(e) => {
               e.preventDefault();
               setIsOpening(true);
@@ -71,7 +74,7 @@ export function ColorUploadButton({ uploadPreset, onUpload }: Props) {
             ) : (
               <FaCloudArrowUp className="size-4" />
             )}
-            {isBusy ? "Cargando..." : `Añadir Imágenes`}
+            {isBusy ? "Cargando..." : `Añadir imágenes (${colorName})`}
           </Button>
         );
       }}

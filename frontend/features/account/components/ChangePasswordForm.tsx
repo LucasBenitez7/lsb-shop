@@ -30,7 +30,7 @@ import {
   type ChangePasswordValues,
 } from "@/lib/account/schema";
 
-import { updatePassword } from "./actions";
+import { updatePassword } from "@/lib/api/account/mutations";
 
 export default function ChangePasswordForm() {
   const [loading, setLoading] = useState(false);

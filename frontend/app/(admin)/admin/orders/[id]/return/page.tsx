@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 import { getOrderForReturn } from "@/lib/api/orders";
 
-import { ReturnForm } from "../../_components/ReturnForm";
+import { ReturnForm } from "@/features/admin/components/orders/ReturnForm";
 
 import type { ReturnableItem } from "@/lib/orders/types";
 

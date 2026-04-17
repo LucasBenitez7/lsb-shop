@@ -1,14 +1,20 @@
 "use client";
 
-import { ArchiveButton, DeleteProductDialog } from "../../shared";
+import { ArchiveButton, DeleteProductDialog } from "../shared";
 
 type Props = {
   productId: string;
   productName: string;
+  productSlug: string;
   isArchived: boolean;
 };
 
-export function DangerZone({ productId, productName, isArchived }: Props) {
+export function DangerZone({
+  productId,
+  productName,
+  productSlug,
+  isArchived,
+}: Props) {
   return (
     <div className="space-y-6 p-4 border rounded-xs shadow-sm bg-white">
       <h3 className="text-lg font-medium text-neutral-900">
@@ -31,6 +37,7 @@ export function DangerZone({ productId, productName, isArchived }: Props) {
           <ArchiveButton
             productId={productId}
             productName={productName}
+            productSlug={productSlug}
             isArchived={isArchived}
           />
         </div>
@@ -49,6 +56,7 @@ export function DangerZone({ productId, productName, isArchived }: Props) {
           <DeleteProductDialog
             productId={productId}
             productName={productName}
+            productSlug={productSlug}
           />
         </div>
       </div>

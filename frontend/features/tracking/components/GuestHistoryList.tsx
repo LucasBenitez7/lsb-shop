@@ -6,7 +6,7 @@ import { Image } from "@/components/ui/image";
 import { formatHistoryReason, getEventVisuals } from "@/lib/orders/utils";
 import { cn } from "@/lib/utils";
 
-import type { HistoryDetailsJson } from "@/lib/orders/types";
+import type { HistoryDetailsJson, HistoryItemJson } from "@/lib/orders/types";
 
 type Props = {
   events: any[];
@@ -21,7 +21,7 @@ export function GuestHistoryList({ events, orderItems }: Props) {
         const itemsList = details.items || [];
         const note = details.note;
         const totalAffectedQty = itemsList.reduce(
-          (acc, i) => acc + i.quantity,
+          (acc: number, i: HistoryItemJson) => acc + i.quantity,
           0,
         );
 
@@ -122,15 +122,19 @@ export function GuestHistoryList({ events, orderItems }: Props) {
                       </div>
 
                       <div className="divide-y divide-neutral-100">
-                        {itemsList.map((historyItem, idx) => {
+                        {itemsList.map((historyItem: HistoryItemJson, idx: number) => {
                           const matchedLiveItem = orderItems.find(
-                            (i) => i.nameSnapshot === historyItem.name,
+                            (i: { nameSnapshot?: string }) =>
+                              i.nameSnapshot === historyItem.name,
                           );
                           const productImages =
                             matchedLiveItem?.product?.images || [];
                           const matchingImg =
-                            productImages.find((img: any) =>
-                              historyItem.variant?.includes(img.color || "###"),
+                            productImages.find(
+                              (img: { color?: string | null }) =>
+                                historyItem.variant?.includes(
+                                  img.color || "###",
+                                ),
                             ) || productImages[0];
                           const imgUrl = matchingImg?.url;
 

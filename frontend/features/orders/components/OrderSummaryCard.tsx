@@ -147,7 +147,7 @@ export function OrderSummaryCard({
               <FaLocationDot className="size-4 mb-1" /> {shippingInfo.label}
             </h3>
             <div className="text-sm text-foreground">
-              {shippingInfo.addressLines.map((line, i) => (
+              {shippingInfo.addressLines.map((line: string, i: number) => (
                 <p key={i}>{line}</p>
               ))}
             </div>

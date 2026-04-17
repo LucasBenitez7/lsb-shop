@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 
 import { canWriteAdmin } from "@/lib/roles";
 import { auth } from "@/lib/auth/server";
-import { getAdminProducts, getMaxPrice } from "@/lib/api/products";
+import { getAdminProducts, getMaxPrice } from "@/lib/api/products/admin";
 import { cn } from "@/lib/utils";
 
 import { ProductListToolbar } from "@/features/admin/components/products/table/ProductListToolbar";

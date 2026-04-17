@@ -16,13 +16,9 @@ export default function FeaturedGrid({ categories }: Props) {
       {/* GRID */}
       <div className="grid w-full grid-cols-1 md:grid-cols-2">
         {categories.slice(0, 4).map((cat, index) => {
-          const productFallback =
-            (cat as any).products?.[0]?.images?.[0]?.url ||
-            "/og/default-products.jpg";
-
-          const desktopImageSrc = (cat as any).image || productFallback;
-
-          const mobileImageSrc = (cat as any).mobileImage || desktopImageSrc;
+          const fallback = "/og/default-products.jpg";
+          const desktopImageSrc = cat.imageUrl || fallback;
+          const mobileImageSrc = cat.mobileImageUrl || desktopImageSrc;
 
           return (
             <motion.div

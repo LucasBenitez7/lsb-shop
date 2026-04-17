@@ -15,7 +15,7 @@ import {
   getAdminProductById,
   getProductFormDependencies,
   getProductSalesAndReturns,
-} from "@/lib/api/products";
+} from "@/lib/api/products/admin";
 
 import { StatCard } from "@/features/admin/components/products/shared/StatCard";
 
@@ -70,6 +70,7 @@ export default async function EditProductPage({
           <ArchiveButton
             productId={id}
             productName={product.name}
+            productSlug={product.slug}
             isArchived={product.isArchived}
           />
         ) : !product.isArchived ? (

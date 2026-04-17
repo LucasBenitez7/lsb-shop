@@ -124,7 +124,10 @@ export default async function AdminUserDetailPage({ params }: Props) {
           </Card>
 
           {/* 2. DIRECCIONES */}
-          <UserAddressesCard addresses={addresses} />
+          <UserAddressesCard
+            addresses={addresses}
+            redactSensitive={maskEmails}
+          />
         </div>
 
         {/* COLUMNA DERECHA (Stats + Pedidos) */}

@@ -8,11 +8,12 @@ import { toast } from "sonner";
 import { Button, Input, Label, Switch } from "@/components/ui";
 
 import { SingleImageUpload } from "@/features/admin/components/SingleImageUpload";
+import { getCloudinaryBannerUploadPreset } from "@/lib/cloudinary-upload-presets";
 import {
   createCategoryAction,
   updateCategoryAction,
   type CategoryFormState,
-} from "@/app/(admin)/admin/categories/actions";
+} from "@/lib/api/categories/mutations";
 
 import { CategorySortPreview } from "./CategorySortPreview";
 
@@ -34,6 +35,8 @@ const INITIAL_STATE: CategoryFormState = {
   message: "",
   errors: {},
 };
+
+const bannerUploadPreset = getCloudinaryBannerUploadPreset();
 
 export function CategoryForm({
   category,
@@ -83,6 +86,9 @@ export function CategoryForm({
               Nombre
             </Label>
             <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+              {isEditing && category?.slug ? (
+                <input type="hidden" name="slug" value={category.slug} />
+              ) : null}
               <Input
                 id="name"
                 name="name"
@@ -165,9 +171,10 @@ export function CategoryForm({
               <Label>Imagen de Portada en pantallas grandes (4:3)</Label>
               <SingleImageUpload
                 value={imageUrl}
-                onChange={setImageUrl}
+                onChangeAction={setImageUrl}
                 label="Subir Imagen (4:3)"
                 className="aspect-[4/3] w-full max-w-[500px]"
+                uploadPreset={bannerUploadPreset}
               />
               <p className="text-xs text-muted-foreground">
                 Se recomienda una imagen en formato rectangular 4:3. Esta imagen
@@ -180,9 +187,10 @@ export function CategoryForm({
               <Label>Imagen de Portada en Mobile (4:5)</Label>
               <SingleImageUpload
                 value={mobileImageUrl}
-                onChange={setMobileImageUrl}
+                onChangeAction={setMobileImageUrl}
                 label="Subir Imagen Mobile"
                 className="aspect-[4/5] w-full max-w-[300px]"
+                uploadPreset={bannerUploadPreset}
               />
               <p className="text-xs text-muted-foreground">
                 Se recomienda formato vertical 4:5. Si no se sube, se usará la

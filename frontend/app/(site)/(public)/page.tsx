@@ -5,7 +5,7 @@ import SaleBanner from "@/features/home/components/SaleBanner";
 
 import { getFeaturedCategories } from "@/lib/api/categories";
 import { getMaxDiscountPercentage } from "@/lib/api/products";
-import { getStoreConfig } from "@/lib/settings/service";
+import { getStoreConfig } from "@/lib/api/settings/server";
 
 import type { Metadata } from "next";
 

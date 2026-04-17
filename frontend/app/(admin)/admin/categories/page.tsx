@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { canWriteAdmin } from "@/lib/roles";
 import { auth } from "@/lib/auth/server";
-import { getAdminCategories } from "@/lib/api/categories";
+import { getAdminCategories } from "@/lib/api/categories/server";
 
 import { CategoryListToolbar } from "@/features/admin/components/categories/CategoryListToolbar";
 import { CategoryTable } from "@/features/admin/components/categories/CategoryTable";
@@ -29,13 +29,16 @@ export default async function AdminCategoriesPage({ searchParams }: Props) {
 
   const page = Number(sp.page) || 1;
 
-  const { items: categories, total: totalCount, total: totalPages } = await getAdminCategories({
+  const { items: categories, total: totalCount } = await getAdminCategories({
     page,
     query: sp.q,
     filter: sp.filter,
     sortBy: sp.sortBy,
     sortOrder: sp.sortOrder,
   });
+  const pageSize = 100;
+  const totalPages =
+    totalCount === 0 ? 0 : Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
     <div className="space-y-4">

@@ -4,7 +4,7 @@ import { type ProductFormValues } from "@/lib/products/schema";
 
 import { ProductFormProvider } from "./ProductFormProvider";
 import { DangerZone, GeneralSection, VariantsSection } from "./sections";
-import { ImagesSection } from "./sections/ImagesSection";
+import { ImagesSection } from "../images/ImagesSection";
 
 type ProductWithId = ProductFormValues & { id: string };
 
@@ -25,10 +25,11 @@ export function ProductForm({ categories, product, readOnly }: Props) {
         <ImagesSection />
       </ProductFormProvider>
 
-      {!readOnly && product?.id && product.name && (
+      {!readOnly && product?.id && product.name && product.slug && (
         <DangerZone
           productId={product.id}
           productName={product.name}
+          productSlug={product.slug}
           isArchived={!!product.isArchived}
         />
       )}

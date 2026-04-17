@@ -12,6 +12,7 @@ import { SheetClose, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 
 import { PUBLIC_SORT_OPTIONS } from "@/lib/products/constants";
+import { formatDisplayName } from "@/lib/format-display-name";
 import { cn } from "@/lib/utils";
 
 import { useFilterSheetState } from "@/features/catalog/hooks/use-filter-sheet-state";
@@ -204,9 +205,9 @@ export function FilterSheet({ options, onClose }: Props) {
                       />
                       <Label
                         htmlFor={`color-${color.name}`}
-                        className="cursor-pointer font-normal capitalize"
+                        className="cursor-pointer font-normal"
                       >
-                        {color.name}
+                        {formatDisplayName(color.name)}
                       </Label>
                     </div>
                   ))}

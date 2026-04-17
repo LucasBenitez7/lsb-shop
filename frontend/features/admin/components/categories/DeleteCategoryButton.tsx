@@ -14,14 +14,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { deleteCategoryAction } from "@/app/(admin)/admin/categories/actions";
+import { deleteCategoryAction } from "@/lib/api/categories/mutations";
 
 interface Props {
-  id: string;
+  /** Category `slug` for Django (`DELETE …/categories/{slug}/`). */
+  slug: string;
   hasProducts: boolean;
 }
 
-export function DeleteCategoryButton({ id, hasProducts }: Props) {
+export function DeleteCategoryButton({ slug, hasProducts }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +41,7 @@ export function DeleteCategoryButton({ id, hasProducts }: Props) {
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const res = await deleteCategoryAction(id);
+      const res = await deleteCategoryAction(slug);
       if (res?.error) {
         toast.error(res.error);
       } else {

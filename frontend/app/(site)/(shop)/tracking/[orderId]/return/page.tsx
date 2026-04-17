@@ -7,7 +7,7 @@ import { GuestReturnForm } from "@/features/tracking/components/GuestReturnForm"
 import { Button } from "@/components/ui/button";
 
 import { getOrderSuccessDetails } from "@/lib/api/account";
-import { verifyGuestAccessOrRedirect } from "@/lib/guest-access/server-utils";
+import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
 import { canOrderBeReturned, getReturnableItems } from "@/lib/orders/utils";
 
 import type { UserReturnableItem } from "@/lib/orders/types";

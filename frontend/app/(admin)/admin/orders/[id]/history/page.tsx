@@ -10,7 +10,7 @@ import { getAdminOrderById } from "@/lib/api/orders";
 import { formatHistoryReason, getEventVisuals } from "@/lib/orders/utils";
 import { cn } from "@/lib/utils";
 
-import type { HistoryDetailsJson } from "@/lib/orders/types";
+import type { HistoryDetailsJson, HistoryItemJson } from "@/lib/orders/types";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export default async function OrderHistoryPage({ params }: Props) {
           const itemsList = details.items || [];
           const note = details.note;
           const totalAffectedQty = itemsList.reduce(
-            (acc, i) => acc + i.quantity,
+            (acc: number, i: HistoryItemJson) => acc + i.quantity,
             0,
           );
 
@@ -171,7 +171,7 @@ export default async function OrderHistoryPage({ params }: Props) {
                         </div>
 
                         <div className="py-2">
-                          {itemsList.map((historyItem, idx) => {
+                          {itemsList.map((historyItem: HistoryItemJson, idx: number) => {
                             const matchedLiveItem = order.items.find(
                               (i) => i.nameSnapshot === historyItem.name,
                             );

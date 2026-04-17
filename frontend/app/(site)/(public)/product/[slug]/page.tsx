@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ProductClient } from "@/features/product/components";
 import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
 
-import { checkIsFavorite } from "@/lib/api/favorites";
+import { checkIsFavorite } from "@/lib/api/favorites/server";
 import { getProductFullBySlug, getProductSlugs } from "@/lib/api/products";
 import { getInitialProductState } from "@/lib/products/utils";
 

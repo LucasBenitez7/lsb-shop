@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 import { useVariantsTable } from "@/features/admin/hooks/use-variants-table";
 
-import { VariantGeneratorDialog } from "../dialogs/VariantGeneratorDialog";
+import { VariantGeneratorDialog } from "./VariantGeneratorDialog";
 
 export function VariantsSection() {
   const {

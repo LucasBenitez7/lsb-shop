@@ -18,7 +18,7 @@ type LoginFormProps = {
 };
 
 const LOGIN_WRONG_CREDENTIALS =
-  "Email o contraseña incorrectos. Si aún no tienes cuenta, puedes crear una.";
+  "Email o contraseña no coinciden.";
 
 /** Map dj-rest-auth / Django i18n messages to clear Spanish copy (same UX for 400 and 401). */
 function mapLoginApiErrorMessage(apiMessage: string): string {

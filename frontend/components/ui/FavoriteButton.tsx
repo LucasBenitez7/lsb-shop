@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
-import { toggleFavoriteAction } from "@/lib/favorites/actions";
+import { toggleFavorite as toggleFavoriteAction } from "@/lib/api/favorites/client";
 import { cn } from "@/lib/utils";
 
 interface FavoriteButtonProps {

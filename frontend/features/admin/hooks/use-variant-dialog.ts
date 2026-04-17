@@ -11,7 +11,7 @@ import {
   updatePresetColor,
   deletePresetSize,
   deletePresetColor,
-} from "@/app/(admin)/admin/products/_action/attributes-actions";
+} from "@/lib/api/products/attributes";
 import { useVariantGenerator } from "@/features/admin/hooks/use-variant-generator";
 
 import type { ProductFormValues } from "@/lib/products/schema";
@@ -210,7 +210,7 @@ export function useVariantDialog({ onGenerate }: UseVariantDialogProps) {
     }
 
     const isNumber = !isNaN(Number(val.replace(",", ".")));
-    const type = isNumber ? "shoe" : "clothing";
+    const type = (isNumber ? "shoe" : "clothing") as "clothing" | "shoe";
 
     setGenSizes((prev) => [...prev, val]);
     setCustomSizeInput("");

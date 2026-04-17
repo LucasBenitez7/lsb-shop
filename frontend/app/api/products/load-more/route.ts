@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     categorySlug: sp.get("categorySlug") ?? undefined,
     query: sp.get("query") ?? undefined,
     sort: sp.get("sort") ?? undefined,
+    onlyOnSale: sp.get("onlyOnSale") === "true" ? true : undefined,
   };
   sp.getAll("sizes").forEach((s) => {
     params.sizes = params.sizes ?? [];

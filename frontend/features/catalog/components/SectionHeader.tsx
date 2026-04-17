@@ -56,7 +56,7 @@ export function SectionHeader({
         )}
       >
         <div className="flex items-center gap-1">
-          <h1 className="text-xl font-medium capitalize">{title}</h1>
+          <h1 className="text-xl font-medium">{title}</h1>
           {subTitle && (
             <p className="text-sm text-muted-foreground">({subTitle})</p>
           )}

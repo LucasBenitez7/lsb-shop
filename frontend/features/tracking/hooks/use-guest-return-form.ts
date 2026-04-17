@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { requestReturnGuestAction } from "@/lib/guest-access/actions";
+import { requestReturnGuestAction } from "@/lib/api/guest/mutations";
 
 export function useGuestReturnForm(orderId: string) {
   const router = useRouter();

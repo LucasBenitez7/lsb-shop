@@ -2,6 +2,7 @@
 
 import { FaTriangleExclamation, FaImages } from "react-icons/fa6";
 
+import { getCloudinaryProductUploadPreset } from "@/lib/cloudinary-upload-presets";
 import { cn } from "@/lib/utils";
 
 import { useProductImages } from "@/features/admin/hooks/use-product-images";
@@ -21,7 +22,7 @@ export function ImagesSection() {
     handleSetMain,
   } = useProductImages();
 
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  const uploadPreset = getCloudinaryProductUploadPreset();
 
   return (
     <div className="bg-white p-4 rounded-xs border shadow-sm space-y-4">
@@ -54,8 +55,8 @@ export function ImagesSection() {
                     key={item.field.id}
                     field={item.field}
                     index={item.index}
-                    remove={remove}
-                    onUpdate={handleUpdateImage}
+                    removeAction={remove}
+                    onUpdateAction={handleUpdateImage}
                     uploadPreset={uploadPreset}
                     fieldError={fieldError}
                     isMain={false}
@@ -96,7 +97,7 @@ export function ImagesSection() {
                 <ColorUploadButton
                   uploadPreset={uploadPreset}
                   colorName={colorName}
-                  onUpload={(result) => handleAddImages(result, colorName)}
+                  onUploadAction={(result) => handleAddImages(result, colorName)}
                 />
               </div>
 
@@ -113,12 +114,12 @@ export function ImagesSection() {
                         key={item.field.id}
                         field={item.field}
                         index={item.index}
-                        remove={remove}
-                        onUpdate={handleUpdateImage}
+                        removeAction={remove}
+                        onUpdateAction={handleUpdateImage}
                         uploadPreset={uploadPreset}
                         fieldError={fieldError}
                         isMain={isMain}
-                        onSetMain={() => handleSetMain(item.index, colorName)}
+                        onSetMainAction={() => handleSetMain(item.index, colorName)}
                       />
                     );
                   })

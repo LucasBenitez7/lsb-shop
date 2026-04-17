@@ -33,7 +33,7 @@ import {
 import {
   requestGuestAccess,
   verifyGuestAccess,
-} from "@/lib/guest-access/actions";
+} from "@/lib/api/guest/mutations";
 import {
   guestAccessStep1Schema,
   guestAccessStep2Schema,

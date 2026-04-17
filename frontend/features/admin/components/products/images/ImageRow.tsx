@@ -1,41 +1,57 @@
 "use client";
 
+import type { FieldArrayWithId } from "react-hook-form";
 import { FaTrash } from "react-icons/fa6";
 
 import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 
+import type { ProductFormValues } from "@/lib/products/schema";
 import { cn } from "@/lib/utils";
+
+import type { CloudinaryUploadWidgetResults } from "next-cloudinary";
 
 import { EditImageButton } from "./EditImageButton";
 
+type ProductImageField = FieldArrayWithId<ProductFormValues, "images", "id">;
+
+function getImageRowErrorMessage(fieldError: unknown): string | undefined {
+  if (!fieldError || typeof fieldError !== "object") return undefined;
+  const o = fieldError as Record<string, unknown>;
+  if (typeof o.message === "string") return o.message;
+  for (const key of ["url", "root", "color"] as const) {
+    const inner = o[key];
+    if (inner && typeof inner === "object" && "message" in inner) {
+      const m = (inner as { message?: unknown }).message;
+      if (typeof m === "string") return m;
+    }
+  }
+  return undefined;
+}
+
 type ImageRowProps = {
-  field: any;
+  field: ProductImageField;
   index: number;
-  remove: (index: number) => void;
-  onUpdate: (index: number, result: any) => void;
+  removeAction: (index: number) => void;
+  onUpdateAction: (index: number, result: CloudinaryUploadWidgetResults) => void;
   uploadPreset: string | undefined;
-  fieldError?: any;
+  /** RHF nested error for `images[index]` */
+  fieldError?: unknown;
   isMain?: boolean;
-  onSetMain?: () => void;
+  onSetMainAction?: () => void;
 };
 
 export function ImageRow({
   field,
   index,
-  remove,
-  onUpdate,
+  removeAction,
+  onUpdateAction,
   uploadPreset,
   fieldError,
   isMain,
-  onSetMain,
+  onSetMainAction,
 }: ImageRowProps) {
-  const errObj = fieldError as any;
-  const errorMessage =
-    errObj?.message ||
-    errObj?.url?.message ||
-    errObj?.root?.message ||
-    errObj?.color?.message;
+  const errorMessage = getImageRowErrorMessage(fieldError);
 
   const hasError = !!errorMessage;
 
@@ -60,7 +76,7 @@ export function ImageRow({
       <div className="flex-1 h-full justify-between min-w-0 flex flex-col gap-1 py-1">
         <p
           className="text-sm font-medium text-foreground truncate"
-          title={field.alt}
+          title={field.alt ?? undefined}
         >
           {field.alt || "Sin nombre"}
         </p>
@@ -71,13 +87,13 @@ export function ImageRow({
           </p>
         )}
 
-        {onSetMain && !isMain && (
+        {onSetMainAction && !isMain && (
           <button
             type="button"
-            onClick={onSetMain}
+            onClick={onSetMainAction}
             className="text-xs text-neutral-500 hover:text-amber-600 font-medium flex items-center gap-1 w-fit transition-colors hover:cursor-pointer"
           >
-            Selccionar como principal
+            Seleccionar como principal
           </button>
         )}
 
@@ -93,14 +109,14 @@ export function ImageRow({
       >
         <EditImageButton
           uploadPreset={uploadPreset}
-          onSuccess={(result) => onUpdate(index, result)}
+          onSuccessAction={(result) => onUpdateAction(index, result)}
         />
 
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => remove(index)}
+          onClick={() => removeAction(index)}
           className="h-6 px-2 text-xs text-slate-700 active:text-red-600 active:bg-red-50 hover:text-red-600 hover:bg-red-50 flex gap-1.5 items-center justify-start w-full"
         >
           <FaTrash className="size-3" /> Borrar
