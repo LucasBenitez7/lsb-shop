@@ -1,0 +1,14 @@
+{
+  "pythonVersion": "3.13",
+  "pythonPath": "backend/.venv/Scripts/python.exe",
+  "venvPath": "backend",
+  "venv": ".venv",
+  "include": ["backend"],
+  "exclude": [
+    "backend/.venv",
+    "backend/**/migrations/**",
+    "backend/**/__pycache__/**",
+    "frontend"
+  ],
+  "typeCheckingMode": "off"
+}

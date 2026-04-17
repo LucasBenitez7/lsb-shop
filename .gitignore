@@ -36,3 +36,11 @@ Thumbs.db
 backend/coverage.xml
 .coverage
 htmlcov/
+
+# Playwright (if tests are run from repo root)
+/playwright-report/
+/test-results/
+
+# Merge / editor leftovers
+*.orig
+*.rej
