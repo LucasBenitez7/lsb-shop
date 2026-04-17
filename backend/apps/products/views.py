@@ -1,34 +1,62 @@
-from typing import Any
-
 import structlog
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import SAFE_METHODS, AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from apps.core.permissions import IsStoreAdminEditor, IsStoreStaffReader
 from apps.products.filters import ProductFilter
+from apps.products.models import PresetColor, PresetSize
 from apps.products.permissions import AllowPublicReadStaffWrite
 from apps.products.product_list_cache import (
     get_cached_public_list,
     public_product_list_cache_key,
     set_cached_public_list,
 )
-from apps.products.selectors import category_list_queryset, product_list_queryset
+from apps.products.selectors import (
+    category_list_queryset,
+    product_list_queryset,
+    storefront_max_discount_percent,
+)
 from apps.products.serializers import (
     CategorySerializer,
+    PresetColorSerializer,
+    PresetSizeSerializer,
     ProductSerializer,
     ProductWriteSerializer,
 )
 from apps.products.services import (
+    CategoryHasChildrenError,
     CategoryHierarchyError,
     CategoryNotEmptyError,
     CategoryService,
+    PresetInUseError,
+    PresetService,
     ProductService,
 )
 
 log = structlog.get_logger()
+
+
+class MaxDiscountPercentAPIView(APIView):
+    """
+    Public storefront: max discount % for hero, rebajas page, and sidebar.
+
+    Optional ``?category_slug=`` limits the pool to one category (same formula).
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, *args, **kwargs):
+        raw = request.query_params.get("category_slug")
+        slug = str(raw).strip() if raw else None
+        pct = storefront_max_discount_percent(category_slug=slug)
+        return Response({"max_discount_percent": pct})
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -38,6 +66,17 @@ class CategoryViewSet(viewsets.ModelViewSet):
     lookup_url_kwarg = "slug"
     permission_classes = [AllowPublicReadStaffWrite]
     serializer_class = CategorySerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name"]
+    ordering_fields = [
+        "sort_order",
+        "name",
+        "created_at",
+        "updated_at",
+        "product_count",
+        "storefront_product_count",
+    ]
+    ordering = ["sort_order", "name"]
     http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
@@ -51,21 +90,21 @@ class CategoryViewSet(viewsets.ModelViewSet):
             name=v["name"],
             slug=slug_val,
             parent=v.get("parent"),
+            sort_order=v.get("sort_order"),
+            is_featured=v.get("is_featured", False),
+            image=v.get("image") or "",
+            mobile_image=v.get("mobile_image") or "",
         )
         serializer.instance = category
 
     def perform_update(self, serializer) -> None:
         instance = serializer.instance
-        v = serializer.validated_data
-        kwargs: dict[str, Any] = {}
-        if "name" in v:
-            kwargs["name"] = v["name"]
-        if "slug" in v and v.get("slug"):
-            kwargs["slug"] = v["slug"]
-        if "parent" in v:
-            kwargs["parent"] = v["parent"]
+        v = dict(serializer.validated_data)
+        for key in ("image", "mobile_image"):
+            if key in v and v[key] is None:
+                v[key] = ""
         try:
-            CategoryService.update_category(category=instance, **kwargs)
+            CategoryService.update_category(category=instance, **v)
         except CategoryHierarchyError as e:
             raise ValidationError({"parent": [str(e)]}) from e
         serializer.instance = instance
@@ -74,6 +113,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
         try:
             CategoryService.soft_delete_category(category=instance)
         except CategoryNotEmptyError as e:
+            raise ValidationError({"detail": [str(e)]}) from e
+        except CategoryHasChildrenError as e:
             raise ValidationError({"detail": [str(e)]}) from e
 
 
@@ -90,8 +131,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     ]
     filterset_class = ProductFilter
     search_fields = ["name", "description", "variants__sku"]
-    ordering_fields = ["created_at", "name", "min_price"]
-    ordering = ["-created_at"]
+    ordering_fields = ["created_at", "name", "min_price", "sort_order"]
+    ordering = ["sort_order", "-created_at"]
     http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
@@ -130,6 +171,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         product = ProductService.create_product(data=dict(serializer.validated_data))
         serializer.instance = product
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            self.perform_create(serializer)
+            out = ProductSerializer(serializer.instance, context={"request": request})
+            payload = out.data
+        return Response(payload, status=status.HTTP_201_CREATED)
+
     def perform_update(self, serializer) -> None:
         product = serializer.instance
         ProductService.update_product(
@@ -137,6 +187,17 @@ class ProductViewSet(viewsets.ModelViewSet):
             data=dict(serializer.validated_data),
         )
         serializer.instance = product
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            self.perform_update(serializer)
+            out = ProductSerializer(serializer.instance, context={"request": request})
+            payload = out.data
+        return Response(payload)
 
     def perform_destroy(self, instance) -> None:
         ProductService.soft_delete_product(product=instance)
@@ -154,24 +215,56 @@ class ProductViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(ser.data)
         return Response(ser.data)
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
-    def archive(self, request, pk=None):
+    def _set_archived_response(self, request, *, archived: bool) -> Response:
         product = self.get_object()
-        ProductService.archive_product(product=product)
+        ProductService.set_product_archived(product=product, archived=archived)
         product.refresh_from_db()
-        log.info("product.archive_action", product_id=product.id)
+        log.info(
+            "product.archive_action" if archived else "product.unarchive_action",
+            product_id=product.id,
+        )
         return Response(
             ProductSerializer(product, context={"request": request}).data,
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
-    def unarchive(self, request, pk=None):
-        product = self.get_object()
-        ProductService.unarchive_product(product=product)
-        product.refresh_from_db()
-        log.info("product.unarchive_action", product_id=product.id)
-        return Response(
-            ProductSerializer(product, context={"request": request}).data,
-            status=status.HTTP_200_OK,
-        )
+    @action(detail=True, methods=["post"], permission_classes=[IsStoreAdminEditor])
+    def archive(self, request, slug=None):
+        return self._set_archived_response(request, archived=True)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsStoreAdminEditor])
+    def unarchive(self, request, slug=None):
+        return self._set_archived_response(request, archived=False)
+
+
+class PresetBaseViewSet(viewsets.ModelViewSet):
+    """Shared CRUD + delete guard for size/color presets."""
+
+    http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
+    variant_field: str
+
+    def get_permissions(self) -> list:
+        if self.request.method in SAFE_METHODS:
+            return [IsStoreStaffReader()]
+        return [IsStoreAdminEditor()]
+
+    def perform_destroy(self, instance) -> None:
+        try:
+            PresetService.delete_preset(
+                instance=instance,
+                variant_field=self.variant_field,
+            )
+        except PresetInUseError as e:
+            raise ValidationError({"detail": str(e)}) from e
+
+
+class PresetSizeViewSet(PresetBaseViewSet):
+    queryset = PresetSize.objects.all()
+    serializer_class = PresetSizeSerializer
+    variant_field = "size"
+
+
+class PresetColorViewSet(PresetBaseViewSet):
+    queryset = PresetColor.objects.all()
+    serializer_class = PresetColorSerializer
+    variant_field = "color"

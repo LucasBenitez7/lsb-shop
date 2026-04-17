@@ -223,6 +223,15 @@ class TestUserViewSetMe:
         assert response.data["email"] == user.email
         assert response.data["id"] == user.id
 
+    def test_me_get_as_demo_returns_own_unmasked_email(
+        self, demo_client: APIClient, demo_user
+    ) -> None:
+        url = reverse("user-me")
+        response = demo_client.get(url)
+        assert response.status_code == 200
+        assert response.data["email"] == demo_user.email
+        assert response.data["phone"] == demo_user.phone
+
     def test_me_patch_updates_allowed_fields(
         self, auth_client: APIClient, user
     ) -> None:
@@ -286,6 +295,34 @@ class TestUserViewSetList:
         assert response.status_code == 200
         assert response.data["id"] == other.pk
         assert response.data["email"] == other.email
+
+    def test_list_as_demo_masks_other_users_email_and_phone(
+        self,
+        demo_client: APIClient,
+        demo_user,
+    ) -> None:
+        other = UserFactory(email="client@example.com", phone="+34999111222")
+        url = reverse("user-list")
+        response = demo_client.get(url)
+        assert response.status_code == 200
+        rows = {row["id"]: row for row in response.data["results"]}
+        assert rows[demo_user.id]["email"] == demo_user.email
+        assert rows[demo_user.id]["phone"] == demo_user.phone
+        assert rows[other.id]["email"] == "c***@***.com"
+        assert rows[other.id]["phone"] == "***"
+
+    def test_retrieve_other_user_as_demo_masks_contact_fields(
+        self,
+        demo_client: APIClient,
+        demo_user,
+    ) -> None:
+        other = UserFactory(email="other@example.com", phone="+34111222333")
+        url = reverse("user-detail", kwargs={"pk": other.pk})
+        response = demo_client.get(url)
+        assert response.status_code == 200
+        assert response.data["email"] != other.email
+        assert response.data["email"] == "o***@***.com"
+        assert response.data["phone"] == "***"
 
 
 @pytest.mark.django_db

@@ -15,6 +15,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from apps.users.models import GuestSession
+from apps.users.privacy import mask_email_for_demo, mask_phone_for_demo
 
 User = get_user_model()
 
@@ -124,6 +125,9 @@ class UserSerializer(serializers.ModelSerializer):
     """
     Exposed by dj-rest-auth UserDetailsView (/api/v1/auth/user/).
     Keep sensitive flags read-only; profile text fields are editable.
+
+    Staff *demo* users see masked email/phone for *other* users (list/retrieve);
+    their own profile (`/me/` and self) stays unmasked.
     """
 
     class Meta:
@@ -153,6 +157,20 @@ class UserSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+    def to_representation(self, instance: User) -> dict:
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        viewer = getattr(request, "user", None) if request else None
+        if (
+            viewer
+            and viewer.is_authenticated
+            and getattr(viewer, "role", None) == User.Role.DEMO
+            and instance.pk != viewer.pk
+        ):
+            data["email"] = mask_email_for_demo(instance.email)
+            data["phone"] = mask_phone_for_demo(instance.phone)
+        return data
 
 
 class GuestOTPRequestSerializer(serializers.Serializer):

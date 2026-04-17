@@ -24,6 +24,12 @@ from apps.products.models import Product, ProductVariant
 RECENT_DAYS_MAX = 365
 
 
+class NumberInFilter(django_filters.BaseInFilter, django_filters.NumberFilter):
+    """Comma-separated or repeated query values for numeric ``__in`` lookups."""
+
+    pass
+
+
 def _parse_decimal_param(raw: object) -> Decimal | None:
     if raw is None or raw == "":
         return None
@@ -55,7 +61,9 @@ def _collect_list(qd: Any, *keys: str) -> list[str]:
 
 
 class ProductFilter(django_filters.FilterSet):
-    category = django_filters.NumberFilter(field_name="category_id")
+    id = django_filters.NumberFilter(field_name="id")
+    is_archived = django_filters.BooleanFilter(field_name="is_archived")
+    category = NumberInFilter(field_name="category_id", lookup_expr="in")
     category_slug = django_filters.CharFilter(
         field_name="category__slug",
         lookup_expr="iexact",
@@ -64,16 +72,22 @@ class ProductFilter(django_filters.FilterSet):
     max_price = django_filters.CharFilter(method="filter_max_price")
     featured = django_filters.BooleanFilter(field_name="is_featured")
     recent_days = django_filters.NumberFilter(method="filter_recent_days")
+    on_sale = django_filters.BooleanFilter(method="filter_on_sale")
+    out_of_stock = django_filters.BooleanFilter(method="filter_out_of_stock")
 
     class Meta:
         model = Product
         fields = [
+            "id",
+            "is_archived",
             "category",
             "category_slug",
             "min_price",
             "max_price",
             "featured",
             "recent_days",
+            "on_sale",
+            "out_of_stock",
         ]
 
     def filter_queryset(self, queryset):
@@ -148,3 +162,26 @@ class ProductFilter(django_filters.FilterSet):
         if fallback and not recent.exists():
             return queryset
         return recent
+
+    def filter_on_sale(self, queryset, name, value):
+        """Filter products with an active sale price (compare_at_price is set)."""
+        del name
+        if value is None:
+            return queryset
+        if value:
+            return queryset.filter(compare_at_price__isnull=False)
+        return queryset.filter(compare_at_price__isnull=True)
+
+    def filter_out_of_stock(self, queryset, name, value):
+        """Filter products that have no active variant with stock > 0."""
+        del name
+        if value is None:
+            return queryset
+        has_stock = ProductVariant.objects.filter(
+            product_id=OuterRef("pk"),
+            is_active=True,
+            stock__gt=0,
+        )
+        if value:
+            return queryset.filter(~Exists(has_stock))
+        return queryset.filter(Exists(has_stock))

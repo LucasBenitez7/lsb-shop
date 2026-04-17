@@ -239,6 +239,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.cart.tasks.cleanup_expired_carts",
         "schedule": crontab(hour=3, minute=0),
     },
+    "cleanup-orphaned-cloudinary-images": {
+        "task": "apps.core.tasks.cleanup_orphaned_cloudinary_images",
+        "schedule": crontab(day_of_week=0, hour=3, minute=30),  # Sundays at 3:30am
+    },
 }
 
 # Cloudinary
@@ -246,6 +250,7 @@ CLOUDINARY_STORAGE = {
     "CLOUD_NAME": config("CLOUDINARY_CLOUD_NAME"),
     "API_KEY": config("CLOUDINARY_API_KEY"),
     "API_SECRET": config("CLOUDINARY_API_SECRET"),
+    "FOLDER_PREFIX": config("CLOUDINARY_FOLDER_PREFIX", default="lsb-shop"),
 }
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 

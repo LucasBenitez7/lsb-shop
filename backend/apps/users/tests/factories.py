@@ -32,7 +32,10 @@ class AdminFactory(UserFactory):
 
 
 class DemoFactory(UserFactory):
+    """Read-only admin: must be staff to match production demo accounts."""
+
     role = User.Role.DEMO
+    is_staff = True
 
 
 class GuestSessionFactory(DjangoModelFactory):

@@ -1,16 +1,18 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 import structlog
 from django.contrib.auth import get_user_model
 
 from apps.core.exceptions import ResourceNotFound, ShopError
 from apps.users.models import GuestSession
 
+if TYPE_CHECKING:
+    from apps.users.models import User as UserModel
+
 log = structlog.get_logger()
 User = get_user_model()
-
-
-class EmailAlreadyExists(ShopError):
-    status_code = 400
-    default_message = "Ya existe una cuenta con ese email."
 
 
 class InvalidOTP(ShopError):
@@ -20,14 +22,14 @@ class InvalidOTP(ShopError):
 
 class UserService:
     @staticmethod
-    def get_user_by_id(user_id: int):
+    def get_user_by_id(user_id: int) -> UserModel:
         try:
             return User.objects.get(id=user_id, is_active=True)
         except User.DoesNotExist:
             raise ResourceNotFound() from None
 
     @staticmethod
-    def update_profile(user, data: dict):
+    def update_profile(user: UserModel, data: dict[str, Any]) -> UserModel:
         allowed = {"first_name", "last_name", "phone"}
         updated: list[str] = []
         for key, value in data.items():

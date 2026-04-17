@@ -4,7 +4,7 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from rest_framework import status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -32,12 +32,23 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["email", "first_name", "last_name", "phone"]
+    ordering_fields = ["email", "first_name", "last_name", "created_at", "role"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return User.objects.all().order_by("-created_at")
-        return User.objects.filter(id=user.id)
+        if not user.is_staff:
+            return User.objects.filter(id=user.id)
+
+        qs = User.objects.all()
+
+        role = self.request.query_params.get("role")
+        if role:
+            qs = qs.filter(role=role)
+
+        return qs
 
     @action(
         detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated]

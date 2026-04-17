@@ -24,6 +24,7 @@ urlpatterns = [
     path("api/v1/auth/google/", GoogleLoginView.as_view(), name="auth-google"),
     path("api/v1/auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/v1/auth/social/", include("allauth.socialaccount.urls")),
+    path("api/v1/", include("apps.core.urls")),
     path("api/v1/products/", include("apps.products.urls")),
     path("api/v1/favorites/", include("apps.favorites.urls")),
     path("api/v1/cart/", include("apps.cart.urls")),
