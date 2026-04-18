@@ -4,7 +4,7 @@ import { FaArrowLeft } from "react-icons/fa6";
 
 import { canWriteAdmin } from "@/lib/roles";
 import { auth } from "@/lib/auth/server";
-import { getProductFormDependencies } from "@/lib/api/products";
+import { getProductFormDependencies } from "@/lib/api/products/admin";
 
 import { ProductForm } from "@/features/admin/components/products/form/ProductForm";
 

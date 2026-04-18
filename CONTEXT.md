@@ -42,7 +42,7 @@ Replaces the previous monolith `acme-commerce-starter` (Next.js full-stack). The
 | Styling | Tailwind CSS v4 + Radix UI |
 | State (UI only) | Zustand |
 | Forms | React Hook Form + Zod |
-| HTTP client | lib/api/ (fetch with JWT interceptor) |
+| HTTP client | lib/api/ (fetch con cookie forwarding a Django; organizado por dominio) |
 | Tests | Vitest + Playwright |
 | HTTP client tool | Bruno (collections committed to repo) |
 | CI/CD | GitHub Actions → Railway + Vercel |
@@ -353,14 +353,15 @@ Responsabilidades que **no bloquean** Fase 2 pero hay que cerrar para no arrastr
 - [x]  Catálogo público sin Prisma / sin Server Actions en rutas `(public)` revisadas
 - [x]  `lib/api/products/` (barrel `@/lib/api/products`) + `lib/api/categories.ts` + favoritos con cookies en RSC (`server-django.ts`)
 - [x]  Páginas catálogo, categoría, detalle, búsqueda, novedades, rebajas conectadas al API
-- [x]  Menú lateral: **categorías jerárquicas** (`parent` → árbol en `getHeaderCategories`)
+- [x]  Menú lateral: **categorías jerárquicas** (`parent` → árbol en `getHeaderCategories`); en tienda solo ramas con **≥1 producto publicado y no archivado** en la categoría o en un descendiente; admin lista todas. Sitemap `/cat/*` alineado con ese menú.
 
 ### Paridad con `acme-commerce-starter` (no olvidar al migrar)
 
 - [x]  **Favoritos / wishlist** — API Django + `lib/api/favorites.ts` + UI
 - [x]  **Categorías jerárquicas** — árbol en sidebar (`CategoryLink.children`)
 - [ ]  **PresetSize / PresetColor** — pospuesto a **Fase 6** (admin atributos / Unfold) salvo que la UI lo exija antes; no hay modelo equivalente en Django aún
-- [x]  **StoreConfig / home / hero / editorial** — **fuera de Fase 2 a propósito**: no implementar aún en Unfold ni API solo para tienda, para **no duplicar trabajo** que luego habría que desechar. Se aborda cuando **admin Next + settings** estén en marcha (ver **Fase 3** y **Fase 6**). Hasta entonces home/rebajas siguen con catálogo + stubs (`getMaxDiscountPercentage`, etc.).
+- [x]  **StoreConfig / home / hero / editorial** — settings en DRF + `SettingsForm`; banner rebajas en home con **`GET /api/v1/products/max-discount/`** (máx. % descuento vs `compare_at_price` + variante más barata). Rebajas en `/rebajas` sin banner extra (paridad con starter).
+- [x]  **Nombres en tienda** — `formatDisplayName` (solo primera letra, locale `es`) en mappers públicos de producto y en categorías de menú/detalle/destacadas; admin sin transformar.
 - [x]  **Búsqueda** — listado vía `getPublicProducts({ query })` → `search` en DRF; URL tienda `/search?q=…` (paridad estricta con el starter solo si hace falta mismo contrato legacy)
 
 ---
@@ -381,24 +382,34 @@ Tras cerrar **Fase 2 (catálogo tienda)**, el orden de trabajo pasa a priorizar 
 
 ## Fase 3 — Admin completo (panel Next)
 
+**Estado:** **cerrada** — mergeada en `dev` (PR squash desde `feat/phase-3-admin`).
+
+**Handoff backend (catálogo + settings de tienda):** ver [`docs/PRODUCTS_DOMAIN.md`](docs/PRODUCTS_DOMAIN.md) — modelos, rutas, serializers, filtros, permisos, caché, reglas de servicio y *gaps* explícitos para cablear `lib/api` sin adivinar contratos.
+
 En este repo **“admin” son dos cosas distintas** (ver tabla *Paneles admin* arriba):
 
 1. **Panel Next** (`app/(admin)/admin/`) — **UI principal de operación**: listados, formularios, dashboard. Todo el fetch va a **DRF** vía `lib/api/*`; **ninguna** regla de negocio en el front.
 2. **django-unfold** — admin Django para **soporte**, correcciones rápidas y lo que **no** merezca pantalla React. Se trabaja en **Fase 6**, sin duplicar torpemente el mismo CRUD largo en ambos sitios.
 
-**Objetivo de Fase 3:** el panel Next queda **usable de punta a punta** para lo que ya tenga backend: en la práctica **productos, categorías, dashboard**, y **pantallas que ya existan** (pedidos, devoluciones, etc.) al menos **conectadas o en modo seguro** (lectura, placeholders honestos) hasta que **Fase 5** cierre API de órdenes/pagos; entonces se rematan flujos profundos en admin sin bloquear el resto del panel.
-
 ### Tareas
 
-- [ ]  Inventariar rutas bajo `app/(admin)/admin/` y marcar cada una: *listo / parcial / bloqueado por API*.
-- [ ]  Conectar listados y formularios a DRF (**prioridad: catálogo** — productos y categorías).
-- [ ]  Tipos y clientes en `lib/api/admin.ts` (y relacionados) alineados con serializers Django.
-- [ ]  Rol **demo**: solo lectura en UI donde corresponda.
-- [ ]  **TypeScript:** `tsc` verde en admin o exclusiones documentadas en `CONTEXT`/README.
-- [ ]  Pantallas **órdenes / devoluciones / pagos:** alinear con estado real del backend; si Fase 5 aún no está, dejar UX coherente (p. ej. vacío + mensaje o solo lectura) en lugar de datos falsos.
-- [ ]  **StoreConfig / hero / editorial:** si no hay modelo + API aún, sigue en **Fase 6** junto a Unfold/settings.
+- [x]  Inventariar rutas bajo `app/(admin)/admin/` y marcar cada una: *listo / parcial / bloqueado por API*.
+- [x]  Conectar listados y formularios a DRF (catálogo — productos y categorías).
+- [x]  Tipos y clientes en `lib/api/admin/` (y relacionados) alineados con serializers Django.
+- [x]  Rol **demo**: solo lectura en UI donde corresponda.
+- [x]  **TypeScript:** `tsc --noEmit` verde en admin.
+- [x]  Pantallas **órdenes / devoluciones / pagos:** stubs honestos con UI coherente (vacío + contexto de Fase 5); sin datos falsos.
+- [x]  **Store settings (hero / rebajas):** API singleton `GET/PATCH /api/v1/store-settings/` + `SettingsForm` cableado.
 
-**Rama sugerida:** `feat/phase-3-admin`
+### Deuda explícita (no bloquea Fase 4)
+
+| Área | Qué queda |
+|------|-----------|
+| **Dashboard stats** | `getDashboardStats` devuelve ceros. Implementar post-Fase 5 cuando existan datos reales de órdenes: un `@action stats` en `ProductViewSet` (inventario) + conteos de órdenes/usuarios en paralelo. Hacerlo antes sería trabajo doble. |
+| **Pedidos admin** | Stubs en `lib/api/orders/`. Se cablea completo en Fase 5. |
+| **Cloudinary vars** | Rellenar `NEXT_PUBLIC_CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` en `.env.local` para habilitar upload firmado. |
+
+**Rama histórica:** `feat/phase-3-admin` (ya mergeada).
 
 ---
 
@@ -406,22 +417,32 @@ En este repo **“admin” son dos cosas distintas** (ver tabla *Paneles admin* 
 
 **Objetivo:** carrito persistente entre dispositivos con TTL y limpieza automática.
 
+### Contexto del monolito
+
+En `acme-commerce-starter` el carrito era **puro Zustand + localStorage** (sin persistencia en BD, sin fusión de cuentas — al hacer logout simplemente se vaciaba). La nueva implementación con Redis es una mejora real: el carrito sobrevive entre dispositivos y sesiones.
+
+**Regla clave de stock:** el decremento real de stock ocurre **al crear la orden**, no al agregar al carrito. Solo se valida que `stock >= qty` antes de proceder al checkout.
+
 ### Tareas
 
 **Backend**
 
-- [ ]  Carrito en Redis: `cart:{user_id}` con TTL 7 días
-- [ ]  API: GET /cart/, POST /cart/items/, PATCH /cart/items/{id}/, DELETE /cart/items/{id}/, DELETE /cart/
+- [ ]  Carrito en Redis: clave `cart:{user_id}` con TTL 7 días; estructura JSON con array de ítems
+- [ ]  Ítems del carrito: `product_id`, `variant_id`, `slug`, `name`, `price_minor`, `image`, `color`, `size`, `quantity`, `max_stock`, `compare_at_price`
+- [ ]  API: `GET /api/v1/cart/`, `POST /api/v1/cart/items/`, `PATCH /api/v1/cart/items/{variant_id}/`, `DELETE /api/v1/cart/items/{variant_id}/`, `DELETE /api/v1/cart/`
+- [ ]  `POST /api/v1/cart/validate/` — valida stock de todos los ítems contra la BD (variante activa, stock >= qty); devuelve items actualizados con `max_stock` real
+- [ ]  Carrito de guest (sin autenticar) con token temporal en cookie (TTL 7 días)
+- [ ]  Fusión carrito guest → usuario al hacer login (mejora sobre el monolito)
 - [ ]  Celery Beat: `cleanup_expired_carts` diario
-- [ ]  Carrito de guest (sin autenticar) con token temporal
-- [ ]  Tests: test_services (sin HTTP)
+- [ ]  Tests: `test_services` (sin HTTP)
 
 **Frontend**
 
-- [ ]  Eliminar Zustand del carrito (persist localStorage del starter)
-- [ ]  Implementar `lib/api/cart.ts` y conectar componentes
-- [ ]  Zustand solo para estado UI (sheet carrito, modales)
-- [ ]  **Fusión carrito invitado ↔ usuario** e invalidación / sync de stock con backend (paridad con lógica tipo `syncMaxStock` del cliente legacy)
+- [ ]  Eliminar `persist` de Zustand (localStorage del starter)
+- [ ]  Implementar `lib/api/cart/` y conectar componentes con el backend
+- [ ]  Zustand solo para estado UI (sheet carrito, modales, optimistic updates)
+- [ ]  Al hacer login: fusionar carrito local con el del servidor
+- [ ]  Sincronizar `max_stock` al abrir el carrito (llamada a `validate`)
 
 **Rama:** `feat/phase-4-cart`
 
@@ -431,34 +452,193 @@ En este repo **“admin” son dos cosas distintas** (ver tabla *Paneles admin* 
 
 **Objetivo:** flujo de compra completo desde checkout hasta confirmación.
 
+### Máquina de estados (referencia del monolito)
+
+```
+PaymentStatus:     PENDING → PAID → REFUNDED / PARTIALLY_REFUNDED
+                           ↘ FAILED  (tarjeta rechazada o pedido expirado por cron)
+
+FulfillmentStatus: UNFULFILLED → PREPARING → SHIPPED → DELIVERED → RETURNED
+                              ↘ READY_FOR_PICKUP  (recogida en tienda)
+
+ShippingType: HOME | STORE | PICKUP
+
+HistoryType:  STATUS_CHANGE | INCIDENT
+
+OrderActionActor: user | guest | admin | system
+```
+
+### Modelos Django
+
+**`Order`** — campos clave:
+
+```python
+# Dinero (en minor units = céntimos)
+items_total_minor, shipping_cost_minor, tax_minor, total_minor, currency
+
+# Stripe
+stripe_payment_intent_id   # único, nullable
+payment_method             # texto descriptivo: "Visa ••••4242"
+
+# Fulfillment
+carrier, tracking_number, delivered_at
+
+# Devolución a nivel pedido (no tabla separada)
+return_reason, rejection_reason, return_tracking_id
+
+# Guest tracking (OTP en la misma fila de Order)
+guest_access_code, guest_access_code_expiry
+
+# Snapshot de contacto/envío al momento de la compra (inmutable)
+email, first_name, last_name, phone
+street, address_extra, postal_code, province, city, country
+shipping_type, store_location_id, pickup_location_id
+```
+
+**`OrderItem`** — campos clave:
+
+```python
+product_id, variant_id  # FKs
+# Snapshots (precios al momento de la compra — nunca cambian)
+name_snapshot, price_minor_snapshot, size_snapshot, color_snapshot
+subtotal_minor, quantity
+# Devolución por línea
+quantity_returned, quantity_return_requested
+```
+
+**`OrderHistory`** — log de auditoría:
+
+```python
+order_id, type, snapshot_status  # texto legible: "Pagado y Preparando"
+reason, actor, details  # JSON opcional con detalles de devolución
+```
+
+### Flujo de creación de orden
+
+```
+1. Frontend envía: cart_items + contacto + shipping_type + payment_method
+2. Django: valida variantes activas y stock suficiente
+3. Transacción:
+   a. Por cada línea: decrementa stock en ProductVariant
+   b. Crea Order (PENDING + UNFULFILLED) con snapshots
+   c. Crea OrderHistory("ORDER_CREATED", actor=user|guest)
+4. Si payment_method == "card":
+   a. Crea Stripe PaymentIntent (amount=total_minor, metadata={order_id})
+   b. Guarda stripe_payment_intent_id en Order
+   c. Devuelve client_secret al frontend
+5. Frontend: stripe.confirmPayment → return_url a /checkout/success
+```
+
+### Webhook Stripe
+
+```
+payment_intent.succeeded:
+  → paymentStatus: PAID, fulfillmentStatus: PREPARING
+  → paymentMethod: "Visa ••••4242"
+  → OrderHistory("Pagado y Preparando", actor=system)
+  → Email: confirmación de pedido (Celery)
+
+payment_intent.payment_failed:
+  → paymentStatus: FAILED
+  → OrderHistory("Pago fallido", actor=system)
+```
+
+### Cron de expiración (Celery Beat — cada 15 min)
+
+```
+Pedidos con PENDING + UNFULFILLED + created_at < 1 hora:
+  → Restaurar stock por cada OrderItem
+  → is_cancelled = True, paymentStatus: FAILED
+  → OrderHistory("Expirado Automáticamente", actor=system)
+```
+
+### Devoluciones (sin tabla separada)
+
+```
+Solicitud usuario:
+  Condición: no cancelado + PAID|PARTIALLY_REFUNDED + DELIVERED
+  → quantity_return_requested++ por línea
+  → Order.return_reason, historial INCIDENT
+
+Admin aprueba:
+  → quantity_returned++, restaura stock en variante
+  → Si total: REFUNDED + RETURNED; si parcial: PARTIALLY_REFUNDED
+
+Admin rechaza:
+  → quantity_return_requested = 0
+  → Order.rejection_reason, historial INCIDENT
+```
+
+### Guest tracking (OTP en Order)
+
+```
+1. POST /api/v1/users/guest/request-otp/ (ya implementado, Fase 1)
+   → OTP 6 dígitos en Order.guest_access_code, caduca 15 min, email Celery
+2. POST /api/v1/users/guest/verify-otp/
+   → Valida código + expiración → devuelve token temporal (2 h)
+   → Borra OTP de la fila de Order (uso único)
+```
+
+### Emails transaccionales (Celery)
+
+| Email | Trigger |
+|-------|---------|
+| Pedido confirmado | Webhook `payment_intent.succeeded` |
+| Código OTP invitado | `request_guest_access` |
+| Actualización de estado | Admin cambia fulfillment status |
+| Devolución aprobada / rechazada | Admin procesa devolución |
+
 ### Tareas
 
 **Backend**
 
-- [ ]  Modelos: Order, OrderItem, OrderHistory, Return
-- [ ]  Flujo: checkout → Payment Intent → webhook → confirm → email
-- [ ]  Stripe webhook (APIView) → tarea Celery async
-- [ ]  Estados de orden alineados con el modelo real: separación **pago** vs **fulfillment** (como en el starter: `PaymentStatus`, `FulfillmentStatus`) y casos **envío / recogida en tienda** si el front los sigue mostrando
-- [ ]  Expiración automática (Celery Beat cada 15min)
-- [ ]  Sistema de devoluciones
-- [ ]  Guest checkout con OTP
-- [ ]  Emails: confirmación, actualización de estado, devolución aprobada
+- [ ]  Modelos: `Order`, `OrderItem`, `OrderHistory` con todos los campos especificados arriba
+- [ ]  Migración y registro en admin Django
+- [ ]  Flujo creación: checkout → Payment Intent → endpoint `POST /api/v1/orders/`
+- [ ]  Stripe webhook (`APIView`) → tarea Celery async (`payment_intent.succeeded` / `failed`)
+- [ ]  Cron `expire_pending_orders` (Celery Beat cada 15 min) con restauración de stock
+- [ ]  Cancelación por usuario (solo PENDING + UNFULFILLED) y por admin
+- [ ]  Admin: `update_fulfillment_status` (exige PAID para avanzar)
+- [ ]  Sistema de devoluciones: `request_return`, `process_return`, `reject_return`
+- [ ]  Emails transaccionales con Celery (confirmación, estado, devolución)
+- [ ]  `@action stats` en `ProductViewSet` para dashboard (inventario) — deferído hasta aquí
+- [ ]  `getDashboardStats` completo con datos reales (paralelo: productos + órdenes + usuarios)
 - [ ]  Tests completos de servicios y flujos
 
 **Frontend**
 
-- [ ]  Conectar checkout con API Django
-- [ ]  Página de success adaptada
-- [ ]  Historial de órdenes
-- [ ]  Tracking de órdenes
-- [ ]  Formulario de devolución
+- [ ]  Conectar checkout con API Django (formulario + Stripe Embedded)
+- [ ]  Página de success adaptada (usuario + guest)
+- [ ]  Historial de órdenes en cuenta
+- [ ]  Tracking de órdenes (usuario + guest OTP)
+- [ ]  Formulario de devolución (usuario + guest)
+- [ ]  Acciones admin: cancelar, cambiar fulfillment, aprobar/rechazar devolución
+- [ ]  Completar `lib/api/orders/` (stubs actuales en `index.ts` y `mutations.ts`)
 
 ### Paridad starter (implícito)
 
-- [ ]  Guest checkout + OTP donde el flujo actual lo exija (`lib/guest-access` → API Django)
-- [ ]  Emails transaccionales: en Django **Celery** + plantillas; migrar o rehacer desde plantillas React/Resend del monolito según decisión de producto
+- [ ]  Guest checkout + OTP para tracking (`lib/api/guest/` → API Django ya implementada en Fase 1)
+- [ ]  Emails transaccionales: Django Celery + plantillas; migrar o rehacer desde plantillas React/Resend del monolito según decisión de producto
 
 **Rama:** `feat/phase-5-orders`
+
+
+---
+
+## Mejoras Futuras / Technical Debt
+
+Decisiones deliberadas de no implementar ahora, documentadas para no perderlas.
+
+| Área | Decisión actual | Mejora posible |
+|------|-----------------|----------------|
+| **Stripe Refunds API** | El estado `REFUNDED` / `PARTIALLY_REFUNDED` es solo interno en BD. El reembolso monetario real se hace fuera de banda. | Integrar `stripe.refunds.create` al aprobar una devolución; escuchar webhook `charge.refunded` para sincronizar estado. |
+| **Fusión carrito guest → usuario** | En el monolito no existía: al logout se vaciaba el carrito. | En Fase 4 ya se planificó la fusión como mejora. Si por alguna razón queda pendiente, documentarlo aquí. |
+| **Dashboard stats** | `getDashboardStats` devuelve ceros (Fase 3). | Implementar en Fase 5 junto con el backend de órdenes: `@action stats` en `ProductViewSet` + conteos paralelos de órdenes/usuarios. |
+| **Soft-deactivate en variantes** | Borrar variantes del payload destruye las que no están listadas (warning en código). Riesgo cuando órdenes referencien `variant_id`. | Cuando existan órdenes: cambiar a soft-deactivate (`is_active=False`) en lugar de DELETE, o snapshot semántico en `OrderItem`. Ya se captura en `docs/PRODUCTS_DOMAIN.md`. |
+| **Reembolso parcial granular** | El estado `PARTIALLY_REFUNDED` existe pero el cálculo de montos parciales es básico. | Calcular `refunded_amount_minor` por item devuelto y exponerlo en el detalle de orden para el admin. |
+| **Rate limiting / throttling DRF** | No implementado en Fases 1-5. | Agregar `AnonRateThrottle` + `UserRateThrottle` en Fase 6/7 cuando el tráfico lo justifique. |
+| **Emails con React/Resend** | El monolito usaba plantillas React con Resend. El nuevo backend usará plantillas Django + Celery. | Si se quiere paridad visual, valorar migrar a [react-email](https://react.email/) generando HTML desde un endpoint Next o desde un renderer en Python. |
+| **`_count.products` en categorías** | Hecho: `product_count` en `CategorySerializer` + anotación en `category_list_queryset` (productos no soft-deleted). | Mantener tests al añadir filtros de visibilidad extra. |
 
 ---
 
@@ -556,17 +736,60 @@ For a **manual** `uv run mypy` from `backend/` without `.env`, export those vari
 
 ## Current status
 
-**Current phase:** Cierre **Fase 2 — Catálogo** (`feat/phase-2-catalog`): merge a `dev` cuando CI backend esté verde y el PR revisado.
+**Current phase:** **Fase 4 — Carrito en Redis**.
 
-**Siguiente fase:** **Fase 3 — Admin Next** (`feat/phase-3-admin`): panel admin operable para catálogo/productos vía DRF (ver tabla de reordenación arriba).
+**Fase 1:** cerrada. **Fase 2:** cerrada. **Fase 3:** cerrada.
 
-**Próximos pasos inmediatos:**
+**Estado detallado por área (abril 2026):**
 
-1. Mergear Fase 2 en `dev` (commits convencionales por bloque si aplica).
-2. Abrir rama `feat/phase-3-admin` y priorizar `lib/api` admin + páginas `app/(admin)/admin/*` + `tsc` admin.
-3. Frontend: deuda Vitest (p. ej. `SuccessClient`) sigue fuera del gate del workflow actual; conviene arreglarla antes de exigir CI front.
+| Área | Estado |
+|------|--------|
+| Layout + shell admin | ✅ |
+| Settings (hero/rebajas) | ✅ `GET/PATCH /api/v1/store-settings/` + `SettingsForm` |
+| Categorías CRUD (create/update/delete) | ✅ `lib/api/categories/mutations.ts` cableado a DRF |
+| Categorías listado (filtros/paginación) | ✅ `getAdminCategories` con search + ordering; `product_count` en DRF + admin |
+| Productos listado / lectura | ✅ `getAdminProducts` + `getAdminProductById` contra DRF |
+| Productos escritura (crear, editar, archivar, borrar) | ✅ `lib/api/products/mutations.ts` cableado a DRF; SKU auto-generado |
+| Presets tallas/colores | ✅ `lib/api/products/attributes.ts` cableado a `PresetSizeViewSet` / `PresetColorViewSet` |
+| Dashboard stats | ⚠️ Stub (todo ceros) — implementar en Fase 5 cuando existan datos reales de órdenes |
+| Usuarios admin listado/detalle | ✅ `getAdminUsers` + `getAdminUserDetails` contra `UserViewSet` |
+| Pedidos admin | ⚠️ Stubs honestos — backend `orders/urls.py` vacío (Fase 5) |
+| Pedidos backend | ❌ `orders/urls.py` router vacío — ningún endpoint expuesto (Fase 5) |
+| Órdenes actions (cancelar, fulfillment, devolución) | ❌ Stubs en `lib/api/orders/mutations.ts` (Fase 5) |
+| Carrito backend (Redis) | ❌ Fase 4 |
+| Carrito frontend | ⚠️ Zustand + localStorage (monolito); migrar a API en Fase 4 |
+| Cloudinary upload (presets firmados) | ✅ Ruta `/api/sign-cloudinary-params` creada; rellenar vars `.env.local` para habilitar |
+| TypeScript / props warnings | ✅ Limpio — `tsc --noEmit` verde |
+| Migraciones backend | ✅ Aplicadas (`python manage.py migrate`) |
+| Vitest deuda | ✅ Corregidos (SuccessClient, LoginForm) |
 
-**Fase 1:** cerrada en `dev`; la deuda explícita vive en la tabla de pendientes bajo la sección Fase 1.
+**Arquitectura frontend `lib/api/` (reorganizada abril 2026):**
+
+Todos los accesos a Django viven en `lib/api/`, organizado por dominio en carpetas:
+
+```
+lib/api/
+  account/     index.ts (GETs)  · mutations.ts ("use server")
+  admin/       index.ts (GETs users + dashboard)
+  auth/        index.ts
+  cart/        index.ts
+  categories/  server.ts (GETs SSR)  · mutations.ts ("use server")
+  favorites/   index.ts · client.ts · server.ts
+  guest/       mutations.ts ("use server")
+  orders/      index.ts (GETs)  · mutations.ts ("use server")
+  products/    admin.ts · public.ts · mutations.ts · attributes.ts · mappers.ts · drf.ts · query.ts · index.ts
+  settings/    index.ts (mappers DRF)  · server.ts (GET SSR)
+  server-django.ts   ← helpers base: serverFetchJson / serverMutationJson
+  client.ts          ← tipos base: PaginatedResponse, etc.
+```
+
+Regla: **GET desde Server Component** → función normal en `server.ts` o `index.ts`. **Mutación llamada desde Client Component** → `"use server"` en `mutations.ts` (reenvía cookie + llama `revalidatePath`). No hay lógica de negocio en ninguno — eso es Django.
+
+**Fase 3 cerrada.** Deuda explícita documentada en la sección Fase 3 arriba y en **Mejoras Futuras**.
+
+**Fase 1:** cerrada en `dev`.
+**Fase 2:** cerrada; catálogo + favoritos + categorías públicas operativos.
+**Fase 3:** cerrada; admin Next operativo (productos, categorías, settings, usuarios, presets).
 
 **Git strategy:**
 

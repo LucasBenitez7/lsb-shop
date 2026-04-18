@@ -13,7 +13,10 @@ import { sortVariantsHelper } from "@/lib/products/utils";
 
 import { useProductSubmit } from "@/features/admin/hooks/use-product-submit";
 
-type ProductWithId = ProductFormValues & { id: string };
+type ProductWithId = ProductFormValues & {
+  id: string;
+  category?: { id: string; name: string; slug: string };
+};
 
 type Props = {
   children: ReactNode;
@@ -23,7 +26,6 @@ type Props = {
 
 export function ProductFormProvider({ children, product, readOnly }: Props) {
   const router = useRouter();
-  const { isPending, onSubmit } = useProductSubmit(product?.id);
 
   const defaultValues: DefaultValues<ProductFormValues> = useMemo(() => {
     const sortedVariants = product?.variants
@@ -35,7 +37,7 @@ export function ProductFormProvider({ children, product, readOnly }: Props) {
       description: product?.description || "",
       priceCents: product?.priceCents || 0,
       compareAtPrice: product?.compareAtPrice || null,
-      categoryId: product?.categoryId || "",
+      categoryId: product?.categoryId || product?.category?.id || "",
       isArchived: product?.isArchived || false,
       sortOrder: product?.sortOrder ?? null,
       slug: product?.slug || undefined,
@@ -53,8 +55,17 @@ export function ProductFormProvider({ children, product, readOnly }: Props) {
   const {
     handleSubmit,
     reset,
+    setError,
     formState: { isDirty, errors },
   } = methods;
+
+  // useProductSubmit needs setError from this form instance, so it is called
+  // here (after useForm) instead of before the FormProvider renders.
+  const { isPending, onSubmit } = useProductSubmit(
+    product?.id,
+    product?.slug,
+    setError,
+  );
 
   useEffect(() => {
     if (product) {

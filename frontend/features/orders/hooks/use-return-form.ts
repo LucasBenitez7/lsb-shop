@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
-import { processPartialReturnAction } from "@/app/(admin)/admin/orders/actions";
+import { processPartialReturnAction } from "@/lib/api/orders/mutations";
 
 import type { ReturnableItem } from "@/lib/orders/types";
 

@@ -7,7 +7,7 @@ import { GuestHistoryList } from "@/features/tracking/components/GuestHistoryLis
 import { Button } from "@/components/ui/button";
 
 import { getOrderSuccessDetails } from "@/lib/api/account";
-import { verifyGuestAccessOrRedirect } from "@/lib/guest-access/server-utils";
+import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
 
 export const dynamic = "force-dynamic";
 

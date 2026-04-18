@@ -12,17 +12,21 @@ export interface DrfVariant {
   id: number;
   sku: string;
   color: string;
+  color_hex: string;
+  color_order: number;
   size: string;
   price: string;
   stock: number;
   is_active: boolean;
 }
 
+/** DRF `ProductImageSerializer` — field names as in JSON. */
 export interface DrfProductImage {
   id: number;
   url: string | null;
-  alt_text: string;
-  sort_order: number;
+  alt: string;
+  sort: number;
+  color: string;
 }
 
 export interface DrfProduct {
@@ -30,6 +34,8 @@ export interface DrfProduct {
   name: string;
   slug: string;
   description: string;
+  compare_at_price: string | null;
+  sort_order: number;
   category: DrfCategoryMinimal;
   is_published: boolean;
   is_archived: boolean;

@@ -15,6 +15,7 @@ from typing import Any
 import structlog
 from decouple import config
 from django.core.cache import cache
+from django.db import transaction
 from django.http import QueryDict
 
 log = structlog.get_logger()
@@ -33,6 +34,16 @@ def bump_public_product_list_cache() -> None:
     except ValueError:
         cache.set(_VERSION_KEY, 1, timeout=None)
     log.debug("products.list_cache.bumped")
+
+
+def schedule_bump_public_product_list_cache() -> None:
+    """
+    Schedule cache invalidation after the current DB transaction commits.
+
+    If the transaction rolls back, the bump is skipped. If there is no open
+    transaction, Django runs the callback immediately.
+    """
+    transaction.on_commit(bump_public_product_list_cache)
 
 
 def _normalize_query_params(query: QueryDict) -> str:

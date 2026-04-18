@@ -5,7 +5,6 @@ import { type PublicProductListItem } from "@/lib/products/types";
 import {
   getUniqueColors,
   getUniqueSizes,
-  getImageForColor,
   findVariant,
   sortVariantsHelper,
 } from "@/lib/products/utils";
@@ -76,9 +75,12 @@ export function useProductCard(item: PublicProductListItem) {
       return [];
     }
 
-    // Filtrar imágenes por color seleccionado
+    // Filtrar imágenes por color seleccionado (normalizar mayúsculas y espacios)
+    const normalizedSelected = selectedColor?.trim().toLowerCase();
     const colorImages = item.images.filter(
-      (img) => !img.color || img.color === selectedColor,
+      (img) =>
+        !img.color ||
+        img.color.trim().toLowerCase() === normalizedSelected,
     );
 
     // Si hay imágenes del color seleccionado, usarlas

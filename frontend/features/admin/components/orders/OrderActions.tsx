@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
-import { updateFulfillmentStatusAction } from "@/app/(admin)/admin/orders/actions";
+import { updateFulfillmentStatusAction } from "@/lib/api/orders/mutations";
 
 type Props = {
   orderId: string;

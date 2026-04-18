@@ -1,4 +1,7 @@
-import { getAdminCategories } from "@/lib/api/categories";
+import {
+  flattenMenuCategorySlugs,
+  getHeaderCategories,
+} from "@/lib/api/categories";
 import { getProductSlugs } from "@/lib/api/products";
 
 import type { MetadataRoute } from "next";
@@ -64,11 +67,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let productSlugs: string[] = [];
 
   try {
-    const [categoriesResult, slugs] = await Promise.all([
-      getAdminCategories(),
+    const [menuCategories, slugs] = await Promise.all([
+      getHeaderCategories(),
       getProductSlugs(),
     ]);
-    categorySlugs = categoriesResult.items.map((c) => c.slug);
+    categorySlugs = flattenMenuCategorySlugs(menuCategories);
     productSlugs = slugs;
   } catch (err) {
     console.error("[sitemap] Error al obtener datos:", err);

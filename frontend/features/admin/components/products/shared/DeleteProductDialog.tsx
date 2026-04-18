@@ -19,17 +19,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
-import { deleteProductAction } from "../../_action/actions";
+import { deleteProductAction } from "@/lib/api/products/mutations";
 
 interface Props {
   productId: string;
   productName: string;
+  productSlug: string;
   asIcon?: boolean;
 }
 
 export function DeleteProductDialog({
   productId,
   productName,
+  productSlug,
   asIcon = false,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -41,7 +43,7 @@ export function DeleteProductDialog({
     e.preventDefault();
 
     setIsDeleting(true);
-    const res = await deleteProductAction(productId);
+    const res = await deleteProductAction(productId, productSlug);
 
     if (res?.error) {
       toast.error(res.error);

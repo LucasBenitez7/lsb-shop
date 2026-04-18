@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { cn } from "@/lib/utils";
 
-import { quickCreateCategory } from "@/app/(admin)/admin/categories/actions";
+import { quickCreateCategory } from "@/lib/api/categories/mutations";
 import { useProductPricing } from "@/features/admin/hooks/use-product-pricing";
 
 import type { ProductFormValues } from "@/lib/products/schema";
@@ -123,10 +123,16 @@ export function GeneralSection({ categories: initialCats }: Props) {
                   className={cn("pl-8 ")}
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Si se llena, este será el precio final y el Base aparecerá
-                tachado.
-              </p>
+              {errors.compareAtPrice ? (
+                <p className="text-red-500 text-xs">
+                  {errors.compareAtPrice.message}
+                </p>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">
+                  Si se llena, este será el precio final y el Base aparecerá
+                  tachado.
+                </p>
+              )}
             </div>
           </div>
         </div>

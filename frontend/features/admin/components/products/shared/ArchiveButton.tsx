@@ -21,11 +21,12 @@ import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
 
-import { toggleProductArchive } from "@/app/(admin)/admin/products/_action/actions";
+import { toggleProductArchive } from "@/lib/api/products/mutations";
 
 type Props = {
   productId: string;
   productName: string;
+  productSlug: string;
   isArchived: boolean;
   className?: string;
 };
@@ -33,6 +34,7 @@ type Props = {
 export function ArchiveButton({
   productId,
   productName,
+  productSlug,
   isArchived,
   className,
 }: Props) {
@@ -47,7 +49,7 @@ export function ArchiveButton({
 
     setLoading(true);
 
-    const res = await toggleProductArchive(productId, targetState);
+    const res = await toggleProductArchive(productId, targetState, productSlug);
 
     if (res?.error) {
       toast.error(res.error);

@@ -37,3 +37,34 @@ export async function serverFetchJson<T>(
   }
   return res.json() as Promise<T>;
 }
+
+/** POST/PATCH/PUT JSON with session cookies (Server Components / Server Actions only). */
+export async function serverMutationJson<T>(
+  path: string,
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
+  body?: unknown,
+  init?: RequestInit,
+): Promise<T> {
+  const cookieHeader = await buildServerCookieHeader();
+  const hasJsonBody = body !== undefined && method !== "DELETE";
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    method,
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(hasJsonBody ? { "Content-Type": "application/json" } : {}),
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      ...init?.headers,
+    },
+    body: hasJsonBody ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText || String(res.status));
+  }
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  return res.json() as Promise<T>;
+}

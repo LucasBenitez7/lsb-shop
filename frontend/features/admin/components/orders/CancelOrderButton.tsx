@@ -15,7 +15,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-import { cancelOrderAdminAction } from "@/app/(admin)/admin/orders/actions";
+import { cancelOrderAdminAction } from "@/lib/api/orders/mutations";
 
 // Añadimos paymentStatus a las props
 export function CancelOrderButton({

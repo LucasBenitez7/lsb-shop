@@ -1,30 +1,34 @@
-import type {
-  AdminCategoryFilters,
-  AdminCategoryItem,
-  Category,
-  CategoryLink,
-} from "@/types/category";
+import type { Category, CategoryLink } from "@/types/category";
 import { apiGet, type PaginatedResponse } from "@/lib/api/client";
+import { formatDisplayName } from "@/lib/format-display-name";
 
 interface DrfCategory {
   id: number;
   name: string;
   slug: string;
   parent: number | null;
+  sort_order: number;
+  is_featured: boolean;
+  image: string;
+  mobile_image: string;
   created_at: string;
   updated_at: string;
+  /** Non-deleted products in category (admin / totals). */
+  product_count?: number;
+  /** Published, non-archived, non-deleted — public menu / featured. */
+  storefront_product_count?: number;
 }
 
 function mapToCategory(c: DrfCategory): Category {
   return {
     id: String(c.id),
-    name: c.name,
+    name: formatDisplayName(c.name),
     slug: c.slug,
     description: null,
-    imageUrl: null,
-    mobileImageUrl: null,
-    isFeatured: false,
-    sortOrder: 0,
+    imageUrl: c.image || null,
+    mobileImageUrl: c.mobile_image || null,
+    isFeatured: c.is_featured,
+    sortOrder: c.sort_order ?? 0,
     createdAt: c.created_at,
     updatedAt: c.updated_at,
   };
@@ -44,8 +48,15 @@ async function fetchCategoryPage(
   return res.results;
 }
 
+type CategoryTreeBuild = {
+  slug: string;
+  label: string;
+  storefrontProductCount: number;
+  children: CategoryTreeBuild[];
+};
+
 /** Build menu tree from flat DRF rows (`parent` id). Orphans → roots. */
-function buildCategoryTree(rows: DrfCategory[]): CategoryLink[] {
+function buildCategoryTreeInternal(rows: DrfCategory[]): CategoryTreeBuild[] {
   const idSet = new Set(rows.map((r) => r.id));
   const byParent = new Map<number | null, DrfCategory[]>();
 
@@ -60,22 +71,61 @@ function buildCategoryTree(rows: DrfCategory[]): CategoryLink[] {
   }
 
   for (const list of byParent.values()) {
-    list.sort((a, b) => a.name.localeCompare(b.name));
+    list.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
   }
 
-  function toLink(c: DrfCategory): CategoryLink {
-    const kids = byParent.get(c.id) ?? [];
-    const children =
-      kids.length > 0 ? kids.map(toLink) : undefined;
+  function toBuild(c: DrfCategory): CategoryTreeBuild {
+    const kids = (byParent.get(c.id) ?? []).map(toBuild);
     return {
       slug: c.slug,
       label: c.name,
-      ...(children ? { children } : {}),
+      storefrontProductCount: Number(c.storefront_product_count ?? 0),
+      children: kids,
     };
   }
 
   const roots = byParent.get(null) ?? [];
-  return roots.map(toLink);
+  return roots.map(toBuild);
+}
+
+/**
+ * Drop branches with no published catalog products in the subtree
+ * (parent kept if any descendant has storefront stock).
+ */
+function pruneEmptyStorefrontBranches(
+  nodes: CategoryTreeBuild[],
+): CategoryTreeBuild[] {
+  const out: CategoryTreeBuild[] = [];
+  for (const n of nodes) {
+    const kids = pruneEmptyStorefrontBranches(n.children);
+    if (n.storefrontProductCount > 0 || kids.length > 0) {
+      out.push({ ...n, children: kids });
+    }
+  }
+  return out;
+}
+
+function treeBuildToCategoryLinks(nodes: CategoryTreeBuild[]): CategoryLink[] {
+  return nodes.map((n) => ({
+    slug: n.slug,
+    label: formatDisplayName(n.label),
+    ...(n.children.length > 0
+      ? { children: treeBuildToCategoryLinks(n.children) }
+      : {}),
+  }));
+}
+
+/** All slugs in a public menu tree (e.g. sitemap) — same visibility as the sidebar. */
+export function flattenMenuCategorySlugs(links: CategoryLink[]): string[] {
+  const slugs: string[] = [];
+  const walk = (nodes: CategoryLink[]) => {
+    for (const n of nodes) {
+      slugs.push(n.slug);
+      if (n.children?.length) walk(n.children);
+    }
+  };
+  walk(links);
+  return slugs;
 }
 
 // ─── Public ───────────────────────────────────────────────────────────────────
@@ -83,7 +133,9 @@ function buildCategoryTree(rows: DrfCategory[]): CategoryLink[] {
 export async function getHeaderCategories(): Promise<CategoryLink[]> {
   try {
     const rows = await fetchCategoryPage(1, 100);
-    return buildCategoryTree(rows);
+    const tree = buildCategoryTreeInternal(rows);
+    const pruned = pruneEmptyStorefrontBranches(tree);
+    return treeBuildToCategoryLinks(pruned);
   } catch {
     return [];
   }
@@ -104,8 +156,14 @@ export async function getFeaturedCategories(
   limit?: number,
 ): Promise<Category[]> {
   try {
-    const rows = await fetchCategoryPage(1, limit ?? 8);
-    return rows.map(mapToCategory);
+    const rows = await fetchCategoryPage(1, 100);
+    return rows
+      .filter(
+        (c) =>
+          c.is_featured && Number(c.storefront_product_count ?? 0) > 0,
+      )
+      .slice(0, limit ?? 8)
+      .map(mapToCategory);
   } catch {
     return [];
   }
@@ -119,26 +177,11 @@ export async function getCategoryOrderList(): Promise<
     return rows.map((c) => ({
       id: String(c.id),
       name: c.name,
-      sortOrder: 0,
+      sortOrder: c.sort_order ?? 0,
     }));
   } catch {
     return [];
   }
 }
 
-// ─── Admin (stubs — Phase 5) ─────────────────────────────────────────────────
-
-export async function getAdminCategories(
-  filters?: AdminCategoryFilters,
-): Promise<{ items: AdminCategoryItem[]; total: number }> {
-  void filters;
-  return { items: [], total: 0 };
-}
-
-/** Admin category detail for edit page; Phase 5 will call DRF staff endpoint. */
-export async function getCategoryById(
-  id: string,
-): Promise<AdminCategoryItem | null> {
-  void id;
-  return null;
-}
+/** Admin list/detail: `@/lib/api/categories/server`. */

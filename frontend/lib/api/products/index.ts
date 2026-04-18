@@ -1,6 +1,6 @@
 /**
- * Product API: DRF types, query builders, mappers, public catalog calls, admin stubs.
- * Import from `@/lib/api/products` (this barrel).
+ * Product API: DRF types, mappers, public catalog. Admin list/detail uses
+ * `@/lib/api/products/admin` (server-only fetch).
  */
 
 export type {
@@ -27,15 +27,4 @@ export {
   getRecentProducts,
   getRelatedProducts,
 } from "./public";
-export type {
-  AdminProductCategoryOption,
-  AdminProductsListResult,
-  ProductSalesAndReturns,
-} from "./admin";
-export {
-  getAdminProductById,
-  getAdminProducts,
-  getMaxPrice,
-  getProductFormDependencies,
-  getProductSalesAndReturns,
-} from "./admin";
+/** Admin catalog helpers (`server-django`) — import from `@/lib/api/products/admin`. */

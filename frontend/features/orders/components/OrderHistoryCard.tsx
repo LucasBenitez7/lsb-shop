@@ -82,13 +82,17 @@ export function OrderHistoryCard({ order }: Props) {
             paymentStatus={order.paymentStatus}
             fulfillmentStatus={order.fulfillmentStatus}
             isCancelled={order.isCancelled}
-            deliveredAt={order.deliveredAt}
+            deliveredAt={
+              order.deliveredAt
+                ? new Date(order.deliveredAt)
+                : null
+            }
           />
 
           <Separator className="bg-neutral-300" />
 
           <div className="flex flex-col gap-3 py-1">
-            {previewItems.map((item) => {
+            {previewItems.map((item: UserOrderListItem["items"][number]) => {
               // Buscar imagen correcta
               const productImages = item.product?.images || [];
               const matchingImg =

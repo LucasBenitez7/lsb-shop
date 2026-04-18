@@ -172,6 +172,7 @@ export async function getPaymentIntent(orderId: string): Promise<{
   clientSecret: string;
   amount: number;
   currency: string;
+  error?: string;
 }> {
   // TODO: apiFetch(`/api/v1/orders/${orderId}/payment-intent/`)
   void orderId;

@@ -4,10 +4,8 @@ import { FaArrowLeft } from "react-icons/fa6";
 
 import { canWriteAdmin } from "@/lib/roles";
 import { auth } from "@/lib/auth/server";
-import {
-  getCategoryById,
-  getCategoryOrderList,
-} from "@/lib/api/categories";
+import { getCategoryOrderList } from "@/lib/api/categories";
+import { getCategoryById } from "@/lib/api/categories/server";
 
 import { CategoryForm } from "@/features/admin/components/categories/CategoryForm";
 import { DeleteCategoryButton } from "@/features/admin/components/categories/DeleteCategoryButton";
@@ -65,7 +63,7 @@ export default async function EditCategoryPage({ params }: Props) {
         </div>
 
         {canWrite && (
-          <DeleteCategoryButton id={category.id} hasProducts={hasProducts} />
+          <DeleteCategoryButton slug={category.slug} hasProducts={hasProducts} />
         )}
       </div>
 

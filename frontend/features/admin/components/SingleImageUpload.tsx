@@ -8,11 +8,15 @@ import { ImSpinner8 } from "react-icons/im";
 
 import { Button } from "@/components/ui/button";
 
+import {
+  getCloudinaryProductUploadPreset,
+  getCloudinarySignatureEndpoint,
+} from "@/lib/cloudinary-upload-presets";
 import { cn } from "@/lib/utils";
 
 type Props = {
   value?: string | null;
-  onChange: (url: string | null) => void;
+  onChangeAction: (url: string | null) => void;
   label?: string;
   className?: string;
   uploadPreset?: string;
@@ -20,14 +24,14 @@ type Props = {
 
 export function SingleImageUpload({
   value,
-  onChange,
+  onChangeAction,
   label,
   className,
   uploadPreset,
 }: Props) {
   const [isOpening, setIsOpening] = useState(false);
-  const preset =
-    uploadPreset || process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  const preset = uploadPreset || getCloudinaryProductUploadPreset();
+  const signatureEndpoint = getCloudinarySignatureEndpoint();
 
   const fixScrollLock = () => {
     document.body.style.overflow = "auto";
@@ -60,14 +64,14 @@ export function SingleImageUpload({
             {/* EDITAR (REEMPLAZAR) */}
             <CldUploadWidget
               uploadPreset={preset}
-              signatureEndpoint="/api/sign-cloudinary-params"
+              signatureEndpoint={signatureEndpoint}
               options={{
                 maxFiles: 1,
                 sources: ["local", "url", "camera"],
               }}
               onSuccess={(result: any) => {
                 if (result.info?.secure_url) {
-                  onChange(result.info.secure_url);
+                  onChangeAction(result.info.secure_url);
                 }
                 fixScrollLock();
               }}
@@ -107,7 +111,7 @@ export function SingleImageUpload({
               type="button"
               variant="destructive"
               size="sm"
-              onClick={() => onChange(null)}
+              onClick={() => onChangeAction(null)}
               className="h-10 px-4 text-sm bg-background text-foreground hover:bg-red-600 active:bg-red-600 hover:text-background active:text-background"
             >
               <FaTrash className="size-3.5 mr-1" /> Borrar
@@ -117,7 +121,7 @@ export function SingleImageUpload({
       ) : (
         <CldUploadWidget
           uploadPreset={preset}
-          signatureEndpoint="/api/sign-cloudinary-params"
+          signatureEndpoint={signatureEndpoint}
           options={{
             maxFiles: 1,
             sources: ["local", "url", "camera"],
@@ -126,7 +130,7 @@ export function SingleImageUpload({
             setIsOpening(false);
             fixScrollLock();
             if (result.info?.secure_url) {
-              onChange(result.info.secure_url);
+              onChangeAction(result.info.secure_url);
             }
           }}
           onOpen={() => setIsOpening(false)}

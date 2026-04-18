@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { getOrderSuccessDetails } from "@/lib/api/account";
 import { parseCurrency } from "@/lib/currency";
-import { verifyGuestAccessOrRedirect } from "@/lib/guest-access/server-utils";
+import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
 import {
   getOrderShippingDetails,
   shouldShowHistoryButton,

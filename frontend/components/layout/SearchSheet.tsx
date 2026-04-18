@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { VisuallyHidden } from "@/components/ui/visually-hidden";
 
 import { useDebounce } from "@/hooks/common/use-debounce";
+import { formatDisplayName } from "@/lib/format-display-name";
 
 import type { PublicProductListItem } from "@/lib/products/types";
 
@@ -54,7 +55,26 @@ export function SearchSheet({
         const res = await fetch(
           `/api/search?q=${encodeURIComponent(debouncedQuery)}&limit=6`,
         );
-        const data = await res.json();
+        const raw = await res.text();
+        if (!res.ok) {
+          setResults([]);
+          setSuggestions([]);
+          setTotal(0);
+          return;
+        }
+        let data: {
+          products?: PublicProductListItem[];
+          suggestions?: string[];
+          total?: number;
+        };
+        try {
+          data = JSON.parse(raw) as typeof data;
+        } catch {
+          setResults([]);
+          setSuggestions([]);
+          setTotal(0);
+          return;
+        }
         setResults(data.products || []);
         setSuggestions(data.suggestions || []);
         setTotal(data.total || 0);
@@ -249,9 +269,9 @@ export function SearchSheet({
                           <button
                             key={`${suggestion}-${idx}`}
                             onClick={() => handleSuggestionClick(suggestion)}
-                            className="px-3 py-1 text-sm bg-neutral-100 hover:bg-neutral-200 rounded-full transition-colors capitalize"
+                            className="px-3 py-1 text-sm bg-neutral-100 hover:bg-neutral-200 rounded-full transition-colors"
                           >
-                            {suggestion}
+                            {formatDisplayName(suggestion)}
                           </button>
                         ))}
                       </div>

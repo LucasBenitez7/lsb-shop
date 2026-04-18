@@ -1,18 +1,20 @@
 "use client";
 
-import { CldUploadWidget } from "next-cloudinary";
+import { CldUploadWidget, type CloudinaryUploadWidgetResults } from "next-cloudinary";
 import { useEffect, useState } from "react";
 import { FaPencil } from "react-icons/fa6";
 import { ImSpinner8 } from "react-icons/im";
 
 import { Button } from "@/components/ui/button";
 
+import { getCloudinarySignatureEndpoint } from "@/lib/cloudinary-upload-presets";
+
 type Props = {
   uploadPreset: string | undefined;
-  onSuccess: (result: any) => void;
+  onSuccessAction: (result: CloudinaryUploadWidgetResults) => void;
 };
 
-export function EditImageButton({ uploadPreset, onSuccess }: Props) {
+export function EditImageButton({ uploadPreset, onSuccessAction }: Props) {
   const [isOpening, setIsOpening] = useState(false);
 
   const fixScrollLock = () => {
@@ -27,16 +29,15 @@ export function EditImageButton({ uploadPreset, onSuccess }: Props) {
   return (
     <CldUploadWidget
       uploadPreset={uploadPreset}
-      signatureEndpoint="/api/sign-cloudinary-params"
+      signatureEndpoint={getCloudinarySignatureEndpoint()}
       options={{
         maxFiles: 1,
-        multiple: false,
         sources: ["local", "url", "camera"],
       }}
-      onSuccess={(result) => {
+      onSuccess={(result: CloudinaryUploadWidgetResults) => {
         setIsOpening(false);
         fixScrollLock();
-        onSuccess(result);
+        onSuccessAction(result);
       }}
       onOpen={() => {
         setIsOpening(false);

@@ -5,7 +5,7 @@ from allauth.account.models import EmailAddress
 from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAdminUser
 from rest_framework.test import APIClient
 
-from apps.users.tests.factories import AdminFactory, UserFactory
+from apps.users.tests.factories import AdminFactory, DemoFactory, UserFactory
 
 
 class IsAdmin(IsAdminUser):
@@ -77,4 +77,15 @@ def admin_user(db):  # noqa: ARG001
 @pytest.fixture
 def admin_client(api_client: APIClient, admin_user):
     api_client.force_authenticate(user=admin_user)
+    return api_client
+
+
+@pytest.fixture
+def demo_user(db):  # noqa: ARG001
+    return DemoFactory(phone="+34600111222")
+
+
+@pytest.fixture
+def demo_client(api_client: APIClient, demo_user):
+    api_client.force_authenticate(user=demo_user)
     return api_client

@@ -1,6 +1,6 @@
 import { GenericCatalogClient } from "@/features/catalog/components/GenericCatalogClient";
 
-import { getUserFavoriteIds } from "@/lib/api/favorites";
+import { getUserFavoriteIds } from "@/lib/api/favorites/server";
 import { PER_PAGE } from "@/lib/pagination";
 import { getFilterOptions, getPublicProducts } from "@/lib/api/products";
 import { parseSearchParamFilters } from "@/lib/products/utils";

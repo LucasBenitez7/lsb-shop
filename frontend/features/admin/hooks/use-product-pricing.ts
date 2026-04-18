@@ -56,26 +56,16 @@ export function useProductPricing() {
       const baseCents = Math.round(baseVal * 100);
       const saleCents = Math.round(saleVal * 100);
 
-      const hasRealSale = saleStr !== "" && saleVal > 0 && saleVal < baseVal;
+      const hasSaleInput = saleStr !== "" && saleVal > 0;
 
-      if (hasRealSale) {
-        setValue("priceCents", saleCents, {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
-        setValue("compareAtPrice", baseCents, {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
+      if (hasSaleInput) {
+        // priceCents = the real sale price (what customer pays)
+        // compareAtPrice = the original base price (shown crossed out)
+        setValue("priceCents", saleCents, { shouldDirty: true });
+        setValue("compareAtPrice", baseCents, { shouldDirty: true });
       } else {
-        setValue("priceCents", baseCents, {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
-        setValue("compareAtPrice", null, {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
+        setValue("priceCents", baseCents, { shouldDirty: true });
+        setValue("compareAtPrice", null, { shouldDirty: true });
       }
     },
     [setValue],

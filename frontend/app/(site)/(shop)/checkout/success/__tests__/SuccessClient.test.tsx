@@ -7,7 +7,7 @@ import { SuccessClient } from "@/features/checkout/components/SuccessClient";
 const mockClearCart = vi.fn();
 const mockClearGuestAddress = vi.fn();
 
-vi.mock("@/store/cart", () => ({
+vi.mock("@/store/useCartStore", () => ({
   useCartStore: vi.fn((selector) => selector({ clearCart: mockClearCart })),
 }));
 
@@ -17,7 +17,7 @@ vi.mock("@/lib/checkout/guest-address-storage", () => ({
   loadGuestAddress: vi.fn(),
 }));
 
-vi.mock("@/components/order/OrderSummaryCard", () => ({
+vi.mock("@/features/orders/components/OrderSummaryCard", () => ({
   OrderSummaryCard: ({ id }: { id: string }) => (
     <div data-testid="order-summary">{id}</div>
   ),

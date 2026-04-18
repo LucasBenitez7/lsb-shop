@@ -7,7 +7,16 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 import type { UserAddress } from "@/types/address";
 
-export function UserAddressesCard({ addresses }: { addresses: UserAddress[] }) {
+interface UserAddressesCardProps {
+  addresses: UserAddress[];
+  /** Demo / read-only: hide street-level PII (addresses are not on user API yet). */
+  redactSensitive?: boolean;
+}
+
+export function UserAddressesCard({
+  addresses,
+  redactSensitive = false,
+}: UserAddressesCardProps) {
   return (
     <Card className="h-fit px-3">
       <CardHeader className="pb-1 pt-3 border-b text-center px-0">
@@ -17,7 +26,12 @@ export function UserAddressesCard({ addresses }: { addresses: UserAddress[] }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0 pt-3">
-        {addresses.length === 0 ? (
+        {redactSensitive ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            En modo demostración no se muestran direcciones ni teléfonos de otros
+            clientes.
+          </div>
+        ) : addresses.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">
             El usuario no tiene direcciones guardadas.
           </div>

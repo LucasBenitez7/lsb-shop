@@ -23,9 +23,13 @@ import {
 } from "@/lib/admin/settings-schema";
 import { updateStoreConfig } from "@/lib/api/settings";
 
+import { getCloudinaryBannerUploadPreset } from "@/lib/cloudinary-upload-presets";
+
 import { SingleImageUpload } from "../SingleImageUpload";
 
 import type { StoreConfig } from "@/types/store";
+
+const bannerUploadPreset = getCloudinaryBannerUploadPreset();
 
 interface Props {
   initialData: StoreConfig | null;
@@ -111,10 +115,10 @@ export function SettingsForm({ initialData, readOnly }: Props) {
                     <FormControl>
                       <SingleImageUpload
                         value={field.value}
-                        onChange={field.onChange}
+                        onChangeAction={field.onChange}
                         label="Subir Imagen Desktop"
                         className="aspect-[2/1] w-full"
-                        uploadPreset="acme_shop_banners"
+                        uploadPreset={bannerUploadPreset}
                       />
                     </FormControl>
                     <FormMessage />
@@ -132,10 +136,10 @@ export function SettingsForm({ initialData, readOnly }: Props) {
                       <FormControl>
                         <SingleImageUpload
                           value={field.value}
-                          onChange={field.onChange}
+                          onChangeAction={field.onChange}
                           label="Subir Imagen Mobile"
                           className="aspect-[4/5] w-full h-[350px]"
-                          uploadPreset="acme_shop_banners"
+                          uploadPreset={bannerUploadPreset}
                         />
                       </FormControl>
                       <FormMessage />
@@ -183,10 +187,10 @@ export function SettingsForm({ initialData, readOnly }: Props) {
                     <FormControl>
                       <SingleImageUpload
                         value={field.value}
-                        onChange={field.onChange}
+                        onChangeAction={field.onChange}
                         label="Subir Imagen Desktop"
                         className="aspect-[2/1] w-full"
-                        uploadPreset="acme_shop_banners"
+                        uploadPreset={bannerUploadPreset}
                       />
                     </FormControl>
                     <FormMessage />
@@ -204,10 +208,10 @@ export function SettingsForm({ initialData, readOnly }: Props) {
                       <FormControl>
                         <SingleImageUpload
                           value={field.value}
-                          onChange={field.onChange}
+                          onChangeAction={field.onChange}
                           label="Subir Imagen Mobile"
                           className="aspect-[4/5] w-full h-[350px]"
-                          uploadPreset="acme_shop_banners"
+                          uploadPreset={bannerUploadPreset}
                         />
                       </FormControl>
                       <FormMessage />

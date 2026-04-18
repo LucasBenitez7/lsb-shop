@@ -166,9 +166,7 @@ describe("LoginForm", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(
-          /Email o contraseña incorrectos\. Si aún no tienes cuenta, puedes crear una\./,
-        ),
+        screen.getByText(/Email o contraseña no coinciden\./),
       ).toBeInTheDocument();
     });
   });
@@ -190,9 +188,7 @@ describe("LoginForm", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(
-          /Email o contraseña incorrectos\. Si aún no tienes cuenta, puedes crear una\./,
-        ),
+        screen.getByText(/Email o contraseña no coinciden\./),
       ).toBeInTheDocument();
     });
   });

@@ -1,6 +1,6 @@
 import { RelatedProductsSection } from "@/features/catalog/components/RelatedProductsSection";
 
-import { getUserFavoriteIds } from "@/lib/api/favorites";
+import { getUserFavoriteIds } from "@/lib/api/favorites/server";
 import { getRelatedProducts, getRecentProducts } from "@/lib/api/products";
 
 interface RelatedProductsProps {

@@ -23,7 +23,7 @@ import {
 
 import { REJECTION_REASONS } from "@/lib/orders/constants";
 
-import { rejectReturnAction } from "@/app/(admin)/admin/orders/actions";
+import { rejectReturnAction } from "@/lib/api/orders/mutations";
 
 export function RejectReturnButton({ orderId }: { orderId: string }) {
   const [open, setOpen] = useState(false);

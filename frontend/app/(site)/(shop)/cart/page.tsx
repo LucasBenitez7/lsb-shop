@@ -1,6 +1,6 @@
 import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
 
-import { getUserFavoriteIds } from "@/lib/api/favorites";
+import { getUserFavoriteIds } from "@/lib/api/favorites/server";
 
 import CartClientPage from "../../../../features/cart/components/CartClientPage";
 
