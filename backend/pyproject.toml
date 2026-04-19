@@ -21,6 +21,7 @@ dependencies = [
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.29.0",
     "flower>=2.0.1",
+    "httpx>=0.28.1",
     "pillow>=12.2.0",
     "psycopg[binary]>=3.3.3",
     "python-decouple>=3.8",
@@ -108,6 +109,8 @@ module = [
     "apps.products.*",
     "apps.favorites",
     "apps.favorites.*",
+    "apps.cart",
+    "apps.cart.*",
 ]
 ignore_errors = true
 
