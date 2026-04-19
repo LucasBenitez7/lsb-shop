@@ -44,7 +44,6 @@ Replaces the previous monolith `acme-commerce-starter` (Next.js full-stack). The
 | Forms | React Hook Form + Zod |
 | HTTP client | lib/api/ (fetch con cookie forwarding a Django; organizado por dominio) |
 | Tests | Vitest + Playwright |
-| HTTP client tool | Bruno (collections committed to repo) |
 | CI/CD | GitHub Actions → Railway + Vercel |
 
 ## Architecture
@@ -675,7 +674,7 @@ Decisiones deliberadas de no implementar ahora, documentadas para no perderlas.
 - [ ]  drf-spectacular configurado
 - [ ]  Swagger UI en `/api/docs/`
 - [ ]  ReDoc en `/api/redoc/`
-- [ ]  Colecciones Bruno completas en `bruno/`
+- [ ]  Ejemplos o colecciones HTTP locales (opcional; no versionadas)
 
 **Rama:** `feat/phase-6-unfold-observability`
 
@@ -692,14 +691,14 @@ Decisiones deliberadas de no implementar ahora, documentadas para no perderlas.
 - [ ]  Cobertura backend ≥ 80% en services
 - [ ]  Locust: smoke test (10 usuarios) + stress test manual
 - [ ]  Playwright E2E actualizados contra el nuevo backend
-- [ ]  Bruno CLI en CI
+- [ ]  Smoke tests de API en CI (opcional)
 
 **CI/CD completo**
 
 - [ ]  Backend: Ruff + mypy + Bandit + Safety + pytest unit + pytest integration
 - [ ]  Frontend: ESLint + tsc + Vitest
 - [ ]  E2E: Playwright en main/dev
-- [ ]  API: Bruno CLI
+- [ ]  API: smoke tests automatizados
 - [ ]  Load: Locust smoke
 - [ ]  Security: Trivy + Dependabot
 - [ ]  Quality: Codecov + SonarCloud

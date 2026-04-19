@@ -44,3 +44,8 @@ htmlcov/
 # Merge / editor leftovers
 *.orig
 *.rej
+
+# Local-only tooling and automation (not committed)
+bruno/
+.cursor/plans/
+scripts/
