@@ -9,19 +9,27 @@ import { Button } from "@/components/ui/button";
 
 import { clearGuestAddress } from "@/lib/checkout/guest-address-storage";
 
+import { clearCart as clearCartApi } from "@/lib/api/cart";
 import { useCartStore } from "@/store/useCartStore";
 
 import type { DisplayOrder } from "@/lib/orders/utils";
 
 export function SuccessClient({ order }: { order: DisplayOrder }) {
-  const clearCart = useCartStore((state) => state.clearCart);
+  const replaceItems = useCartStore((state) => state.replaceItems);
 
   useEffect(() => {
-    clearCart();
+    void (async () => {
+      try {
+        const items = await clearCartApi();
+        replaceItems(items);
+      } catch {
+        useCartStore.getState().clearCart();
+      }
+    })();
 
     localStorage.removeItem("checkout_session");
     clearGuestAddress();
-  }, [clearCart]);
+  }, [replaceItems]);
 
   return (
     <div className="space-y-4 flex flex-col items-center max-w-2xl mx-auto w-full">

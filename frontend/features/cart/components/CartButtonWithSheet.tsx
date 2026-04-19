@@ -41,6 +41,7 @@ export function CartButtonWithSheet() {
     handleUpdateQuantity,
     handleRemoveItem,
     handleCheckout,
+    validateOpen,
   } = useCartLogic();
 
   const badgeText = totalQty > 9 ? "9+" : String(totalQty);
@@ -56,7 +57,14 @@ export function CartButtonWithSheet() {
   return (
     <Sheet
       open={isOpen}
-      onOpenChange={(open) => (open ? openCart() : closeCart())}
+      onOpenChange={(open) => {
+        if (open) {
+          openCart();
+          void validateOpen();
+        } else {
+          closeCart();
+        }
+      }}
     >
       <SheetTrigger asChild>
         <Button
@@ -190,7 +198,7 @@ export function CartButtonWithSheet() {
                         <div className="flex items-center font-semibold border rounded-xs h-8">
                           <button
                             onClick={() =>
-                              handleUpdateQuantity(
+                              void handleUpdateQuantity(
                                 item.variantId,
                                 item.quantity - 1,
                               )
@@ -206,7 +214,7 @@ export function CartButtonWithSheet() {
                           </span>
                           <button
                             onClick={() =>
-                              handleUpdateQuantity(
+                              void handleUpdateQuantity(
                                 item.variantId,
                                 item.quantity + 1,
                               )
@@ -221,7 +229,9 @@ export function CartButtonWithSheet() {
 
                         <RemoveButton
                           className="text-muted-foreground hover:text-red-600 size-3.5 mb-[2px]"
-                          onRemove={() => handleRemoveItem(item.variantId)}
+                          onRemove={() =>
+                            void handleRemoveItem(item.variantId)
+                          }
                         />
                       </div>
                     </div>

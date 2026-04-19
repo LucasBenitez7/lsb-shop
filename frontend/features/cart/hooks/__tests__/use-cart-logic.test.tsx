@@ -2,7 +2,11 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { useRouter } from "next/navigation";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-import { validateCartStock } from "@/lib/api/cart";
+import {
+  validateCartStock,
+  patchCartItemQuantity,
+  removeCartItem,
+} from "@/lib/api/cart";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { useCartLogic } from "@/features/cart/hooks/use-cart-logic";
 import { useCartStore, type CartItem } from "@/store/useCartStore";
@@ -13,20 +17,19 @@ vi.mock("@/features/auth/components/AuthProvider", () => ({
 
 const mockPush = vi.fn();
 
-vi.mocked(useRouter).mockReturnValue({
-  push: mockPush,
-  replace: vi.fn(),
-  refresh: vi.fn(),
-  back: vi.fn(),
-  prefetch: vi.fn(),
-  forward: vi.fn(),
-} as ReturnType<typeof useRouter>);
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(),
+}));
 
 vi.mock("@/lib/api/cart", () => ({
   validateCartStock: vi.fn(),
+  patchCartItemQuantity: vi.fn(),
+  removeCartItem: vi.fn(),
 }));
 
 const mockValidateStock = vi.mocked(validateCartStock);
+const mockPatchQty = vi.mocked(patchCartItemQuantity);
+const mockRemoveItem = vi.mocked(removeCartItem);
 const mockUseAuthHook = vi.mocked(useAuth);
 
 const makeItem = (overrides: Partial<CartItem> = {}): CartItem => ({
@@ -75,7 +78,6 @@ function authenticatedAuth() {
 
 beforeEach(() => {
   useCartStore.setState({ items: [], removedItems: [], isOpen: false });
-  localStorage.clear();
   vi.clearAllMocks();
 
   vi.mocked(useRouter).mockReturnValue({
@@ -101,7 +103,7 @@ describe("useCartLogic - estado inicial", () => {
   });
 
   it("refleja items del store cuando tiene productos", async () => {
-    useCartStore.getState().addItem(makeItem());
+    useCartStore.setState({ items: [makeItem()] });
 
     const { result } = renderHook(() => useCartLogic());
     await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));
@@ -114,80 +116,65 @@ describe("useCartLogic - estado inicial", () => {
 });
 
 describe("handleUpdateQuantity", () => {
-  it("actualiza la cantidad en el store", async () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1 }));
+  it("llama a la API y actualiza el store con la respuesta", async () => {
+    const updatedItem = makeItem({ quantity: 4 });
+    mockPatchQty.mockResolvedValue([updatedItem]);
+    useCartStore.setState({ items: [makeItem({ quantity: 1 })] });
 
     const { result } = renderHook(() => useCartLogic());
     await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));
 
-    act(() => {
-      result.current.handleUpdateQuantity("var_1", 4);
+    await act(async () => {
+      await result.current.handleUpdateQuantity("var_1", 4);
     });
 
+    expect(mockPatchQty).toHaveBeenCalledWith(expect.any(Number), 4);
     expect(useCartStore.getState().items[0].quantity).toBe(4);
   });
 
-  it("limpia el stockError si el carrito queda válido tras actualizar", async () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 5, maxStock: 3 }));
-
+  it("no llama la API si quantity < 1", async () => {
+    useCartStore.setState({ items: [makeItem()] });
     const { result } = renderHook(() => useCartLogic());
     await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));
 
-    mockValidateStock.mockResolvedValueOnce({
-      success: false,
-      error: "Stock insuficiente",
-    });
-
     await act(async () => {
-      await result.current.handleCheckout();
+      await result.current.handleUpdateQuantity("var_1", 0);
     });
 
-    expect(result.current.stockError).toBe("Stock insuficiente");
-
-    act(() => {
-      result.current.handleUpdateQuantity("var_1", 2);
-    });
-
-    await waitFor(() => expect(result.current.stockError).toBeNull());
+    expect(mockPatchQty).not.toHaveBeenCalled();
   });
 });
 
 describe("handleRemoveItem", () => {
-  it("elimina el item del store", async () => {
-    useCartStore.getState().addItem(makeItem());
+  it("llama a la API y actualiza el store con la respuesta", async () => {
+    mockRemoveItem.mockResolvedValue([]);
+    useCartStore.setState({ items: [makeItem()] });
 
     const { result } = renderHook(() => useCartLogic());
     await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));
 
-    act(() => {
-      result.current.handleRemoveItem("var_1");
+    await act(async () => {
+      await result.current.handleRemoveItem("var_1");
     });
 
+    expect(mockRemoveItem).toHaveBeenCalledWith(expect.any(Number));
     expect(useCartStore.getState().items).toHaveLength(0);
   });
 
-  it("limpia stockError si tras eliminar el carrito queda válido", async () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1, maxStock: 1 }));
+  it("añade el item a removedItems para permitir undo", async () => {
+    const item = makeItem();
+    mockRemoveItem.mockResolvedValue([]);
+    useCartStore.setState({ items: [item] });
 
     const { result } = renderHook(() => useCartLogic());
     await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));
 
-    mockValidateStock.mockResolvedValueOnce({
-      success: false,
-      error: "Stock insuficiente",
-    });
-
     await act(async () => {
-      await result.current.handleCheckout();
+      await result.current.handleRemoveItem("var_1");
     });
 
-    expect(result.current.stockError).toBe("Stock insuficiente");
-
-    act(() => {
-      result.current.handleRemoveItem("var_1");
-    });
-
-    await waitFor(() => expect(result.current.stockError).toBeNull());
+    expect(useCartStore.getState().removedItems).toHaveLength(1);
+    expect(useCartStore.getState().removedItems[0].item.variantId).toBe("var_1");
   });
 });
 
@@ -206,9 +193,8 @@ describe("handleCheckout", () => {
 
   it("redirige a /checkout si hay sesión y el stock es válido", async () => {
     mockUseAuthHook.mockReturnValue(authenticatedAuth());
-
-    useCartStore.getState().addItem(makeItem());
-    mockValidateStock.mockResolvedValue({ success: true });
+    mockValidateStock.mockResolvedValue({ success: true, items: [makeItem()] });
+    useCartStore.setState({ items: [makeItem()] });
 
     const { result } = renderHook(() => useCartLogic());
     await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));
@@ -222,9 +208,8 @@ describe("handleCheckout", () => {
 
   it("redirige a login con redirectTo si no hay sesión", async () => {
     mockUseAuthHook.mockReturnValue(unauthenticatedAuth());
-
-    useCartStore.getState().addItem(makeItem());
-    mockValidateStock.mockResolvedValue({ success: true });
+    mockValidateStock.mockResolvedValue({ success: true, items: [makeItem()] });
+    useCartStore.setState({ items: [makeItem()] });
 
     const { result } = renderHook(() => useCartLogic());
     await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));
@@ -237,11 +222,12 @@ describe("handleCheckout", () => {
   });
 
   it("muestra stockError y no redirige si falla la validación", async () => {
-    useCartStore.getState().addItem(makeItem());
     mockValidateStock.mockResolvedValue({
       success: false,
       error: "Stock insuficiente para Camiseta Roja",
+      items: [makeItem({ maxStock: 1, quantity: 1 })],
     });
+    useCartStore.setState({ items: [makeItem()] });
 
     const { result } = renderHook(() => useCartLogic());
     await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));
@@ -256,30 +242,10 @@ describe("handleCheckout", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("llama a syncMaxStock cuando el error incluye stockUpdate", async () => {
-    useCartStore.getState().addItem(makeItem({ maxStock: 10 }));
-    mockValidateStock.mockResolvedValue({
-      success: false,
-      error: "Stock insuficiente",
-      stockUpdate: { variantId: "var_1", realStock: 2 },
-    });
-
-    const { result } = renderHook(() => useCartLogic());
-    await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));
-
-    await act(async () => {
-      await result.current.handleCheckout();
-    });
-
-    expect(useCartStore.getState().items[0].maxStock).toBe(2);
-  });
-
   it("cierra el carrito antes de redirigir al checkout", async () => {
     mockUseAuthHook.mockReturnValue(authenticatedAuth());
-
-    useCartStore.getState().addItem(makeItem());
-    useCartStore.getState().openCart();
-    mockValidateStock.mockResolvedValue({ success: true });
+    mockValidateStock.mockResolvedValue({ success: true, items: [makeItem()] });
+    useCartStore.setState({ items: [makeItem()], isOpen: true });
 
     const { result } = renderHook(() => useCartLogic());
     await waitFor(() => expect(result.current.items.length).toBeGreaterThan(0));

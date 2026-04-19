@@ -5,7 +5,6 @@ import { useCartStore, type CartItem } from "@/store/useCartStore";
 // ─── Helper para resetear el store entre tests ────────────────────────────────
 beforeEach(() => {
   useCartStore.setState({ items: [], removedItems: [], isOpen: false });
-  localStorage.clear();
 });
 
 // ─── Fixture de item base ─────────────────────────────────────────────────────
@@ -177,6 +176,7 @@ describe("syncMaxStock", () => {
 
     const item = useCartStore.getState().items[0];
     expect(item.quantity).toBe(2);
+    expect(item.maxStock).toBe(5);
     expect(item.name).toBe("Camiseta Roja");
   });
 });

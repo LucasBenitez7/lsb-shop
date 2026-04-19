@@ -20,7 +20,6 @@ import { Sheet, SheetContent, SheetTitle, Button } from "@/components/ui";
 
 import { useMounted } from "@/hooks/common/use-mounted";
 import { useHeaderSheets } from "@/hooks/ui/use-header-sheets";
-import { useCartStore } from "@/store/useCartStore";
 
 import { SidebarCloseProvider, SiteSidebar } from "./sidebar";
 
@@ -90,7 +89,6 @@ export function Header({
 
   async function handleSignOut() {
     setAccountMenuOpen(false);
-    useCartStore.getState().clearCart();
     await logout();
   }
 

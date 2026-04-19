@@ -28,12 +28,14 @@ vi.mock("react-hook-form", () => ({
   })),
 }));
 
-vi.mock("@/store/useCartStore", () => ({
-  useCartStore: vi.fn(() => ({
-    items: [{ productId: "p1", variantId: "v1", quantity: 1, price: 19.99 }],
-    clearCart: vi.fn(),
-  })),
-}));
+vi.mock("@/store/useCartStore", () => {
+  const items = [{ productId: "p1", variantId: "v1", quantity: 1, price: 19.99 }];
+  return {
+    useCartStore: vi.fn((selector: (s: { items: typeof items }) => unknown) =>
+      selector({ items }),
+    ),
+  };
+});
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },

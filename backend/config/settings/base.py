@@ -112,6 +112,10 @@ CACHES = {
     }
 }
 
+# Cart — stored in default cache (Redis in prod, LocMem in tests)
+CART_REDIS_TTL_SECONDS = int(config("CART_REDIS_TTL_SECONDS", default=604800))  # 7 days
+CART_GUEST_COOKIE_NAME = config("CART_GUEST_COOKIE_NAME", default="lsb-cart-guest")
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (

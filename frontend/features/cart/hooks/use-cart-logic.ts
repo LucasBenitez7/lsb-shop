@@ -1,9 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
-import { validateCartStock } from "@/lib/api/cart";
+import {
+  patchCartItemQuantity,
+  removeCartItem,
+  validateCartStock,
+} from "@/lib/api/cart";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { useCartStore } from "@/store/useCartStore";
 import { useStore } from "@/store/useStore";
@@ -17,9 +21,7 @@ export function useCartLogic() {
   const totalQty = cartStore?.getTotalItems() ?? 0;
   const totalPrice = cartStore?.getTotalPrice() ?? 0;
 
-  const updateQuantity = useCartStore((state) => state.updateQuantity);
-  const removeItem = useCartStore((state) => state.removeItem);
-  const syncMaxStock = useCartStore((state) => state.syncMaxStock);
+  const replaceItems = useCartStore((state) => state.replaceItems);
   const closeCart = useCartStore((state) => state.closeCart);
 
   const [loading, setLoading] = useState(false);
@@ -27,34 +29,57 @@ export function useCartLogic() {
 
   const hasItems = items.length > 0;
 
-  const handleUpdateQuantity = (variantId: string, newQuantity: number) => {
-    updateQuantity(variantId, newQuantity);
+  const handleUpdateQuantity = useCallback(
+    async (variantId: string, newQuantity: number) => {
+      if (newQuantity < 1) return;
+      try {
+        const next = await patchCartItemQuantity(
+          Number(variantId),
+          newQuantity,
+        );
+        replaceItems(next);
+        setStockError(null);
+      } catch {
+        /* optional: toast */
+      }
+    },
+    [replaceItems],
+  );
 
-    if (stockError) {
-      const isCartNowValid = items.every((item) => {
-        const qtyToCheck =
-          item.variantId === variantId ? newQuantity : item.quantity;
-        return qtyToCheck <= item.maxStock;
-      });
+  const handleRemoveItem = useCallback(
+    async (variantId: string) => {
+      const item = items.find((i) => i.variantId === variantId);
+      try {
+        const next = await removeCartItem(Number(variantId));
+        replaceItems(next);
+        if (item) {
+          useCartStore.setState((s) => ({
+            removedItems: [
+              ...s.removedItems,
+              { item, removedAt: Date.now() },
+            ],
+          }));
+        }
+        setStockError(null);
+      } catch {
+        /* optional: toast */
+      }
+    },
+    [items, replaceItems],
+  );
 
-      if (isCartNowValid) setStockError(null);
+  const validateOpen = useCallback(async () => {
+    if (items.length === 0) return;
+    const result = await validateCartStock(
+      items.map((r) => ({ variantId: r.variantId, qty: r.quantity })),
+    );
+    replaceItems(result.items);
+    if (!result.success && result.error) {
+      setStockError(result.error);
+    } else {
+      setStockError(null);
     }
-  };
-
-  const handleRemoveItem = (variantId: string) => {
-    removeItem(variantId);
-
-    if (stockError) {
-      const remainingItems = items.filter(
-        (item) => item.variantId !== variantId,
-      );
-      const isCartNowValid = remainingItems.every(
-        (item) => item.quantity <= item.maxStock,
-      );
-
-      if (isCartNowValid) setStockError(null);
-    }
-  };
+  }, [items, replaceItems]);
 
   const handleCheckout = async () => {
     if (items.length === 0) return;
@@ -68,15 +93,10 @@ export function useCartLogic() {
     }));
 
     const result = await validateCartStock(validationItems);
+    replaceItems(result.items);
 
     if (!result.success && result.error) {
       setStockError(result.error);
-      if (result.stockUpdate) {
-        syncMaxStock(
-          result.stockUpdate.variantId,
-          result.stockUpdate.realStock,
-        );
-      }
       setLoading(false);
       return;
     }
@@ -88,6 +108,7 @@ export function useCartLogic() {
     } else {
       router.push("/auth/login?redirectTo=/checkout");
     }
+    setLoading(false);
   };
 
   return {
@@ -101,5 +122,6 @@ export function useCartLogic() {
     handleUpdateQuantity,
     handleRemoveItem,
     handleCheckout,
+    validateOpen,
   };
 }

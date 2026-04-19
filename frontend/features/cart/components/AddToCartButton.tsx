@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { toast } from "sonner";
 
+import { addCartItem } from "@/lib/api/cart";
 import { useCartStore } from "@/store/useCartStore";
 
 import { Button } from "../../../components/ui";
@@ -31,42 +33,38 @@ export function AddToCartButton({
   disabled,
   className,
 }: AddToCartProps) {
-  const addItem = useCartStore((state) => state.addItem);
+  const replaceItems = useCartStore((state) => state.replaceItems);
+  const [pending, setPending] = useState(false);
 
-  const onClick = () => {
+  const onClick = async () => {
     if (!variant?.id) return;
 
-    addItem({
-      productId: product.id,
-      variantId: variant.id,
-      slug: product.slug,
-      name: product.name,
-      price: variant.priceCents ?? 0,
-      compareAtPrice: variant.compareAtPrice ?? undefined,
-      image: product.images[0]?.url,
-      color: variant.color,
-      size: variant.size,
-      quantity: 1,
-      maxStock: variant.stock,
-    });
-
-    toast.success("Añadido correctamente", {
-      description: `${product.name} (${variant.size} / ${variant.color})`,
-      duration: 2000,
-    });
+    setPending(true);
+    try {
+      const items = await addCartItem(Number(variant.id), 1);
+      replaceItems(items);
+      toast.success("Añadido correctamente", {
+        description: `${product.name} (${variant.size} / ${variant.color})`,
+        duration: 2000,
+      });
+    } catch {
+      toast.error("No se pudo añadir a la cesta.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
     <Button
       type="button"
-      onClick={onClick}
+      onClick={() => void onClick()}
       variant={"default"}
-      disabled={disabled || !variant?.id}
+      disabled={disabled || !variant?.id || pending}
       className={
         className ?? "hover:cursor-pointer w-full rounded-xs text-base py-3"
       }
     >
-      Añadir a la cesta
+      {pending ? "Añadiendo…" : "Añadir a la cesta"}
     </Button>
   );
 }
