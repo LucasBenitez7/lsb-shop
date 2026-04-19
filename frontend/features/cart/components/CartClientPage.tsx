@@ -24,7 +24,6 @@ export default function CartClientPage({
     hasItems,
     loading,
     stockError,
-    cartStore,
     handleUpdateQuantity,
     handleRemoveItem,
     handleCheckout,
@@ -49,8 +48,6 @@ export default function CartClientPage({
     }
     setLocalFavorites(next);
   };
-
-  if (!cartStore) return null;
 
   return (
     <main className="pb-10 w-full max-w-7xl mx-auto px-4 min-h-[60vh]">
@@ -147,7 +144,7 @@ export default function CartClientPage({
                           <div className="flex items-center font-semibold border rounded-xs h-8">
                             <button
                               onClick={() =>
-                                handleUpdateQuantity(
+                                void handleUpdateQuantity(
                                   item.variantId,
                                   item.quantity - 1,
                                 )
@@ -163,7 +160,7 @@ export default function CartClientPage({
                             </span>
                             <button
                               onClick={() =>
-                                handleUpdateQuantity(
+                                void handleUpdateQuantity(
                                   item.variantId,
                                   item.quantity + 1,
                                 )
@@ -203,7 +200,9 @@ export default function CartClientPage({
 
                         <RemoveButton
                           className="text-muted-foreground hover:text-red-600 size-4 mr-[3px]"
-                          onRemove={() => handleRemoveItem(item.variantId)}
+                          onRemove={() =>
+                            void handleRemoveItem(item.variantId)
+                          }
                         />
                       </div>
                     </div>

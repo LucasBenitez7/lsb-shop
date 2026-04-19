@@ -13,7 +13,7 @@ import type { UserAddress } from "@/types/address";
 
 export function useCheckout(savedAddresses: UserAddress[]) {
   const router = useRouter();
-  const { items } = useCartStore();
+  const items = useCartStore((state) => state.items);
 
   const { handleSubmit, setValue, watch, trigger, getValues } =
     useFormContext<CreateOrderInput>();
@@ -64,7 +64,7 @@ export function useCheckout(savedAddresses: UserAddress[]) {
       productId: item.productId,
       variantId: item.variantId,
       quantity: item.quantity,
-      priceCents: Math.round(item.price * 100),
+      priceCents: item.price,
     }));
     setValue("cartItems", formItems);
   }, [items, setValue]);
@@ -124,7 +124,7 @@ export function useCheckout(savedAddresses: UserAddress[]) {
       productId: item.productId,
       variantId: item.variantId,
       quantity: item.quantity,
-      priceCents: Math.round(item.price * 100),
+      priceCents: item.price,
     }));
     currentData.cartItems = freshCartItems;
 

@@ -11,17 +11,11 @@ import { formatCurrency, DEFAULT_CURRENCY } from "@/lib/currency";
 import { useCartStore } from "@/store/useCartStore";
 
 export function CheckoutSummary() {
-  const {
-    items,
-    getTotalPrice,
-    getTotalItems,
-    getOriginalTotalPrice,
-    getSavings,
-  } = useCartStore();
-  const totalQty = getTotalItems();
-  const total = getTotalPrice();
-  const originalTotal = getOriginalTotalPrice();
-  const savings = getSavings();
+  const items = useCartStore((state) => state.items);
+  const totalQty = useCartStore((state) => state.getTotalItems());
+  const total = useCartStore((state) => state.getTotalPrice());
+  const originalTotal = useCartStore((state) => state.getOriginalTotalPrice());
+  const savings = useCartStore((state) => state.getSavings());
   const {
     formState: { isSubmitting },
   } = useFormContext() || { formState: { isSubmitting: false } };

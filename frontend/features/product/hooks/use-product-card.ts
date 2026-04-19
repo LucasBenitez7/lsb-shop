@@ -9,6 +9,7 @@ import {
   sortVariantsHelper,
 } from "@/lib/products/utils";
 
+import { addCartItem } from "@/lib/api/cart";
 import { useCartStore } from "@/store/useCartStore";
 import { useProductPreferences } from "@/store/useUIStore";
 import { useStore } from "@/store/useStore";
@@ -29,7 +30,7 @@ export function useProductCard(item: PublicProductListItem) {
   // --- STORE ---
   const { selectedColors, setProductColor } = useProductPreferences();
   const savedColor = selectedColors[item.slug];
-  const addItem = useCartStore((state) => state.addItem);
+  const replaceItems = useCartStore((state) => state.replaceItems);
   const storeItems = useStore(useCartStore, (state) => state.items);
   const cartItems = isMounted && storeItems ? storeItems : [];
 
@@ -169,24 +170,18 @@ export function useProductCard(item: PublicProductListItem) {
       return;
     }
 
-    addItem({
-      productId: item.id,
-      variantId: variantToAdd.id,
-      slug: item.slug,
-      name: item.name,
-      price: variantToAdd.priceCents ?? item.priceCents,
-      compareAtPrice: item.compareAtPrice ?? undefined,
-      image: allImages[0]?.url || item.thumbnail || "",
-      color: variantToAdd.color,
-      size: variantToAdd.size,
-      quantity: 1,
-      maxStock: variantToAdd.stock,
-    });
-
-    toast.success("Añadido al carrito", {
-      description: `${item.name} - ${variantToAdd.size}`,
-      duration: 2000,
-    });
+    void (async () => {
+      try {
+        const items = await addCartItem(Number(variantToAdd.id), 1);
+        replaceItems(items);
+        toast.success("Añadido al carrito", {
+          description: `${item.name} - ${variantToAdd.size}`,
+          duration: 2000,
+        });
+      } catch {
+        toast.error("No se pudo añadir al carrito.");
+      }
+    })();
   };
 
   return {

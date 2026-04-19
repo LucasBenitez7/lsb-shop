@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { addCartItem } from "@/lib/api/cart";
 import { cn } from "@/lib/utils";
 
 import { useCartStore } from "@/store/useCartStore";
@@ -12,12 +13,13 @@ interface Props {
 
 export function CartUndoNotification({ className }: Props) {
   const removedItems = useStore(useCartStore, (state) => state.removedItems);
-  const restoreItem = useCartStore((state) => state.restoreItem);
+  const replaceItems = useCartStore((state) => state.replaceItems);
   const dismissLastRemovedItem = useCartStore(
     (state) => state.dismissLastRemovedItem,
   );
 
   const isRestoring = useRef(false);
+  const [restoring, setRestoring] = useState(false);
 
   const lastEntry =
     removedItems && removedItems.length > 0
@@ -80,13 +82,29 @@ export function CartUndoNotification({ className }: Props) {
         </div>
 
         <button
+          type="button"
+          disabled={restoring}
           onClick={() => {
             isRestoring.current = true;
-            restoreItem();
+            setRestoring(true);
+            void (async () => {
+              try {
+                const items = await addCartItem(
+                  Number(lastEntry.item.variantId),
+                  lastEntry.item.quantity,
+                );
+                replaceItems(items);
+                dismissLastRemovedItem();
+              } catch {
+                isRestoring.current = false;
+              } finally {
+                setRestoring(false);
+              }
+            })();
           }}
-          className="ml-4 font-semibold hover:underline underline-offset-4 text-sm whitespace-nowrap hover:cursor-pointer"
+          className="ml-4 font-semibold hover:underline underline-offset-4 text-sm whitespace-nowrap hover:cursor-pointer disabled:opacity-50"
         >
-          Deshacer
+          {restoring ? "…" : "Deshacer"}
         </button>
       </div>
     </div>

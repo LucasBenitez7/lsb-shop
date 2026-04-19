@@ -1,14 +1,21 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { SuccessClient } from "@/features/checkout/components/SuccessClient";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 const mockClearCart = vi.fn();
+const mockClearCartApi = vi.fn();
 const mockClearGuestAddress = vi.fn();
 
 vi.mock("@/store/useCartStore", () => ({
-  useCartStore: vi.fn((selector) => selector({ clearCart: mockClearCart })),
+  useCartStore: vi.fn((selector: (s: { clearCart: typeof mockClearCart; replaceItems: typeof vi.fn }) => unknown) =>
+    selector({ clearCart: mockClearCart, replaceItems: vi.fn() }),
+  ),
+}));
+
+vi.mock("@/lib/api/cart", () => ({
+  clearCart: () => mockClearCartApi(),
 }));
 
 vi.mock("@/lib/checkout/guest-address-storage", () => ({
@@ -68,9 +75,10 @@ describe("SuccessClient", () => {
     );
   });
 
-  it("llama a clearCart al montar", () => {
+  it("llama a la API de clearCart al montar", async () => {
+    mockClearCartApi.mockResolvedValue([]);
     render(<SuccessClient order={makeOrder()} />);
-    expect(mockClearCart).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mockClearCartApi).toHaveBeenCalledTimes(1));
   });
 
   it("elimina checkout_session de localStorage al montar", () => {

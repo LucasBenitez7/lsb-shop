@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import { useCartStore } from "@/store/useCartStore";
 import {
   FaBoxOpen,
   FaMapLocationDot,
@@ -92,7 +91,6 @@ export function AccountSidebar({ user }: Props) {
       <Button
         variant={"ghost"}
         onClick={async () => {
-          useCartStore.getState().clearCart();
           await logout();
         }}
         className="w-full lg:w-auto text-red-600 hover:bg-red-50 active:bg-red-100 hover:text-red-600 py-3 rounded-none"
