@@ -49,3 +49,6 @@ htmlcov/
 bruno/
 .cursor/plans/
 scripts/
+
+# Payment
+stripe.exe
