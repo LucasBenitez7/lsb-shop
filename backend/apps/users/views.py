@@ -10,10 +10,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.users.models import UserAddress
 from apps.users.serializers import (
     GuestOTPRequestSerializer,
     GuestOTPVerifySerializer,
     GuestSessionSerializer,
+    UserAddressSerializer,
     UserSerializer,
 )
 from apps.users.services import GuestService, InvalidOTP, UserService
@@ -114,3 +116,36 @@ class GuestOTPVerifyView(APIView):
             GuestSessionSerializer(session).data,
             status=status.HTTP_200_OK,
         )
+
+
+class UserAddressViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for UserAddress.
+
+    - GET /api/v1/users/addresses/ → list all addresses for authenticated user
+    - POST /api/v1/users/addresses/ → create new address
+    - GET /api/v1/users/addresses/{id}/ → retrieve single address
+    - PATCH/PUT /api/v1/users/addresses/{id}/ → update address
+    - DELETE /api/v1/users/addresses/{id}/ → delete address
+    - POST /api/v1/users/addresses/{id}/set-default/ → set address as default
+    """
+
+    serializer_class = UserAddressSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return UserAddress.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def set_default(self, request, pk=None):
+        """Set an address as the default address for the user."""
+        address = self.get_object()
+        UserAddress.objects.filter(user=request.user, is_default=True).update(
+            is_default=False
+        )
+        address.is_default = True
+        address.save(update_fields=["is_default"])
+        return Response(UserAddressSerializer(address).data, status=status.HTTP_200_OK)

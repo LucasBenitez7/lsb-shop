@@ -1,0 +1,12 @@
+{% autoescape off %}
+{% if greeting_name %}Hola {{ greeting_name }},{% else %}Hola,{% endif %}
+
+Gracias por registrarte en LSB Shop. Verifica tu correo abriendo este enlace (válido 24 horas):
+
+{{ verification_url }}
+
+Si no creaste una cuenta, ignora este mensaje.
+
+— LSB Shop
+{{ site_url }}
+{% endautoescape %}

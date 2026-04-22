@@ -1,0 +1,10 @@
+{% autoescape off %}
+Tu código de acceso para el seguimiento en LSB Shop:
+
+{{ otp }}
+
+Válido 15 minutos. Si no lo solicitaste, ignora este mensaje.
+
+— LSB Shop
+{{ site_url }}
+{% endautoescape %}

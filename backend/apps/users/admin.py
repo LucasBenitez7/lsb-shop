@@ -5,7 +5,7 @@ from django.forms import ModelForm
 from django.http import HttpRequest
 from unfold.admin import ModelAdmin
 
-from apps.users.models import GuestSession, User
+from apps.users.models import GuestSession, User, UserAddress
 
 
 @admin.register(User)
@@ -101,3 +101,21 @@ class GuestSessionAdmin(ModelAdmin):
     search_fields = ["email"]
     readonly_fields = ["otp", "token", "created_at"]
     ordering = ["-created_at"]
+
+
+@admin.register(UserAddress)
+class UserAddressAdmin(ModelAdmin):
+    list_display = [
+        "user",
+        "street",
+        "city",
+        "postal_code",
+        "country",
+        "is_default",
+        "created_at",
+    ]
+    list_filter = ["is_default", "country"]
+    search_fields = ["user__email", "street", "city", "postal_code"]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-created_at"]
+    autocomplete_fields = ["user"]

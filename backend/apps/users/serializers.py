@@ -14,7 +14,7 @@ from django.db import IntegrityError
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from apps.users.models import GuestSession
+from apps.users.models import GuestSession, UserAddress
 from apps.users.privacy import mask_email_for_demo, mask_phone_for_demo
 
 User = get_user_model()
@@ -187,3 +187,92 @@ class GuestSessionSerializer(serializers.ModelSerializer):
         model = GuestSession
         fields = ("token", "email", "expires_at")
         read_only_fields = ("token", "email", "expires_at")
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name", "phone")
+
+    def update(self, instance: User, validated_data):
+        instance.first_name = validated_data.get("first_name", instance.first_name)
+        instance.last_name = validated_data.get("last_name", instance.last_name)
+        instance.phone = validated_data.get("phone", instance.phone)
+        instance.save(update_fields=["first_name", "last_name", "phone"])
+        return instance
+
+
+class UserAddressSerializer(serializers.ModelSerializer):
+    """
+    Serializer for UserAddress model.
+
+    - Read: includes all fields + id, created_at, updated_at
+    - Create/Update: requires first_name, last_name, phone, street,
+      city, province, postal_code, country
+    - Optional fields: name, details, is_default
+    """
+
+    class Meta:
+        model = UserAddress
+        fields = (
+            "id",
+            "name",
+            "first_name",
+            "last_name",
+            "phone",
+            "street",
+            "details",
+            "city",
+            "province",
+            "postal_code",
+            "country",
+            "is_default",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate_country(self, value: str) -> str:
+        """Ensure country is ISO-2 format (2 uppercase letters)."""
+        if not value or len(value) != 2:
+            raise serializers.ValidationError(
+                "Country must be a valid ISO-2 code (e.g., ES, FR, DE)."
+            )
+        return value.upper()
+
+    def validate_details(self, value: str) -> str:
+        """Ensure details (piso, puerta, etc.) is not just whitespace."""
+        if value:
+            value = value.strip()
+            if not value:
+                raise serializers.ValidationError("Details cannot be only whitespace.")
+        return value
+
+    def create(self, validated_data):
+        """
+        When creating a new address with is_default=True,
+        unset is_default on all other addresses for this user.
+        """
+        user = validated_data.get("user")
+        is_default = validated_data.get("is_default", False)
+
+        if is_default and user:
+            UserAddress.objects.filter(user=user, is_default=True).update(
+                is_default=False
+            )
+
+        return super().create(validated_data)
+
+    def update(self, instance: UserAddress, validated_data):
+        """
+        When updating an address to is_default=True,
+        unset is_default on all other addresses for this user.
+        """
+        is_default = validated_data.get("is_default", instance.is_default)
+
+        if is_default and is_default != instance.is_default:
+            UserAddress.objects.filter(user=instance.user, is_default=True).exclude(
+                pk=instance.pk
+            ).update(is_default=False)
+
+        return super().update(instance, validated_data)
