@@ -106,6 +106,12 @@ export function useShippingAddressForm({
           details: values.details ?? undefined,
           isDefault: !!values.isDefault,
         });
+
+        if (!savedAddr) {
+          toast.error("Error al guardar la dirección");
+          return;
+        }
+
         toast.success("Dirección guardada correctamente");
         onSuccess(savedAddr);
       } catch (err: unknown) {

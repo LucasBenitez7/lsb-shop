@@ -150,6 +150,11 @@ describe("findVariant", () => {
     expect(findVariant(variants, "Azul", "L")?.id).toBe("2");
   });
 
+  it("empareja color por equivalencia (sinónimos / mayúsculas)", () => {
+    expect(findVariant(variants, "red", "M")?.id).toBe("1");
+    expect(findVariant(variants, "BLUE", "L")?.id).toBe("2");
+  });
+
   it("devuelve undefined si no encuentra la variante", () => {
     expect(findVariant(variants, "Verde", "M")).toBeUndefined();
     expect(findVariant(variants, "Rojo", "XL")).toBeUndefined();
@@ -297,6 +302,11 @@ describe("getImageForColor", () => {
     expect(getImageForColor(images, "Azul")).toBe(
       "https://example.com/azul.jpg",
     );
+  });
+
+  it("empareja etiqueta de imagen con sinónimo del color pedido", () => {
+    const mixed = [{ url: "https://example.com/red.jpg", color: "red" }];
+    expect(getImageForColor(mixed, "Rojo")).toBe("https://example.com/red.jpg");
   });
 
   it("devuelve la primera imagen si no hay match de color", () => {
@@ -498,6 +508,29 @@ describe("getInitialProductState", () => {
 
     const { initialColor } = getInitialProductState(product as any, "Azul");
     expect(initialColor).toBe("Azul");
+  });
+
+  it("acepta colorParam equivalente al de la variante (sinónimo)", () => {
+    const product = makeProduct(
+      [
+        {
+          color: "Rojo",
+          size: "M",
+          stock: 5,
+          colorOrder: 0,
+          isActive: true,
+          colorHex: null,
+        },
+      ],
+      [{ url: "red.jpg", color: "red", alt: null, sort: 0 }],
+    );
+
+    const { initialColor, initialImage } = getInitialProductState(
+      product as any,
+      "red",
+    );
+    expect(initialColor).toBe("Rojo");
+    expect(initialImage).toBe("red.jpg");
   });
 
   it("ignora colorParam si no existe en las variantes y usa el primer color con stock", () => {

@@ -13,6 +13,8 @@ import { ImSpinner8 } from "react-icons/im";
 
 import { Button } from "@/components/ui/button";
 
+import { checkoutStripeReturnPath } from "@/lib/checkout/stripe-return-paths";
+
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
 );
@@ -20,9 +22,14 @@ const stripePromise = loadStripe(
 type Props = {
   clientSecret: string;
   orderId: string;
+  stripeReturnPath?: string;
 };
 
-export function StripeEmbedForm({ clientSecret, orderId }: Props) {
+export function StripeEmbedForm({
+  clientSecret,
+  orderId,
+  stripeReturnPath,
+}: Props) {
   if (!clientSecret) return null;
 
   const appearance = {
@@ -89,13 +96,22 @@ export function StripeEmbedForm({ clientSecret, orderId }: Props) {
           appearance: appearance,
         }}
       >
-        <StripeFormInternal orderId={orderId} />
+        <StripeFormInternal
+          orderId={orderId}
+          stripeReturnPath={stripeReturnPath ?? checkoutStripeReturnPath(orderId)}
+        />
       </Elements>
     </div>
   );
 }
 
-function StripeFormInternal({ orderId }: { orderId: string }) {
+function StripeFormInternal({
+  orderId,
+  stripeReturnPath,
+}: {
+  orderId: string;
+  stripeReturnPath: string;
+}) {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -113,7 +129,7 @@ function StripeFormInternal({ orderId }: { orderId: string }) {
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/checkout/success?orderId=${orderId}`,
+        return_url: `${window.location.origin}${stripeReturnPath}`,
       },
     });
 

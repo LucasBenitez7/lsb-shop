@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 
 import { RegisterForm } from "../../../../features/auth/components/RegisterForm";
 

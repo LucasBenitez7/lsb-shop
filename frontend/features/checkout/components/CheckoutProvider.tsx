@@ -66,7 +66,7 @@ export function CheckoutProvider({ children, defaultValues }: Props) {
       province: defaultValues?.province ?? "",
       postalCode: defaultValues?.postalCode ?? "",
       details: defaultValues?.details ?? "",
-      country: defaultValues?.country ?? "España",
+      country: defaultValues?.country ?? "ES",
       storeLocationId: null,
       pickupLocationId: null,
       pickupSearch: null,

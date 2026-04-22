@@ -14,32 +14,47 @@ import { OrderTracker } from "@/features/orders/components/OrderTracker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { getUserOrderFullDetails } from "@/lib/api/account";
-import { auth } from "@/lib/auth/server";
+import { serverGetUserOrderFullDetails } from "@/lib/api/account/server";
+import { auth } from "@/lib/api/auth/server";
 import { parseCurrency } from "@/lib/currency";
 import {
   calculateDiscounts,
+  formatOrderPaymentMethodLabel,
   getOrderCancellationDetailsUser,
   getOrderShippingDetails,
 } from "@/lib/orders/utils";
-
-import type { UserOrderDetail } from "@/types/order";
+import { findImageByColorOrFallback } from "@/lib/products/color-matching";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    payment?: string;
+    checkout_payment?: string;
+    payment_intent?: string;
+    redirect_status?: string;
+  }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
+  const stripeReturn =
+    sp.checkout_payment === "1"
+      ? {
+          paymentIntent: sp.payment_intent,
+          redirectStatus: sp.redirect_status,
+        }
+      : null;
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const orderData = await getUserOrderFullDetails(id);
+  const orderData = await serverGetUserOrderFullDetails(id);
   if (!orderData) notFound();
 
-  const order: UserOrderDetail = orderData;
+  const order = orderData;
   const currency = parseCurrency(order.currency);
 
   const { refundedAmountMinor, netTotalMinor } = order.summary;
@@ -77,6 +92,9 @@ export default async function OrderDetailPage({
   const originalSubtotal = calculateDiscounts(order.items);
   const totalDiscount = originalSubtotal - order.itemsTotalMinor;
 
+  const showPaymentWarning =
+    sp.payment === "incomplete" || sp.payment === "processing";
+
   return (
     <div className="space-y-4 mx-auto">
       {/* HEADER DE NAVEGACIÓN */}
@@ -94,6 +112,8 @@ export default async function OrderDetailPage({
             paymentStatus={order.paymentStatus}
             fulfillmentStatus={order.fulfillmentStatus}
             isCancelled={order.isCancelled}
+            stripeReturn={stripeReturn}
+            stripePaymentIntentStatus={order.stripePaymentIntentStatus ?? null}
           />
 
           {showHistoryButton && (
@@ -110,6 +130,26 @@ export default async function OrderDetailPage({
           )}
         </div>
       </div>
+
+      {showPaymentWarning && (
+        <div className="rounded-xs border border-yellow-300 bg-yellow-50 p-4">
+          <div className="flex items-start gap-3">
+            <FaClock className="size-5 text-yellow-700 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-yellow-900 mb-1">
+                {sp.payment === "processing"
+                  ? "Pago en proceso de confirmación"
+                  : "El pago no se completó"}
+              </h3>
+              <p className="text-sm text-yellow-800">
+                {sp.payment === "processing"
+                  ? "Tu pago fue procesado por Stripe pero aún estamos confirmando la transacción. Actualiza en unos segundos o contacta con soporte si el estado no cambia."
+                  : "Hubo un problema al procesar tu pago. Puedes intentarlo de nuevo usando el botón \"Pagar Ahora\" o cancelar el pedido si ya no lo necesitas."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {order.isCancelled && (
         <div className="flex flex-col">
@@ -154,11 +194,7 @@ export default async function OrderDetailPage({
         <OrderSummaryCard
           id={order.id}
           createdAt={order.createdAt}
-          paymentMethod={
-            order.paymentMethod
-              ? order.paymentMethod.replace("_", " ")
-              : "Tarjeta de Crédito"
-          }
+          paymentMethod={formatOrderPaymentMethodLabel(order)}
           contact={{
             name: contactName,
             email: order.email,
@@ -167,9 +203,10 @@ export default async function OrderDetailPage({
           shippingInfo={getOrderShippingDetails(order)}
           items={order.items.map((item) => {
             const productImages = item.product?.images || [];
-            const matchingImg =
-              productImages.find((img) => img.color === item.colorSnapshot) ||
-              productImages[0];
+            const matchingImg = findImageByColorOrFallback(
+              productImages,
+              item.colorSnapshot,
+            );
             return {
               id: item.id,
               name: item.nameSnapshot,

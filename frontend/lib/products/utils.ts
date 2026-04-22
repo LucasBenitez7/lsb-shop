@@ -1,4 +1,5 @@
 import { DEFAULT_CURRENCY, toMajor } from "@/lib/currency";
+import { colorsMatch } from "@/lib/products/color-matching";
 import { CLOTHING_SIZES } from "@/lib/products/constants";
 
 import type {
@@ -54,7 +55,9 @@ export function findVariant(
   size: string | null,
 ): ProductVariant | undefined {
   if (!color || !size) return undefined;
-  return variants.find((v) => v.color === color && v.size === size);
+  return variants.find(
+    (v) => colorsMatch(v.color, color) && v.size === size,
+  );
 }
 
 export function getUniqueColors(variants: ProductVariant[]): string[] {
@@ -101,8 +104,8 @@ export function getImageForColor(
   images: { url: string; color?: string | null }[],
   selectedColor: string | null,
 ): string {
-  if (selectedColor) {
-    const match = images.find((img) => img.color === selectedColor);
+  if (selectedColor?.trim()) {
+    const match = images.find((img) => colorsMatch(img.color, selectedColor));
     if (match) return match.url;
   }
   return images[0]?.url ?? "/og/default-products.jpg";
@@ -117,10 +120,13 @@ export function getInitialProductState(
   let initialImage = product.images[0]?.url;
 
   const colorExists =
-    colorParam && product.variants.some((v) => v.color === colorParam);
+    colorParam &&
+    product.variants.some((v) => colorsMatch(v.color, colorParam));
 
   if (colorExists && colorParam) {
-    initialColor = colorParam;
+    initialColor =
+      product.variants.find((v) => colorsMatch(v.color, colorParam))?.color ??
+      colorParam;
   } else {
     const sortedStock = sortVariantsHelper(product.variants).filter(
       (v) => v.stock > 0,
@@ -133,7 +139,9 @@ export function getInitialProductState(
   }
 
   if (initialColor) {
-    const imageMatch = product.images.find((img) => img.color === initialColor);
+    const imageMatch = product.images.find((img) =>
+      colorsMatch(img.color, initialColor),
+    );
     if (imageMatch) {
       initialImage = imageMatch.url;
     }

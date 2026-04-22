@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { FaCreditCard } from "react-icons/fa6";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { type CreateOrderInput } from "@/lib/orders/schema";
 

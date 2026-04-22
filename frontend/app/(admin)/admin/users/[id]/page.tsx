@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maskEmailForDemo } from "@/lib/admin/mask-email";
 import { getAdminUserDetails } from "@/lib/api/admin";
 import { isDemoRole } from "@/lib/roles";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 import { formatUserDisplayName } from "@/lib/users/utils";
 
 import { RecentOrdersTable } from "@/features/admin/components/users/RecentOrdersTable";

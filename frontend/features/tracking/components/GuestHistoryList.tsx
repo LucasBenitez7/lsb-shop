@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
 
 import { formatHistoryReason, getEventVisuals } from "@/lib/orders/utils";
+import { colorsMatch } from "@/lib/products/color-matching";
 import { cn } from "@/lib/utils";
 
 import type { HistoryDetailsJson, HistoryItemJson } from "@/lib/orders/types";
@@ -132,9 +133,10 @@ export function GuestHistoryList({ events, orderItems }: Props) {
                           const matchingImg =
                             productImages.find(
                               (img: { color?: string | null }) =>
-                                historyItem.variant?.includes(
-                                  img.color || "###",
-                                ),
+                                historyItem.variant
+                                  ?.split("/")
+                                  .map((s) => s.trim())
+                                  .some((part) => colorsMatch(img.color, part)),
                             ) || productImages[0];
                           const imgUrl = matchingImg?.url;
 

@@ -3,6 +3,7 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useMemo, useCallback } from "react";
 
+import { colorsMatch } from "@/lib/products/color-matching";
 import type { PublicProductDetail } from "@/lib/products/types";
 
 type UseProductDetailProps = {
@@ -27,7 +28,7 @@ export function useProductDetail({
   const filteredImages = useMemo(() => {
     if (!selectedColor) return product.images;
     const matches = product.images.filter(
-      (img) => !img.color || img.color === selectedColor,
+      (img) => !img.color || colorsMatch(img.color, selectedColor),
     );
     return matches.length > 0 ? matches : product.images;
   }, [product.images, selectedColor]);

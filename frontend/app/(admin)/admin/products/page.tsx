@@ -5,7 +5,7 @@ import { PaginationNav } from "@/features/catalog/components/PaginationNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 
 import { canWriteAdmin } from "@/lib/roles";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 import { getAdminProducts, getMaxPrice } from "@/lib/api/products/admin";
 import { cn } from "@/lib/utils";
 

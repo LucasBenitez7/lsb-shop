@@ -1,5 +1,5 @@
 import { canWriteAdmin } from "@/lib/roles";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 import { getStoreConfig } from "@/lib/api/settings/server";
 
 import { SettingsForm } from "@/features/admin/components/settings/SettingsForm";

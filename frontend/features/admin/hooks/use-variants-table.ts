@@ -2,6 +2,7 @@ import { useMemo, useCallback } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 import { toast } from "sonner";
 
+import { colorsMatch } from "@/lib/products/color-matching";
 import type { ProductFormValues } from "@/lib/products/schema";
 
 export function useVariantsTable() {
@@ -39,7 +40,7 @@ export function useVariantsTable() {
 
     newItems.forEach((newItem) => {
       const exists = currentVariants.some(
-        (cv) => cv.size === newItem.size && cv.color === newItem.color,
+        (cv) => cv.size === newItem.size && colorsMatch(cv.color, newItem.color),
       );
       if (!exists) variantsToAdd.push(newItem);
     });
@@ -64,7 +65,7 @@ export function useVariantsTable() {
     (colorName: string, newOrder: number) => {
       fields.forEach((field, index) => {
         const variant = getValues(`variants.${index}`);
-        if (variant.color === colorName) {
+        if (colorsMatch(variant.color, colorName)) {
           setValue(`variants.${index}.colorOrder`, newOrder, {
             shouldDirty: true,
             shouldTouch: true,

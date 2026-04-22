@@ -38,6 +38,7 @@ export function CartButtonWithSheet() {
     totalPrice,
     loading,
     stockError,
+    checkoutStockBlocked,
     handleUpdateQuantity,
     handleRemoveItem,
     handleCheckout,
@@ -245,9 +246,10 @@ export function CartButtonWithSheet() {
         {/* FOOTER - TOTALES */}
         {items.length > 0 && (
           <div className="shrink-0 border-t p-4 bg-background">
-            {stockError && (
+            {(stockError || checkoutStockBlocked) && (
               <div className="mb-3 rounded-xs bg-red-50 p-3 text-xs font-medium text-red-600 border border-red-200">
-                {stockError}
+                {stockError ||
+                  "Hay productos sin stock o con cantidad mayor a la disponible. Ajusta la cesta antes de pagar."}
               </div>
             )}
 
@@ -302,7 +304,7 @@ export function CartButtonWithSheet() {
                 size="icon"
                 aria-label="Tramitar pedido"
                 className="flex-1 bg-green-600 hover:bg-green-700 h-11 font-medium"
-                disabled={!!stockError || loading}
+                disabled={!!stockError || loading || checkoutStockBlocked}
                 onClick={handleCheckout}
               >
                 {loading ? (

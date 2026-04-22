@@ -91,6 +91,16 @@ function buildRequestHeaders(options: RequestInit): Headers {
 let isRefreshing = false;
 let refreshPromise: Promise<void> | null = null;
 
+function emitSessionExpiredEvent() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("api-session-expired", {
+        detail: { status: 401, sessionExpired: true },
+      }),
+    );
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -109,31 +119,40 @@ export async function apiFetch<T>(
   if (res.status === 401) {
     if (!isRefreshing) {
       isRefreshing = true;
-      refreshPromise = refreshToken().finally(() => {
-        isRefreshing = false;
-        refreshPromise = null;
-      });
+      refreshPromise = refreshToken()
+        .catch(() => {
+          // Refresh token también expiró → emitir evento para que el cliente redirija
+          emitSessionExpiredEvent();
+          throw new APIError("Session expired", 401);
+        })
+        .finally(() => {
+          isRefreshing = false;
+          refreshPromise = null;
+        });
     }
 
     try {
       await refreshPromise;
-      // Retry original request after refresh
-      const retryRes = await fetch(`${BASE_URL}${path}`, {
-        ...options,
-        credentials: "include",
-        headers: buildRequestHeaders(options),
-      });
-
-      if (!retryRes.ok) {
-        throw new APIError("Session expired. Please log in again.", 401);
-      }
-
-      if (retryRes.status === 204) return undefined as T;
-
-      return retryRes.json() as Promise<T>;
     } catch {
-      throw new APIError("Session expired. Please log in again.", 401);
+      // refreshPromise already emitted the event and threw — just propagate
+      throw new APIError("Session expired", 401);
     }
+
+    // Retry original request after successful refresh
+    const retryRes = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: buildRequestHeaders(options),
+    });
+
+    if (!retryRes.ok) {
+      emitSessionExpiredEvent();
+      throw await toAPIError(retryRes);
+    }
+
+    if (retryRes.status === 204) return undefined as T;
+
+    return retryRes.json() as Promise<T>;
   }
 
   if (!res.ok) {

@@ -19,8 +19,10 @@ import {
 } from "@/components/ui/dialog";
 
 import { cancelOrder } from "@/lib/api/account";
+import { accountOrderStripeReturnPath } from "@/lib/checkout/stripe-return-paths";
 import { useOrderPayment } from "@/features/orders/hooks/use-order-payment";
 
+import type { OrderStripeReturnParams } from "@/features/orders/hooks/use-order-payment";
 import type { PaymentStatus, FulfillmentStatus } from "@/types/enums";
 
 type Props = {
@@ -29,6 +31,10 @@ type Props = {
   fulfillmentStatus: FulfillmentStatus;
   isCancelled: boolean;
   className?: string;
+  /** Set when user lands after Stripe redirect (`checkout_payment=1`). */
+  stripeReturn?: OrderStripeReturnParams | null;
+  /** From order detail API when DB is still PENDING but Stripe already charged. */
+  stripePaymentIntentStatus?: string | null;
 };
 
 export function UserOrderActions({
@@ -37,6 +43,8 @@ export function UserOrderActions({
   fulfillmentStatus,
   isCancelled,
   className,
+  stripeReturn = null,
+  stripePaymentIntentStatus = null,
 }: Props) {
   if (isCancelled) return null;
 
@@ -49,7 +57,7 @@ export function UserOrderActions({
     isLoading: loadingPayment,
     clientSecret,
     startPaymentFlow: handlePayClick,
-  } = useOrderPayment(orderId);
+  } = useOrderPayment(orderId, stripeReturn);
 
   const handleCancel = async () => {
     setLoading(true);
@@ -64,13 +72,25 @@ export function UserOrderActions({
     setLoading(false);
   };
 
-  const isPendingAndUnfulfilled =
-    paymentStatus === "FAILED" && fulfillmentStatus === "UNFULFILLED";
+  const stripeChargeAlreadyInFlight =
+    stripePaymentIntentStatus === "succeeded" ||
+    stripePaymentIntentStatus === "processing" ||
+    stripePaymentIntentStatus === "requires_capture";
+
+  const canResumeCardPayment =
+    !stripeChargeAlreadyInFlight &&
+    (paymentStatus === "PENDING" || paymentStatus === "FAILED") &&
+    fulfillmentStatus === "UNFULFILLED";
+
+  const awaitingDbAfterStripeCharge =
+    stripeChargeAlreadyInFlight &&
+    (paymentStatus === "PENDING" || paymentStatus === "FAILED") &&
+    fulfillmentStatus === "UNFULFILLED";
 
   const canReturn =
     paymentStatus === "PAID" && fulfillmentStatus === "DELIVERED";
 
-  if (isPendingAndUnfulfilled) {
+  if (canResumeCardPayment) {
     return (
       <div
         className={`flex w-full flex-col sm:flex-row items-center justify-end gap-2 ${className || ""}`}
@@ -106,6 +126,7 @@ export function UserOrderActions({
                 <StripeEmbedForm
                   clientSecret={clientSecret}
                   orderId={orderId}
+                  stripeReturnPath={accountOrderStripeReturnPath(orderId)}
                 />
               </div>
             ) : (
@@ -147,6 +168,18 @@ export function UserOrderActions({
           </DialogContent>
         </Dialog>
       </div>
+    );
+  }
+
+  if (awaitingDbAfterStripeCharge) {
+    return (
+      <p
+        className={`text-sm text-muted-foreground text-center sm:text-right max-w-md sm:ml-auto ${className || ""}`}
+      >
+        El pago consta como confirmado en la pasarela; estamos actualizando el
+        estado del pedido. Si no ves «Pagado» en unos minutos, recarga la
+        página.
+      </p>
     );
   }
 

@@ -23,6 +23,9 @@ type AuthContextValue = {
   status: AuthStatus;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
+  /** Clears auth state immediately without hitting the API. Use when a token
+   *  expiry event is detected client-side and you need the UI to update now. */
+  clearSession: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -39,34 +42,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u);
       setStatus("authenticated");
     } catch (e) {
-      if (e instanceof APIError && e.status === 401) {
-        setUser(null);
-        setStatus("unauthenticated");
-        return;
-      }
       setUser(null);
       setStatus("unauthenticated");
+      if (!(e instanceof APIError && e.status === 401)) {
+        console.error("Auth refresh error:", e);
+      }
     }
   }, []);
 
   useEffect(() => {
     void refresh();
-  }, [refresh, pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  const clearSession = useCallback(() => {
+    setUser(null);
+    setStatus("unauthenticated");
+  }, []);
 
   const logout = useCallback(async () => {
     try {
       await apiLogout();
     } finally {
-      setUser(null);
-      setStatus("unauthenticated");
-      router.push("/");
+      clearSession();
       router.refresh();
+      // Redirect is handled by the caller (Header, Sidebar, etc.)
     }
-  }, [router]);
+  }, [router, clearSession]);
 
   const value = useMemo(
-    () => ({ user, status, refresh, logout }),
-    [user, status, refresh, logout],
+    () => ({ user, status, refresh, logout, clearSession }),
+    [user, status, refresh, logout, clearSession],
   );
 
   return (

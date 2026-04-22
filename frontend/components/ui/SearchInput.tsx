@@ -49,6 +49,7 @@ export function SearchInput({
     setTerm("");
     const params = new URLSearchParams(searchParams);
     params.delete(paramName);
+    params.delete("page");
     replace(`${pathname}?${params.toString()}`);
   };
 

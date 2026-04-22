@@ -29,6 +29,11 @@ export function useCartLogic() {
 
   const hasItems = items.length > 0;
 
+  /** Client-side guard from last known max_stock (synced by validate / cart API). */
+  const checkoutStockBlocked = items.some(
+    (i) => i.maxStock === 0 || i.quantity > i.maxStock,
+  );
+
   const handleUpdateQuantity = useCallback(
     async (variantId: string, newQuantity: number) => {
       if (newQuantity < 1) return;
@@ -68,10 +73,14 @@ export function useCartLogic() {
     [items, replaceItems],
   );
 
+  // Read cart lines from the store inside the callback — do NOT close over `items`
+  // or deps that change on every `replaceItems`, or `useEffect(..., [validateOpen])`
+  // in CartClientPage will re-run forever (validate → replaceItems → new items ref).
   const validateOpen = useCallback(async () => {
-    if (items.length === 0) return;
+    const rows = useCartStore.getState().items;
+    if (rows.length === 0) return;
     const result = await validateCartStock(
-      items.map((r) => ({ variantId: r.variantId, qty: r.quantity })),
+      rows.map((r) => ({ variantId: r.variantId, qty: r.quantity })),
     );
     replaceItems(result.items);
     if (!result.success && result.error) {
@@ -79,10 +88,16 @@ export function useCartLogic() {
     } else {
       setStockError(null);
     }
-  }, [items, replaceItems]);
+  }, [replaceItems]);
 
   const handleCheckout = async () => {
     if (items.length === 0) return;
+    if (checkoutStockBlocked) {
+      setStockError(
+        "Hay productos sin stock o con cantidad mayor a la disponible. Ajusta la cesta antes de pagar.",
+      );
+      return;
+    }
 
     setLoading(true);
     setStockError(null);
@@ -118,6 +133,7 @@ export function useCartLogic() {
     hasItems,
     loading,
     stockError,
+    checkoutStockBlocked,
     cartStore,
     handleUpdateQuantity,
     handleRemoveItem,

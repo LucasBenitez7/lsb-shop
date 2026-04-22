@@ -1,4 +1,5 @@
 import type { UserAddress } from "@/types/address";
+import { redirect } from "next/navigation";
 import { FaLock } from "react-icons/fa6";
 
 import { CheckoutContent } from "@/features/checkout/components/CheckoutContent";
@@ -9,8 +10,9 @@ import { CheckoutLocalFooter } from "@/features/checkout/components/CheckoutFoot
 import { CheckoutHeader } from "@/features/checkout/components/CheckoutHeader";
 import { Container } from "@/components/ui";
 
-import { getUserAddresses } from "@/lib/api/account";
-import { auth } from "@/lib/auth/server";
+import { serverGetUserAddresses } from "@/lib/api/account/server";
+import { auth } from "@/lib/api/auth/server";
+import { APIError } from "@/lib/api/client";
 
 import type { Metadata } from "next";
 
@@ -21,11 +23,45 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function CheckoutPage() {
+export default async function CheckoutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    orderId?: string;
+    payment_intent?: string;
+    redirect_status?: string;
+    checkout_payment?: string;
+  }>;
+}) {
+  const sp = await searchParams;
+  const paymentResume =
+    sp.checkout_payment === "1" && sp.orderId
+      ? {
+          orderId: sp.orderId,
+          paymentIntent: sp.payment_intent,
+          redirectStatus: sp.redirect_status,
+        }
+      : null;
+
   const session = await auth();
   const user = session?.user || null;
 
-  const savedAddresses: UserAddress[] = user ? await getUserAddresses() : [];
+  // Checkout requires authentication — guests and expired sessions go to login
+  if (!user) {
+    redirect("/auth/login?redirectTo=%2Fcheckout");
+  }
+
+  let savedAddresses: UserAddress[] = [];
+
+  try {
+    savedAddresses = await serverGetUserAddresses();
+  } catch (error) {
+    if (error instanceof APIError && error.status === 401) {
+      redirect("/auth/login?session_expired=true&redirectTo=%2Fcheckout");
+    }
+    // Other errors (network, etc.) — continue with empty addresses
+    console.error("Error loading addresses:", error);
+  }
 
   const defaultAddress = savedAddresses.find((a) => a.isDefault);
 
@@ -39,7 +75,7 @@ export default async function CheckoutPage() {
     postalCode: defaultAddress?.postalCode || "",
     city: defaultAddress?.city || "",
     province: defaultAddress?.province || "",
-    country: defaultAddress?.country || "España",
+    country: defaultAddress?.country || "ES",
   };
 
   return (
@@ -62,6 +98,7 @@ export default async function CheckoutPage() {
                   <CheckoutForm
                     savedAddresses={savedAddresses}
                     userId={user ? String(user.id) : undefined}
+                    paymentResume={paymentResume}
                   />
                 </div>
               </div>

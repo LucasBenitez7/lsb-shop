@@ -9,8 +9,9 @@ import { Image } from "@/components/ui/image";
 import { Separator } from "@/components/ui/separator";
 
 import { formatCurrency, parseCurrency } from "@/lib/currency";
+import { findImageByColorOrFallback } from "@/lib/products/color-matching";
 
-import type { UserOrderListItem } from "@/lib/orders/types";
+import type { UserOrderListItem, UserOrderListItemLine } from "@/lib/orders/types";
 
 type Props = {
   order: UserOrderListItem;
@@ -92,12 +93,13 @@ export function OrderHistoryCard({ order }: Props) {
           <Separator className="bg-neutral-300" />
 
           <div className="flex flex-col gap-3 py-1">
-            {previewItems.map((item: UserOrderListItem["items"][number]) => {
+            {previewItems.map((item: UserOrderListItemLine) => {
               // Buscar imagen correcta
               const productImages = item.product?.images || [];
-              const matchingImg =
-                productImages.find((img) => img.color === item.colorSnapshot) ||
-                productImages[0];
+              const matchingImg = findImageByColorOrFallback(
+                productImages,
+                item.colorSnapshot,
+              );
               const imgUrl = matchingImg?.url;
 
               return (

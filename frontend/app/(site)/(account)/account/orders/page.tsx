@@ -1,15 +1,15 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { FaBoxOpen } from "react-icons/fa6";
 
 import { OrderHistoryCard } from "@/features/orders/components/OrderHistoryCard";
+import { OrderListTabs } from "@/features/orders/components/OrderListTabs";
 import { PaginationNav } from "@/features/catalog/components/PaginationNav";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/SearchInput";
 
-import { getUserOrders } from "@/lib/api/account";
-import { auth } from "@/lib/auth/server";
-import { ORDER_TABS } from "@/lib/orders/constants";
-import { cn } from "@/lib/utils";
+import { serverGetUserOrders } from "@/lib/api/account/server";
+import { auth } from "@/lib/api/auth/server";
 
 import type { Metadata } from "next";
 
@@ -37,7 +37,7 @@ export default async function AccountOrdersPage({ searchParams }: Props) {
 
   if (!session?.user?.id) return null;
 
-  const { orders, totalPages, totalCount } = await getUserOrders({
+  const { orders, totalPages, totalCount } = await serverGetUserOrders({
     page,
     limit: 5,
     status: statusTab,
@@ -55,32 +55,14 @@ export default async function AccountOrdersPage({ searchParams }: Props) {
           </div>
         </div>
 
-        {/* --- PESTAÑAS DE NAVEGACIÓN --- */}
-        <div className="flex gap-4 text-sm sm:text-base overflow-x-auto pb-1 scrollbar-hide">
-          {ORDER_TABS.map((tab) => {
-            const isActive =
-              statusTab === tab.value || (!statusTab && !tab.value);
-
-            return (
-              <Link
-                key={tab.label}
-                href={
-                  tab.value
-                    ? `/account/orders?status=${tab.value}`
-                    : "/account/orders"
-                }
-                className={cn(
-                  "pb-2 border-b-2 font-medium transition-colors whitespace-nowrap px-1",
-                  isActive
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-neutral-500 hover:text-neutral-800 hover:border-neutral-300",
-                )}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
-        </div>
+        {/* --- PESTAÑAS (preservan búsqueda y filtros en la URL) --- */}
+        <Suspense
+          fallback={
+            <div className="h-9 w-full max-w-md animate-pulse rounded-xs bg-neutral-100" />
+          }
+        >
+          <OrderListTabs variant="account" activeStatus={statusTab} />
+        </Suspense>
       </div>
 
       {/* --- LISTADO DE PEDIDOS --- */}

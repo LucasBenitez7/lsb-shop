@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
 import { canAccessAdmin } from "@/lib/roles";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 
 import { AdminHeader } from "../../features/admin/components/AdminHeader";
 

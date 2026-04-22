@@ -7,6 +7,7 @@ import { Button, FavoriteButton } from "@/components/ui";
 import { Image } from "@/components/ui/image";
 
 import { formatCurrency, DEFAULT_CURRENCY } from "@/lib/currency";
+import { colorsMatch } from "@/lib/products/color-matching";
 import { cn } from "@/lib/utils";
 
 import { useProductCard } from "@/features/product/hooks/use-product-card";
@@ -154,7 +155,9 @@ export function ProductCard({
                 const variantForButton = item.variants.find(
                   (v) =>
                     v.size === size &&
-                    (selectedColor ? v.color === selectedColor : true),
+                    (selectedColor
+                      ? colorsMatch(v.color, selectedColor)
+                      : true),
                 );
 
                 const isAvailable =
@@ -257,11 +260,11 @@ export function ProductCard({
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap gap-2">
               {colors.map((color) => {
-                const variantWithColor = item.variants.find(
-                  (v) => v.color === color,
+                const variantWithColor = item.variants.find((v) =>
+                  colorsMatch(v.color, color),
                 );
                 const hex = variantWithColor?.colorHex || "#e5e5e5";
-                const isSelected = selectedColor === color;
+                const isSelected = colorsMatch(selectedColor, color);
 
                 return (
                   <button

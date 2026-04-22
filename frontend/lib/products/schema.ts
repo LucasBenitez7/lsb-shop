@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { colorMatchKey, colorsMatch } from "@/lib/products/color-matching";
+
 export const productVariantSchema = z.object({
   id: z.string().optional(),
   size: z.string().min(1, "Falta Talla"),
@@ -74,7 +76,7 @@ export const productSchema = z
 
     const variantMap = new Map<string, number[]>();
     const seenImages = new Set<string>();
-    const coveredColors = new Set<string>();
+    const coveredColorKeys = new Set<string>();
 
     data.variants.forEach((v, idx) => {
       if (!v.color || !v.size) return;
@@ -108,18 +110,25 @@ export const productSchema = z
         return;
       }
 
-      if (!activeVariantColors.has(img.color)) {
+      const imageMatchesVariant = data.variants.some((v) =>
+        colorsMatch(v.color, img.color),
+      );
+      if (!imageMatchesVariant) {
         ctx.addIssue({
           code: "custom",
           message: `El color "${img.color}" ya no existe en variantes. Elimina esta foto.`,
           path: ["images", idx, "color"],
         });
       } else {
-        coveredColors.add(img.color);
+        data.variants.forEach((v) => {
+          if (v.color && colorsMatch(v.color, img.color)) {
+            coveredColorKeys.add(colorMatchKey(v.color));
+          }
+        });
       }
 
       const nameToCheck = img.alt ? img.alt.trim().toLowerCase() : "sin-nombre";
-      const colorToCheck = img.color.trim().toLowerCase();
+      const colorToCheck = colorMatchKey(img.color);
       const uniqueImageKey = `${colorToCheck}-${nameToCheck}`;
 
       if (seenImages.has(uniqueImageKey)) {
@@ -154,7 +163,7 @@ export const productSchema = z
     });
 
     activeVariantColors.forEach((color) => {
-      if (!coveredColors.has(color)) {
+      if (!coveredColorKeys.has(colorMatchKey(color))) {
         ctx.addIssue({
           code: "custom",
           message: `Faltan imágenes para el color: ${color}`,

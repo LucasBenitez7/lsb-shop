@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
+import { colorsMatch } from "@/lib/products/color-matching";
 import type { ProductFormValues } from "@/lib/products/schema";
 
 export function useProductImages() {
@@ -85,8 +86,8 @@ export function useProductImages() {
   };
 
   const handleSetMain = (currentIndex: number, colorName: string) => {
-    const firstIndexForColor = images.findIndex(
-      (img) => img.color === colorName,
+    const firstIndexForColor = images.findIndex((img) =>
+      colorsMatch(img.color, colorName),
     );
 
     if (firstIndexForColor === -1 || firstIndexForColor === currentIndex)

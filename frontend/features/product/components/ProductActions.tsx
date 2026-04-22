@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { AddToCartButton } from "@/features/cart/components/AddToCartButton";
 import { FavoriteButton } from "@/components/ui";
 
+import { colorsMatch } from "@/lib/products/color-matching";
 import { sortVariantsHelper } from "@/lib/products/utils";
 import { cn } from "@/lib/utils";
 
@@ -72,11 +73,13 @@ export function ProductActions({
         </span>
         <div className="flex flex-wrap gap-3">
           {colors.map((color) => {
-            const variantWithColor = variants.find((v) => v.color === color);
+            const variantWithColor = variants.find((v) =>
+              colorsMatch(v.color, color),
+            );
             const hex = variantWithColor?.colorHex || "#e5e5e5";
-            const isSelected = selectedColor === color;
+            const isSelected = colorsMatch(selectedColor, color);
             const hasStock = variants.some(
-              (v) => v.color === color && v.stock > 0,
+              (v) => colorsMatch(v.color, color) && v.stock > 0,
             );
 
             return (
@@ -115,7 +118,7 @@ export function ProductActions({
           {allSizes.map((size) => {
             const isSelected = selectedSize === size;
             const variant = variants.find(
-              (v) => v.color === selectedColor && v.size === size,
+              (v) => colorsMatch(v.color, selectedColor) && v.size === size,
             );
             const stock = variant?.stock || 0;
             const isAvailable = stock > 0;

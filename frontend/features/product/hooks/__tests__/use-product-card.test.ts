@@ -8,6 +8,7 @@
  */
 import { describe, it, expect } from "vitest";
 
+import { colorsMatch } from "@/lib/products/color-matching";
 import {
   getUniqueColors,
   getUniqueSizes,
@@ -186,9 +187,8 @@ describe("allImages filtering logic", () => {
     if (!itemImages || itemImages.length === 0) {
       return thumbnail ? [{ url: thumbnail, color: null }] : [];
     }
-    const normalized = selectedColor?.trim().toLowerCase();
     const colorImages = itemImages.filter(
-      (img) => !img.color || img.color.trim().toLowerCase() === normalized,
+      (img) => !img.color || colorsMatch(img.color, selectedColor),
     );
     if (colorImages.length > 0) return colorImages;
     return thumbnail ? [{ url: thumbnail, color: null }] : [];
@@ -198,6 +198,12 @@ describe("allImages filtering logic", () => {
     const result = getFilteredImages(images, "thumb.jpg", "Rojo");
     expect(result.map((i) => i.url)).toContain("img-rojo.jpg");
     expect(result.map((i) => i.url)).not.toContain("img-azul.jpg");
+  });
+
+  it("empareja etiqueta de imagen con sinónimo del color seleccionado (rojo/red)", () => {
+    const mixed = [{ url: "img-red.jpg", color: "red" }];
+    const result = getFilteredImages(mixed, "thumb.jpg", "Rojo");
+    expect(result.map((i) => i.url)).toEqual(["img-red.jpg"]);
   });
 
   it("hace fallback al thumbnail cuando no hay imágenes para el color", () => {

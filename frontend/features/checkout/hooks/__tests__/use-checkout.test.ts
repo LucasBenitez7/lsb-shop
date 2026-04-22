@@ -38,7 +38,7 @@ vi.mock("@/store/useCartStore", () => {
 });
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
 vi.mock("@/lib/api/orders", () => ({

@@ -15,15 +15,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { maskEmailForDemo } from "@/lib/admin/mask-email";
 import { canWriteAdmin, isDemoRole } from "@/lib/roles";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 import { parseCurrency } from "@/lib/currency";
 import { FULFILLMENT_STATUS_CONFIG } from "@/lib/orders/constants";
-import { getAdminOrderById } from "@/lib/api/orders";
+import { serverGetAdminOrderById } from "@/lib/api/orders/server";
 import {
   calculateDiscounts,
+  formatOrderPaymentMethodLabel,
   getOrderCancellationDetails,
   getOrderShippingDetails,
 } from "@/lib/orders/utils";
+import { findImageByColorOrFallback } from "@/lib/products/color-matching";
 
 import { RejectReturnButton } from "@/features/admin/components/orders/RejectReturnButton";
 import { AdminFulfillmentActions } from "@/features/admin/components/orders/OrderActions";
@@ -36,7 +38,10 @@ type Props = {
 
 export default async function AdminOrderDetailPage({ params }: Props) {
   const { id } = await params;
-  const [order, session] = await Promise.all([getAdminOrderById(id), auth()]);
+  const [order, session] = await Promise.all([
+    serverGetAdminOrderById(id),
+    auth(),
+  ]);
   const canWrite = canWriteAdmin(session?.user?.role);
   const maskEmails = isDemoRole(session?.user?.role);
 
@@ -180,11 +185,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         <OrderSummaryCard
           id={order.id}
           createdAt={order.createdAt}
-          paymentMethod={
-            order.paymentMethod
-              ? order.paymentMethod.replace("_", " ")
-              : "Tarjeta"
-          }
+          paymentMethod={formatOrderPaymentMethodLabel(order)}
           contact={{
             name: contactName,
             email: maskEmails ? maskEmailForDemo(order.email) : order.email,
@@ -193,9 +194,10 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           shippingInfo={shippingDetails}
           items={order.items.map((item) => {
             const productImages = item.product?.images || [];
-            const matchingImg =
-              productImages.find((img) => img.color === item.colorSnapshot) ||
-              productImages[0];
+            const matchingImg = findImageByColorOrFallback(
+              productImages,
+              item.colorSnapshot,
+            );
             return {
               id: item.id,
               name: item.nameSnapshot,

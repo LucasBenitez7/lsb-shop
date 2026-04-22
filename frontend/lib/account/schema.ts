@@ -40,7 +40,12 @@ export const baseAddressSchema = z.object({
     .regex(postalCodeRegex, "CP inválido (5 dígitos)"),
   city: z.string().trim().min(2, "Indica la ciudad"),
   province: z.string().trim().min(2, "Indica la provincia"),
-  country: z.string().trim().min(1, "Indica el país"),
+  country: z
+    .string()
+    .trim()
+    .length(2, "Código de país inválido (ISO-2)")
+    .toUpperCase()
+    .default("ES"),
 });
 
 export const addressFormSchema = baseAddressSchema.extend({

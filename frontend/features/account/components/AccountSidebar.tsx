@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import {
   FaBoxOpen,
@@ -56,6 +56,7 @@ type Props = {
 
 export function AccountSidebar({ user }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const { logout } = useAuth();
 
   return (
@@ -92,6 +93,7 @@ export function AccountSidebar({ user }: Props) {
         variant={"ghost"}
         onClick={async () => {
           await logout();
+          router.push("/auth/login");
         }}
         className="w-full lg:w-auto text-red-600 hover:bg-red-50 active:bg-red-100 hover:text-red-600 py-3 rounded-none"
       >

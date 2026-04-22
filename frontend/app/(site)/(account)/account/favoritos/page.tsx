@@ -5,7 +5,7 @@ import { FaHeartBroken } from "react-icons/fa";
 import { ProductGrid } from "@/features/catalog/components/ProductGrid";
 import { Button } from "@/components/ui/button";
 
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 import { getUserFavorites } from "@/lib/api/favorites/server";
 
 import type { Metadata } from "next";

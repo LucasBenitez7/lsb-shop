@@ -5,8 +5,9 @@ import { FaArrowLeft } from "react-icons/fa6";
 import { UserReturnForm } from "@/features/orders/components/UserReturnForm";
 import { Button } from "@/components/ui/button";
 
-import { getUserOrderFullDetails } from "@/lib/api/account";
-import { auth } from "@/lib/auth/server";
+import { serverGetUserOrderFullDetails } from "@/lib/api/account/server";
+import { auth } from "@/lib/api/auth/server";
+import { findImageByColorOrFallback } from "@/lib/products/color-matching";
 
 import type { UserReturnableItem } from "@/types/order";
 
@@ -22,7 +23,7 @@ export default async function OrderReturnPage({ params }: Props) {
 
   if (!session?.user?.id) return redirect("/auth/login");
 
-  const order = await getUserOrderFullDetails(id);
+  const order = await serverGetUserOrderFullDetails(id);
 
   if (!order) notFound();
 
@@ -48,9 +49,10 @@ export default async function OrderReturnPage({ params }: Props) {
   const returnableItems = order.items
     .map((item): UserReturnableItem | null => {
       const productImages = item.product?.images || [];
-      const matchingImg =
-        productImages.find((img) => img.color === item.colorSnapshot) ||
-        productImages[0];
+      const matchingImg = findImageByColorOrFallback(
+        productImages,
+        item.colorSnapshot,
+      );
 
       const maxReturnable =
         item.quantity - item.quantityReturned - item.quantityReturnRequested;

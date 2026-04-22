@@ -4,6 +4,12 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 
 import { AuthProvider } from "@/features/auth/components/AuthProvider";
 import { CartSyncProvider } from "@/features/cart/components/CartSyncProvider";
+import { SessionGuard } from "@/components/SessionGuard";
+
+// Development helper — exposes window.__clearDevState() in dev mode
+if (process.env.NODE_ENV === "development") {
+  import("@/lib/dev/clear-dev-state");
+}
 
 type ProvidersProps = {
   children: React.ReactNode;
@@ -21,7 +27,10 @@ export default function Providers({ children }: ProvidersProps) {
   return (
     <GoogleBridge>
       <AuthProvider>
-        <CartSyncProvider>{children}</CartSyncProvider>
+        <CartSyncProvider>
+          <SessionGuard />
+          {children}
+        </CartSyncProvider>
       </AuthProvider>
     </GoogleBridge>
   );

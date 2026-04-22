@@ -1,6 +1,7 @@
 "use client";
 
 import type { UserAddress } from "@/types/address";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ export function useShippingSection(
   onChangeAddress: () => void,
   isGuest: boolean,
 ) {
+  const router = useRouter();
   const { setValue, watch, resetField, clearErrors } =
     useFormContext<CreateOrderInput>();
 
@@ -93,6 +95,9 @@ export function useShippingSection(
     if (updatedAddress.id === "guest-temp-id") {
       setGuestAddress(updatedAddress);
       saveGuestAddress(updatedAddress);
+    } else {
+      // User registrado: refrescar la lista desde el servidor
+      router.refresh();
     }
     setSelectedAddressId(updatedAddress.id);
     onConfirmAddress();

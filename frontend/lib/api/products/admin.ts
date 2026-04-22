@@ -71,7 +71,7 @@ function buildAdminProductsQuery(
   }
 
   if (params.onSale) q.set("on_sale", "true");
-  if (params.outOfStock) q.set("out_of_stock", "true");
+  if (params.outOfStock) q.set("has_zero_stock_variant", "true");
 
   return q.toString();
 }
