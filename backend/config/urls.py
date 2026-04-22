@@ -8,6 +8,7 @@ from drf_spectacular.views import (
 )
 
 from apps.core.health import LivenessHealthCheckView
+from apps.orders.views import AdminDashboardStatsView
 from apps.users.views import GoogleLoginView
 
 urlpatterns = [
@@ -29,6 +30,12 @@ urlpatterns = [
     path("api/v1/favorites/", include("apps.favorites.urls")),
     path("api/v1/cart/", include("apps.cart.urls")),
     path("api/v1/orders/", include("apps.orders.urls")),
+    path("api/v1/admin/orders/", include("apps.orders.admin_urls")),
+    path(
+        "api/v1/admin/stats/",
+        AdminDashboardStatsView.as_view(),
+        name="admin-stats",
+    ),
     path("api/v1/payments/", include("apps.payments.urls")),
     path("api/v1/users/", include("apps.users.urls")),
 ]

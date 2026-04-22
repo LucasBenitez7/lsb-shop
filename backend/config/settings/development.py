@@ -1,5 +1,7 @@
 import sys
 
+from decouple import config
+
 from .base import *
 
 DEBUG = True
@@ -16,8 +18,13 @@ MIDDLEWARE += [
 
 INTERNAL_IPS = ["127.0.0.1"]
 
-# Email — ver emails en consola en dev
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Email: sin Resend → consola (Celery imprime el cuerpo).
+# Con RESEND_API_KEY → SMTP real (bandeja).
+_resend_key = config("RESEND_API_KEY", default="").strip()
+if _resend_key:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Celery — opción B: False + Redis + worker:
 #   uv run celery -A config.celery worker -l info
