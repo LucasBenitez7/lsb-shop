@@ -10,10 +10,10 @@ from django.core.cache import cache
 
 from apps.cart.constants import CART_GUEST_KEY_PREFIX, CART_USER_KEY_PREFIX
 from apps.cart.selectors import (
+    display_image_url_for_variant,
     get_variants_for_cart,
     is_product_sellable,
     money_to_minor,
-    primary_image_url_for_product,
 )
 from apps.products.models import ProductVariant
 
@@ -84,7 +84,7 @@ def _line_from_variant(
         "slug": product.slug,
         "name": product.name,
         "price_minor": price_minor,
-        "image": primary_image_url_for_product(product),
+        "image": display_image_url_for_variant(variant),
         "color": variant.color or "",
         "size": variant.size or "",
         "quantity": qty,

@@ -11,7 +11,11 @@ from apps.cart.services import (
     remove_line,
     validate_cart,
 )
-from apps.products.tests.factories import ProductFactory, ProductVariantFactory
+from apps.products.tests.factories import (
+    ProductFactory,
+    ProductImageFactory,
+    ProductVariantFactory,
+)
 
 
 @pytest.mark.django_db
@@ -82,3 +86,32 @@ class TestCartService:
         add_or_update_line(key, variant_id=v.pk, quantity=1)
         items = remove_line(key, variant_id=v.pk)
         assert items == []
+
+    def test_cart_line_image_matches_variant_color(self) -> None:
+        """Each variant line gets the image whose color_label matches variant.color."""
+        product = ProductFactory()
+        ProductImageFactory(
+            product=product,
+            source_url="https://example.com/img-black.jpg",
+            color_label="black",
+            sort_order=0,
+        )
+        ProductImageFactory(
+            product=product,
+            source_url="https://example.com/img-red.jpg",
+            color_label="red",
+            sort_order=1,
+        )
+        v_black = ProductVariantFactory(
+            product=product, stock=5, color="black", sku="SKU-BLK"
+        )
+        v_red = ProductVariantFactory(
+            product=product, stock=5, color="red", sku="SKU-RED"
+        )
+        key = cache_key_for_user(100)
+        add_or_update_line(key, variant_id=v_black.pk, quantity=1)
+        add_or_update_line(key, variant_id=v_red.pk, quantity=1)
+        items = get_cart_items(key)
+        by_vid = {int(x["variant_id"]): x["image"] for x in items}
+        assert by_vid[v_black.pk] == "https://example.com/img-black.jpg"
+        assert by_vid[v_red.pk] == "https://example.com/img-red.jpg"
