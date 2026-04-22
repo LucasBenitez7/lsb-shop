@@ -17,14 +17,16 @@ features/{domain}/
     └── use{Domain}.ts            → Client hook for mutations/UI state
 
 lib/api/{domain}/
-├── drf.ts                        → DRF response interfaces (snake_case, matches JSON)
-├── mappers.ts                    → DRF → TypeScript transformations
+├── drf.ts                        → DRF response interfaces (snake_case, matches JSON) — optional if types live in types/
+├── mappers.ts                    → DRF → app types (pure functions) — **required** if both `index.ts` and `server.ts` map the same payloads
 ├── server.ts                     → serverFetchJson reads (server-only)
 ├── mutations.ts                  → Server Actions "use server"
-└── index.ts                      → re-exports for consumers
+└── index.ts                      → client API (apiGet/Post/…) or re-exports
 
-types/{domain}.ts                 → TypeScript types used across features
+types/{domain}.ts                 → App-facing camelCase types shared across features (and optional `*DRF*` types)
 ```
+
+If a domain has **both** `lib/api/{domain}/index.ts` (browser) and `lib/api/{domain}/server.ts` (RSC), **never** duplicate snake_case→camelCase field mapping in both files — extract `mappers.ts` and import it from each (see `lib/api/account/`).
 
 ## Step 1 — DRF types in lib/api/{domain}/drf.ts
 
@@ -253,6 +255,7 @@ export default async function {Domain}Page() {
 
 ## Checklist
 
+- [ ] If both `index.ts` and `server.ts` exist for the domain, `mappers.ts` is shared (no duplicated mapping)
 - [ ] `drf.ts` mirrors exact JSON from Django (snake_case)
 - [ ] `mappers.ts` converts every field — no direct use of DRF types in components
 - [ ] `server.ts` uses `serverFetchJson` (never `apiGet` for auth-protected reads)

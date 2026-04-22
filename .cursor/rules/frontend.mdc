@@ -8,7 +8,7 @@ alwaysApply: false
 
 Next.js 15 · React 19 · TypeScript 5 · Tailwind CSS v4 · Radix UI · App Router
 State: Zustand (UI only) · Forms: React Hook Form + Zod
-Auth: next-auth session cookies (NOT JWT/Bearer) · Payments: Stripe.js Elements
+Auth: Django JWT in **httpOnly cookies** (dj-rest-auth / SimpleJWT). Browser: `lib/api/client.ts` (refresh + session events). RSC: `serverFetchJson` + `lib/api/auth/server.ts` for `auth()`. Payments: Stripe.js Elements
 Icons: React Icons / Lucide React · Images: Cloudinary (signed uploads)
 
 # The most important rule — where things live
@@ -159,23 +159,20 @@ frontend/
 │
 ├── lib/
 │   ├── api/
-│   │   ├── client.ts               → apiGet/apiPost — client-side or public fetch (no auth cookie needed)
-│   │   ├── server-django.ts        → serverFetchJson/serverMutationJson — server-side with cookie forwarding
-│   │   ├── products/
-│   │   │   ├── drf.ts              → DRF response interfaces (snake_case)
-│   │   │   ├── mappers.ts          → DRF → TypeScript transformations
-│   │   │   ├── public.ts           → public catalog reads (uses apiGet)
-│   │   │   ├── admin.ts            → admin reads (uses serverFetchJson, server-only)
-│   │   │   ├── mutations.ts        → Server Actions "use server" (uses serverMutationJson)
-│   │   │   ├── query.ts            → URL query string builders (shared between client and server)
-│   │   │   └── index.ts            → re-exports
-│   │   ├── categories/
-│   │   │   ├── server.ts           → server-side reads (serverFetchJson)
-│   │   │   └── mutations.ts        → Server Actions
-│   │   └── {domain}/               → same pattern for every new domain
-│   │       ├── server.ts
-│   │       ├── mutations.ts
-│   │       └── index.ts
+│   │   ├── client.ts               → apiGet/apiPost/apiPatch/apiDelete — browser + credentials; NOT for RSC session reads
+│   │   ├── server-django.ts        → serverFetchJson/serverMutationJson — cookie forwarding to Django (RSC, Server Actions, route handlers)
+│   │   ├── auth/
+│   │   │   ├── index.ts            → client auth endpoints (login/register/logout) via client.ts
+│   │   │   └── server.ts           → `auth()` only — server-only, uses serverFetchJson("/api/v1/users/me/")
+│   │   ├── products/               → drf.ts + mappers.ts + public.ts + admin.ts + mutations.ts + query.ts + index.ts
+│   │   ├── account/
+│   │   │   ├── index.ts            → client calls (apiGet/Post/Patch/Delete)
+│   │   │   ├── server.ts           → server-only reads (serverGetUserAddresses, serverGetOrderSuccessDetails, …)
+│   │   │   └── mappers.ts          → shared DRF → camelCase (NEVER duplicate mapping in index + server)
+│   │   ├── cart/                   → index.ts (+ inline mappers OK if single file, no server twin)
+│   │   ├── categories/             → index + mutations + server as needed
+│   │   ├── orders/                 → index.ts (+ add mappers.ts when server.ts appears or mapping grows)
+│   │   └── {new-domain}/           → prefer: index.ts | server.ts | mappers.ts | drf.ts | mutations.ts
 │   ├── products/
 │   │   ├── schema.ts               → Zod schemas for product forms
 │   │   └── utils.ts                → parseSearchParamFilters, compareSizes…
@@ -294,42 +291,59 @@ export async function generateMetadata({ params }): Promise<Metadata> {
 
 All public pages (catalog, product detail, home) must export `generateMetadata`.
 
-# API client — three contexts, three functions
+# API client — contexts and helpers
 
-Auth uses **session cookies** (next-auth), NOT JWT/Bearer. Never add Authorization headers.
+Auth uses **JWT in httpOnly cookies** set by Django (`dj-rest-auth`). Do **not** add `Authorization: Bearer` headers from the frontend for normal API calls; rely on `credentials: "include"` via `client.ts` / forwarded cookies via `server-django.ts`.
 
 ```typescript
-// ── 1. CLIENT-SIDE or public Server Components ──────────────────────────────
-// lib/api/client.ts → apiGet, apiPost, apiPatch, apiDelete
-// Use when: Client Component fetch, or Server Component for PUBLIC data (no session needed)
+// ── 1. CLIENT-SIDE (and any code running in the browser) ────────────────────
+// lib/api/client.ts → apiGet, apiPost, apiPatch, apiDelete (wrap apiFetch: refresh, errors)
+// Use for: Client Components, hooks, cart sync, checkout client steps
 import { apiGet } from "@/lib/api/client"
-const products = await apiGet<PaginatedResponse<DrfProduct>>(`/api/v1/products/?${qs}`)
 
-// ── 2. SERVER-ONLY reads that need the session cookie ───────────────────────
-// lib/api/server-django.ts → serverFetchJson
-// Use when: Server Component or Server Action reads that require staff auth
+// ── 2. PUBLIC Server Components (no user session required) ───────────────────
+// Still OK to use apiGet from a Server Component ONLY when the endpoint is public
+// and you are not relying on browser-only refresh behavior.
+
+// ── 3. SERVER-ONLY reads/mutations that need the user's Django session ──────
+// lib/api/server-django.ts → serverFetchJson / serverMutationJson
+// Forwards `Cookie` from next/headers — required for account/checkout pages as RSC
 import { serverFetchJson } from "@/lib/api/server-django"
-const orders = await serverFetchJson<PaginatedResponse<DrfOrder>>("/api/v1/orders/")
-// Automatically forwards the session cookie from the incoming request
 
-// ── 3. MUTATIONS from Server Actions ────────────────────────────────────────
-// lib/api/server-django.ts → serverMutationJson
-// Use when: "use server" actions that POST/PATCH/DELETE to Django
-"use server"
-import { serverMutationJson } from "@/lib/api/server-django"
-await serverMutationJson("/api/v1/products/", "POST", payload)
+// ── 4. RSC “current user” guard ──────────────────────────────────────────────
+// lib/api/auth/server.ts → auth() cached per request — import ONLY from here
+import { auth } from "@/lib/api/auth/server"
 
-// ── 4. ROUTE HANDLERS as proxy (app/api/…/route.ts) ─────────────────────────
-// Use ONLY when a Client Component needs to call Django with session auth
-// (CORS + cookie forwarding prevent direct calls from the browser)
-// Current route handlers: /api/products/load-more, /api/sign-cloudinary-params
+// ── 5. ROUTE HANDLERS (app/api/…/route.ts) ──────────────────────────────────
+// Only when the browser cannot call Django directly (CORS, secrets, etc.)
 ```
 
 **Decision rule:**
-- Public data, any context → `apiGet`
-- Server Component / Server Action reading auth-protected data → `serverFetchJson`
-- Mutation → Server Action + `serverMutationJson`
-- Client Component needs Django data it can't get via Server Props → Route Handler proxy
+- Default browser calls → `client.ts`
+- RSC / layout needs session-backed Django JSON → `serverFetchJson` (often via `lib/api/{domain}/server.ts`)
+- Same DRF payload mapped in two places → **one** `mappers.ts` used by both `index.ts` and `server.ts`
+- `auth()` in RSC → `@/lib/api/auth/server` only
+- Mutations from Server Actions → `serverMutationJson` + `"use server"`
+
+See `docs/FRONTEND_API.md` for the canonical write-up.
+
+# DRY — duplicate code in the API layer (when it is worth it)
+
+When editing `lib/api/**` or DRF-related types, also follow `.cursor/rules/frontend-api-dry.mdc` (same globs cover `lib/api` and `types/`).
+
+**Always consolidate when:**
+
+- The same **DRF response** is mapped to app types in **more than one** file → **one** `mappers.ts` (or shared types + one mapper module).
+- **`index.ts` + `server.ts`** exist for the same domain and both touch the same JSON shape → shared mappers, not copy-paste.
+
+**Do not over-abstract when:**
+
+- The mapping exists in **one** place only and there is no second consumer.
+- Extraction would make the data flow harder to follow for a one-off endpoint.
+
+**Quick check before committing API work:** search the folder for repeated `_*` field assignments from the same API response.
+
+For **shared fields between domain interfaces** in `types/*.ts` (bases + `extends`), see section **6** in `.cursor/rules/frontend-api-dry.mdc` — same idea as DRY for API mappers, applied to TypeScript models only where semantics align (not for raw DRF JSON types).
 
 # Naming conventions
 
