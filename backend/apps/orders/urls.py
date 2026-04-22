@@ -1,5 +1,25 @@
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 
-router = DefaultRouter()
+from apps.orders.views import (
+    OrderCancelView,
+    OrderListCreateView,
+    OrderPaymentIntentView,
+    OrderRequestReturnView,
+    OrderRetrieveView,
+)
 
-urlpatterns = router.urls
+urlpatterns = [
+    path(
+        "<int:pk>/payment-intent/",
+        OrderPaymentIntentView.as_view(),
+        name="order-payment-intent",
+    ),
+    path(
+        "<int:pk>/request-return/",
+        OrderRequestReturnView.as_view(),
+        name="order-request-return",
+    ),
+    path("<int:pk>/", OrderRetrieveView.as_view(), name="order-retrieve"),
+    path("<int:pk>/cancel/", OrderCancelView.as_view(), name="order-cancel"),
+    path("", OrderListCreateView.as_view(), name="order-list-create"),
+]
