@@ -35,8 +35,16 @@ cd backend
 
 **Sin el Celery worker**, las tareas asíncronas NO se ejecutarán:
 - Borrado de imágenes de Cloudinary
-- Envío de emails
+- Envío de emails (pedido, verificación registro, reset password — ver `apps/orders/mailers.py` y `apps/users/tasks.py`)
 - Expiración de carritos y órdenes
+
+### Correo real en local (bandeja Gmail / iCloud, etc.)
+
+1. Crea API key en [Resend](https://resend.com/) y pégala en `backend/.env` como **`RESEND_API_KEY=re_...`** (sin comillas).
+2. **`DEFAULT_FROM_EMAIL`**: debe ser un remitente que Resend permita (dominio verificado en Resend, o el remitente de prueba que te indiquen en el dashboard). Si Resend rechaza el `From`, verás error en la terminal de **Celery** al enviar.
+3. Reinicia **Celery worker** (y Django si ya estaba arrancado) para cargar el `.env`.
+
+Con `RESEND_API_KEY` vacío, `development` sigue usando **solo consola** (el cuerpo del mail se ve en la terminal del worker, no en tu inbox).
 
 ### 5. Celery Beat (opcional para cron jobs)
 ```bash
@@ -73,6 +81,16 @@ Celery Beat ejecuta tareas programadas (cron):
    [info] cloudinary.deleted public_id=lsb-shop/products/xyz123
    ```
 4. Verifica en Cloudinary Dashboard que las imágenes fueron borradas
+
+## Documentación del repo
+
+Mapa completo en `CONTEXT.md` § *Documentation Index*. Referencias rápidas:
+
+- **Convenciones `lib/api/`:** [`docs/FRONTEND_API.md`](docs/FRONTEND_API.md)
+- **Contexto general del proyecto (fases, stack):** [`CONTEXT.md`](CONTEXT.md)
+- **Dominio pedidos (Fase 5 + estado real):** [`docs/ORDERS_PHASE5_PLAN.md`](docs/ORDERS_PHASE5_PLAN.md) §14
+- **Dominio catálogo (Fase 2+3):** [`docs/PRODUCTS_DOMAIN.md`](docs/PRODUCTS_DOMAIN.md)
+- **Guía de testing manual (checkout):** [`docs/SPRINT4_TESTING_GUIDE.md`](docs/SPRINT4_TESTING_GUIDE.md)
 
 ## Variables de entorno
 
