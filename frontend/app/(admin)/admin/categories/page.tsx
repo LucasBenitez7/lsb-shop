@@ -5,7 +5,7 @@ import { PaginationNav } from "@/features/catalog/components/PaginationNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { canWriteAdmin } from "@/lib/roles";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 import { getAdminCategories } from "@/lib/api/categories/server";
 
 import { CategoryListToolbar } from "@/features/admin/components/categories/CategoryListToolbar";

@@ -6,7 +6,7 @@ import { FaArrowLeft, FaBoxOpen } from "react-icons/fa6";
 import { GuestHistoryList } from "@/features/tracking/components/GuestHistoryList";
 import { Button } from "@/components/ui/button";
 
-import { getOrderSuccessDetails } from "@/lib/api/account";
+import { serverGetOrderSuccessDetails } from "@/lib/api/account/server";
 import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function GuestOrderHistoryPage({ params }: Props) {
   // 1. Verificar Acceso de Invitado
   await verifyGuestAccessOrRedirect(orderId);
 
-  const order = await getOrderSuccessDetails(orderId);
+  const order = await serverGetOrderSuccessDetails(orderId);
 
   if (!order) notFound();
 

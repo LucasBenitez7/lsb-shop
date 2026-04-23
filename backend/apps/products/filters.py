@@ -74,6 +74,9 @@ class ProductFilter(django_filters.FilterSet):
     recent_days = django_filters.NumberFilter(method="filter_recent_days")
     on_sale = django_filters.BooleanFilter(method="filter_on_sale")
     out_of_stock = django_filters.BooleanFilter(method="filter_out_of_stock")
+    has_zero_stock_variant = django_filters.BooleanFilter(
+        method="filter_has_zero_stock_variant"
+    )
 
     class Meta:
         model = Product
@@ -88,6 +91,7 @@ class ProductFilter(django_filters.FilterSet):
             "recent_days",
             "on_sale",
             "out_of_stock",
+            "has_zero_stock_variant",
         ]
 
     def filter_queryset(self, queryset):
@@ -185,3 +189,17 @@ class ProductFilter(django_filters.FilterSet):
         if value:
             return queryset.filter(~Exists(has_stock))
         return queryset.filter(Exists(has_stock))
+
+    def filter_has_zero_stock_variant(self, queryset, name, value):
+        """Filter products that have at least one active variant with stock = 0."""
+        del name
+        if value is None:
+            return queryset
+        has_zero = ProductVariant.objects.filter(
+            product_id=OuterRef("pk"),
+            is_active=True,
+            stock=0,
+        )
+        if value:
+            return queryset.filter(Exists(has_zero))
+        return queryset.filter(~Exists(has_zero))

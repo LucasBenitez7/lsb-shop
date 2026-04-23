@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { FaArrowLeft } from "react-icons/fa6";
 
 import { canWriteAdmin } from "@/lib/roles";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 import { getProductFormDependencies } from "@/lib/api/products/admin";
 
 import { ProductForm } from "@/features/admin/components/products/form/ProductForm";

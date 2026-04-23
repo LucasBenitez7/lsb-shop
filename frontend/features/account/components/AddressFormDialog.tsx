@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FaPlus } from "react-icons/fa6";
@@ -33,6 +34,7 @@ type Props = {
 };
 
 export function AddressFormDialog({ address, trigger }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -55,7 +57,7 @@ export function AddressFormDialog({ address, trigger }: Props) {
       postalCode: address?.postalCode ?? "",
       city: address?.city ?? "",
       province: address?.province ?? "",
-      country: address?.country ?? "España",
+      country: address?.country ?? "ES",
       isDefault: address?.isDefault ?? false,
     },
   });
@@ -69,6 +71,7 @@ export function AddressFormDialog({ address, trigger }: Props) {
       toast.success(isEditing ? "Dirección actualizada" : "Dirección guardada");
       setOpen(false);
       if (!isEditing) reset();
+      router.refresh();
     } catch (err: unknown) {
       toast.error(
         err instanceof Error ? err.message : "Error al guardar la dirección.",

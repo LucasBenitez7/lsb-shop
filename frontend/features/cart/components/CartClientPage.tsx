@@ -24,10 +24,17 @@ export default function CartClientPage({
     hasItems,
     loading,
     stockError,
+    checkoutStockBlocked,
     handleUpdateQuantity,
     handleRemoveItem,
     handleCheckout,
+    validateOpen,
   } = useCartLogic();
+
+  useEffect(() => {
+    if (!hasItems) return;
+    void validateOpen();
+  }, [hasItems, validateOpen]);
 
   const originalTotal = useCartStore((state) => state.getOriginalTotalPrice());
   const savings = useCartStore((state) => state.getSavings());
@@ -73,9 +80,10 @@ export default function CartClientPage({
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_450px]">
           {/* LISTA DE ITEMS */}
           <div className="space-y-4">
-            {stockError && (
+            {(stockError || checkoutStockBlocked) && (
               <div className="rounded-xs bg-red-50 p-3 font-medium text-xs text-red-600 border border-red-200">
-                {stockError}
+                {stockError ||
+                  "Hay productos sin stock o con cantidad mayor a la disponible. Ajusta la cesta antes de pagar."}
               </div>
             )}
 
@@ -247,7 +255,7 @@ export default function CartClientPage({
                   size="icon"
                   aria-label="Tramitar pedido"
                   className="w-full bg-green-600 hover:bg-green-700 h-11 text-base font-medium"
-                  disabled={loading || !!stockError}
+                  disabled={loading || !!stockError || checkoutStockBlocked}
                   onClick={handleCheckout}
                 >
                   {loading ? (

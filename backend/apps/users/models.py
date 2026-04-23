@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils import timezone
 
+from apps.core.models import TimeStampedModel
 from apps.users.managers import UserManager
 
 
@@ -80,3 +81,37 @@ class GuestSession(models.Model):
     @property
     def is_expired(self) -> bool:
         return timezone.now() > self.expires_at
+
+
+class UserAddress(TimeStampedModel):
+    """
+    Saved shipping addresses for authenticated users.
+
+    Users can have multiple addresses; one can be marked as default.
+    When creating an order, the address data is snapshotted into Order fields.
+    """
+
+    user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="addresses"
+    )
+    name = models.CharField(max_length=100, blank=True)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=20)
+    street = models.CharField(max_length=255)
+    details = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=100)
+    province = models.CharField(max_length=100)
+    postal_code = models.CharField(max_length=20)
+    country = models.CharField(max_length=2, default="ES")
+    is_default = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-is_default", "-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-is_default"]),
+        ]
+        verbose_name_plural = "User addresses"
+
+    def __str__(self) -> str:
+        return f"{self.user.email} - {self.street[:30]}"

@@ -1,4 +1,5 @@
 import { getProductMetaBySlug } from "@/lib/api/products";
+import { colorsMatch } from "@/lib/products/color-matching";
 
 import type {
   PublicProductDetail,
@@ -24,7 +25,7 @@ export async function generateMetadata({
   let ogImage = product.images[0]?.url;
   if (color) {
     const match = product.images.find(
-      (img: { color: string | null; url: string }) => img.color === color,
+      (img: { color: string | null; url: string }) => colorsMatch(img.color, color),
     );
     if (match) ogImage = match.url;
   }

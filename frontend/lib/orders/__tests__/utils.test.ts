@@ -37,6 +37,7 @@ import {
   getOrderCancellationDetailsUser,
   getOrderTotals,
   getOrderShippingDetails,
+  formatOrderPaymentMethodLabel,
   formatOrderForDisplay,
   getEventVisuals,
 } from "@/lib/orders/utils";
@@ -706,6 +707,30 @@ describe("getOrderShippingDetails", () => {
   });
 });
 
+// ─── formatOrderPaymentMethodLabel ───────────────────────────────────────────
+describe("formatOrderPaymentMethodLabel", () => {
+  it("prefiere paymentMethodDisplay cuando viene del API", () => {
+    expect(
+      formatOrderPaymentMethodLabel({
+        paymentMethodDisplay: "Visa •••• 4242",
+        paymentMethod: "card",
+      }),
+    ).toBe("Visa •••• 4242");
+  });
+
+  it("traduce card a Tarjeta si no hay display", () => {
+    expect(
+      formatOrderPaymentMethodLabel({ paymentMethod: "card" }),
+    ).toBe("Tarjeta");
+  });
+
+  it("reemplaza guiones bajos en otros métodos", () => {
+    expect(
+      formatOrderPaymentMethodLabel({ paymentMethod: "bank_transfer" }),
+    ).toBe("bank transfer");
+  });
+});
+
 // ─── formatOrderForDisplay ────────────────────────────────────────────────────
 describe("formatOrderForDisplay", () => {
   const makeFullOrder = (overrides: Record<string, any> = {}) => ({
@@ -764,6 +789,14 @@ describe("formatOrderForDisplay", () => {
     expect(result.email).toBe("cliente@test.com");
     expect(result.paymentStatus).toBe("PAID");
     expect(result.isCancelled).toBe(false);
+    expect(result.paymentMethod).toBe("Tarjeta");
+  });
+
+  it("formatOrderForDisplay usa paymentMethodDisplay cuando existe", () => {
+    const result = formatOrderForDisplay(
+      makeFullOrder({ paymentMethodDisplay: "Visa •••• 4242" }) as any,
+    );
+    expect(result.paymentMethod).toBe("Visa •••• 4242");
   });
 
   it("construye totals con subtotal, shipping, tax y total", () => {

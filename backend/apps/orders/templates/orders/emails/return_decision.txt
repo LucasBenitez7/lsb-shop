@@ -1,0 +1,10 @@
+Hola {{ order.first_name }},
+
+Tu solicitud de devolución para el pedido #{{ order.pk }} fue {{ status_word }}.
+{% if note %}
+
+Detalles: {{ note }}
+{% endif %}
+
+Ver detalles: {{ order_detail_url }}
+Seguimiento: {{ tracking_url }}

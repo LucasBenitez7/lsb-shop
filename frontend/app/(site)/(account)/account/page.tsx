@@ -3,7 +3,7 @@ import { FaUser, FaEnvelope, FaPhone } from "react-icons/fa6";
 import VerifyEmailButton from "@/features/account/components/VerifyEmailButton";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 
 import type { Metadata } from "next";
 

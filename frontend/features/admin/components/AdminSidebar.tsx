@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { BiSolidCategory } from "react-icons/bi";
 import { FaSignOutAlt } from "react-icons/fa";
@@ -37,10 +37,12 @@ type Props = {
 
 export function AdminSidebar({ onClose }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const { logout } = useAuth();
 
   async function handleSignOut() {
     await logout();
+    router.push("/auth/login");
   }
 
   return (

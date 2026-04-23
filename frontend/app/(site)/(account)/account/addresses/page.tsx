@@ -4,8 +4,8 @@ import { AddressCard } from "@/features/account/components/AddressCard";
 import { AddressFormDialog } from "@/features/account/components/AddressFormDialog";
 import { Button } from "@/components/ui/button";
 
-import { getUserAddresses } from "@/lib/api/account";
-import { auth } from "@/lib/auth/server";
+import { serverGetUserAddresses } from "@/lib/api/account/server";
+import { auth } from "@/lib/api/auth/server";
 
 import type { Metadata } from "next";
 
@@ -21,7 +21,7 @@ export default async function AccountAddressesPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const addresses = await getUserAddresses();
+  const addresses = await serverGetUserAddresses();
 
   return (
     <div className="space-y-6">

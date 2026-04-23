@@ -19,6 +19,7 @@ import {
   findStoreLocation,
   findPickupLocation,
 } from "@/lib/locations";
+import { findImageByColorOrFallback } from "@/lib/products/color-matching";
 import {
   SYSTEM_MSGS,
   PAYMENT_STATUS_CONFIG,
@@ -213,6 +214,19 @@ export function getOrderShippingDetails(order: Order) {
   return { label, addressLines: lines.filter(Boolean) };
 }
 
+/** Label for order summary UIs (prefers Stripe card snapshot from the API). */
+export function formatOrderPaymentMethodLabel(order: {
+  paymentMethodDisplay?: string | null;
+  paymentMethod?: string | null;
+}): string {
+  const display = (order.paymentMethodDisplay || "").trim();
+  if (display) return display;
+  const raw = (order.paymentMethod || "").trim();
+  if (!raw) return "Tarjeta";
+  if (raw.toLowerCase() === "card") return "Tarjeta";
+  return raw.replace(/_/g, " ");
+}
+
 export type OrderWithDetails = Order & {
   items: (OrderItem & {
     product: {
@@ -237,7 +251,8 @@ export function canOrderBeReturned(order: {
 }) {
   return (
     !order.isCancelled &&
-    order.paymentStatus === "PAID" &&
+    (order.paymentStatus === "PAID" ||
+      order.paymentStatus === "PARTIALLY_REFUNDED") &&
     order.fulfillmentStatus === "DELIVERED"
   );
 }
@@ -285,9 +300,10 @@ export function getReturnableItems(
   return order.items
     .map((item): UserReturnableItem | null => {
       const productImages = item.product?.images || [];
-      const matchingImg =
-        productImages.find((img) => img.color === item.colorSnapshot) ||
-        productImages[0];
+      const matchingImg = findImageByColorOrFallback(
+        productImages,
+        item.colorSnapshot,
+      );
 
       const maxReturnable =
         item.quantity - item.quantityReturned - item.quantityReturnRequested;
@@ -339,7 +355,7 @@ export function formatOrderForDisplay(
     fulfillmentStatus: order.fulfillmentStatus,
     isCancelled: order.isCancelled,
     currency: order.currency,
-    paymentMethod: order.paymentMethod,
+    paymentMethod: formatOrderPaymentMethodLabel(order),
     totals: {
       subtotal: order.itemsTotalMinor,
       shipping: order.shippingCostMinor,
@@ -355,13 +371,13 @@ export function formatOrderForDisplay(
       email: order.email,
     },
     items: order.items.map((item) => {
-      const purchasedColor = item.colorSnapshot;
       const product = item.product;
       const allImages = product?.images ?? [];
-      const matchingImage = allImages.find(
-        (img) => img.color === purchasedColor,
+      const matchingImage = findImageByColorOrFallback(
+        allImages,
+        item.colorSnapshot,
       );
-      const finalImageUrl = matchingImage?.url || allImages[0]?.url || null;
+      const finalImageUrl = matchingImage?.url || null;
 
       return {
         id: item.id,

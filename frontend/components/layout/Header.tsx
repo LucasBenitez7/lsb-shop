@@ -54,6 +54,7 @@ export function Header({
 
   const { user, status, logout } = useAuth();
   const isSessionLoading = status === "loading";
+  const isAuthenticated = status === "authenticated" && user !== null;
 
   const hideHeader = HIDE_HEADER_ON.includes(pathname);
   const isCartPage = pathname === "/cart" || pathname === "/checkout/success";
@@ -61,35 +62,37 @@ export function Header({
 
   if (hideHeader) return null;
 
-  const displayName = user
-    ? formatUserDisplayName(user) || null
-    : null;
+  const displayName = user ? formatUserDisplayName(user) || null : null;
 
   const userInitial =
     displayName && displayName.trim() !== ""
       ? displayName.trim().charAt(0).toUpperCase()
       : (user?.email?.charAt(0)?.toUpperCase() ?? null);
 
-  const showTooltip = mounted && !isSessionLoading && !user;
+  // Only show tooltip when definitely not logged in
+  const showTooltip = mounted && !isSessionLoading && !isAuthenticated;
   const accountTooltip = showTooltip ? "Iniciar sesión" : undefined;
 
-  const favoritosUrl = user ? `/account/favoritos` : `/auth/login`;
+  const favoritosUrl = isAuthenticated ? `/account/favoritos` : `/auth/login`;
 
   function handleAccountClick() {
+    // Still loading — do nothing
     if (isSessionLoading) return;
 
-    if (!user) {
+    // No valid session → go to login
+    if (!isAuthenticated) {
       router.push("/auth/login");
       return;
     }
 
-    router.push("/account");
-    setAccountMenuOpen(false);
+    // Has session → toggle dropdown (on mobile where hover doesn't work)
+    setAccountMenuOpen((prev) => !prev);
   }
 
   async function handleSignOut() {
     setAccountMenuOpen(false);
     await logout();
+    router.push("/auth/login");
   }
 
   return (
@@ -167,7 +170,7 @@ export function Header({
           <div
             className="relative flex items-center h-full"
             onMouseEnter={() => {
-              if (user) setAccountMenuOpen(true);
+              if (isAuthenticated) setAccountMenuOpen(true);
             }}
             onMouseLeave={() => setAccountMenuOpen(false)}
           >
@@ -191,8 +194,8 @@ export function Header({
               )}
             </Button>
 
-            {/* MENÚ FLOTANTE */}
-            {user && accountMenuOpen && (
+            {/* MENÚ FLOTANTE — only when session is truly active */}
+            {isAuthenticated && accountMenuOpen && (
               <div className="hidden sm:block absolute -right-20 top-[calc(100%-4px)] w-72 z-[100] animate-in fade-in zoom-in-95 duration-200">
                 <div className="rounded-xs border bg-popover shadow-xl overflow-hidden px-2">
                   {/* Cabecera del menú */}
@@ -271,7 +274,7 @@ export function Header({
             <CartButtonWithSheet />
           </div>
 
-          {isAdmin && (
+          {isAuthenticated && isAdmin && (
             <Button asChild variant={"default"} className="text-base">
               <Link href="/admin" className="px-4 text-base ml-1">
                 Admin

@@ -21,37 +21,20 @@ export interface ProductVariant {
   priceCents?: number | null;
 }
 
-// ─── Admin DTOs ───────────────────────────────────────────────────────────────
-
-export interface AdminProduct {
+/** Shared catalog fields for list and detail public product shapes. */
+export interface PublicProductCore {
   id: string;
   slug: string;
   name: string;
-  description: string;
   priceCents: number;
   compareAtPrice: number | null;
   currency: SupportedCurrency;
   isArchived: boolean;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-  category: { id: string; name: string; slug: string };
-  images: ProductImage[];
-  variants: ProductVariant[];
-  _totalStock: number;
-  _totalSold?: number;
 }
 
 // ─── Public list ──────────────────────────────────────────────────────────────
 
-export interface PublicProductListItem {
-  id: string;
-  slug: string;
-  name: string;
-  priceCents: number;
-  compareAtPrice: number | null;
-  currency: SupportedCurrency;
-  isArchived: boolean;
+export interface PublicProductListItem extends PublicProductCore {
   category: { name: string; slug: string };
   thumbnail: string | null;
   images: { url: string; color: string | null }[];
@@ -61,18 +44,21 @@ export interface PublicProductListItem {
 
 // ─── Public detail ────────────────────────────────────────────────────────────
 
-export interface PublicProductDetail {
-  id: string;
-  slug: string;
-  name: string;
+export interface PublicProductDetail extends PublicProductCore {
   description: string;
-  priceCents: number;
-  compareAtPrice: number | null;
-  currency: SupportedCurrency;
-  isArchived: boolean;
   category: { id: string; slug: string; name: string };
   images: ProductImage[];
   variants: ProductVariant[];
+}
+
+// ─── Admin DTOs ───────────────────────────────────────────────────────────────
+
+export interface AdminProduct extends PublicProductDetail {
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  _totalStock: number;
+  _totalSold?: number;
 }
 
 // ─── Preset attributes ────────────────────────────────────────────────────────

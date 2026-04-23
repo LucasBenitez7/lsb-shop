@@ -54,12 +54,18 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const successParam = searchParams.get("success");
+  const sessionExpired = searchParams.get("session_expired");
+
   const successMessage =
     successParam === "verify_email"
       ? "Revisa tu correo y confirma el enlace. Después podrás iniciar sesión."
       : successParam === "registered"
         ? "Cuenta creada correctamente. Inicia sesión."
         : null;
+
+  const sessionExpiredMessage = sessionExpired === "true"
+    ? "Tu sesión ha expirado por inactividad. Por favor, inicia sesión nuevamente."
+    : null;
 
   const redirectToParam = searchParams.get("redirectTo") ?? redirectTo;
 
@@ -93,7 +99,20 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       });
       await refresh();
       router.refresh();
-      router.push(redirectToParam);
+
+      // Priority: URL redirectTo param (server-set) > sessionStorage (client event)
+      if (redirectToParam && redirectToParam !== "/") {
+        sessionStorage.removeItem("redirectAfterLogin");
+        router.push(redirectToParam);
+      } else {
+        const redirectAfterLogin = sessionStorage.getItem("redirectAfterLogin");
+        if (redirectAfterLogin) {
+          sessionStorage.removeItem("redirectAfterLogin");
+          router.push(redirectAfterLogin);
+        } else {
+          router.push(redirectToParam);
+        }
+      }
     } catch (error) {
       if (error instanceof APIError) {
         if (error.status === 401 || error.status === 400) {
@@ -124,6 +143,12 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       {successMessage && (
         <div className="rounded-xs bg-green-50 p-3 text-sm text-green-700 border border-green-200">
           {successMessage}
+        </div>
+      )}
+
+      {sessionExpiredMessage && (
+        <div className="rounded-xs bg-amber-50 p-3 text-sm text-amber-700 border border-amber-200">
+          {sessionExpiredMessage}
         </div>
       )}
 
@@ -197,27 +222,6 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
         Crear cuenta
       </Link>
 
-      {/* Lógica: Si venimos de un intento de compra, ofrecemos continuar como invitado */}
-      {redirectToParam.includes("checkout") && (
-        <div className="flex flex-col gap-4 mt-2">
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            <span>o</span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-10 hover:cursor-pointer"
-            onClick={() => {
-              router.push("/checkout");
-            }}
-          >
-            Continuar como invitado
-          </Button>
-        </div>
-      )}
     </form>
   );
 }

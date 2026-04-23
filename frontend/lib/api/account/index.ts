@@ -1,18 +1,82 @@
-import type { UserAddress } from "@/types/address";
+import { APIError, apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api/client";
+import { mapOrderDetailDRF, mapOrderListItemDRF, mapUserAddressDRF } from "./mappers";
+
+import type { UserAddress, UserAddressDRFResponse } from "@/types/address";
 import type {
+  OrderDetailDRFResponse,
   UserOrderDetail,
   UserOrderListItem,
   UserReturnableItem,
 } from "@/types/order";
 
 // ─── Addresses ────────────────────────────────────────────────────────────────
+export async function getUserAddresses(): Promise<UserAddress[]> {
+  const response = await apiGet<{ results: UserAddressDRFResponse[] }>(
+    "/api/v1/users/addresses/",
+  );
+
+  return response.results.map(mapUserAddressDRF);
+}
 
 /**
- * Returns all saved addresses for the authenticated user.
+ * Creates or updates an address for the authenticated user.
  */
-export async function getUserAddresses(): Promise<UserAddress[]> {
-  // TODO: apiFetch<UserAddress[]>("/api/v1/users/me/addresses/")
-  return [];
+export async function upsertAddress(
+  address: Partial<UserAddress>,
+): Promise<UserAddress | null> {
+  try {
+    const payload = {
+      name: address.name || "",
+      first_name: address.firstName,
+      last_name: address.lastName,
+      phone: address.phone,
+      street: address.street,
+      details: address.details || "",
+      city: address.city,
+      province: address.province,
+      postal_code: address.postalCode,
+      country: address.country || "ES",
+      is_default: address.isDefault || false,
+    };
+
+    const response = address.id
+      ? await apiPatch<UserAddressDRFResponse>(
+          `/api/v1/users/addresses/${address.id}/`,
+          payload,
+        )
+      : await apiPost<UserAddressDRFResponse>("/api/v1/users/addresses/", payload);
+
+    return mapUserAddressDRF(response);
+  } catch (error) {
+    console.error("Error upserting address:", error);
+    return null;
+  }
+}
+
+/**
+ * Deletes an address for the authenticated user.
+ */
+export async function deleteAddress(addressId: string): Promise<boolean> {
+  try {
+    await apiDelete(`/api/v1/users/addresses/${addressId}/`);
+    return true;
+  } catch (error) {
+    console.error("Error deleting address:", error);
+    return false;
+  }
+}
+
+/**
+ * Sets an address as the default address for the authenticated user.
+ */
+export async function setDefaultAddress(addressId: string): Promise<boolean> {
+  try {
+    await apiPost(`/api/v1/users/addresses/${addressId}/set_default/`, {});
+    return true;
+  } catch (error) {
+    console.error("Error setting default address:", error);
+    return false;
+  }
 }
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
@@ -25,7 +89,7 @@ export interface GetUserOrdersOptions {
 }
 
 /**
- * Returns the paginated order list for the authenticated user (session via cookies on server).
+ * Returns the paginated order list for the authenticated user.
  */
 export async function getUserOrders(
   options: GetUserOrdersOptions = {},
@@ -34,92 +98,55 @@ export async function getUserOrders(
   totalCount: number;
   totalPages: number;
 }> {
-  // TODO: apiFetch with query params when /api/v1/orders/ (user scope) exists
-  void options;
-  return { orders: [], totalCount: 0, totalPages: 0 };
-}
+  const params = new URLSearchParams();
+  if (options.page) params.set("page", String(options.page));
+  if (options.limit) params.set("page_size", String(options.limit));
+  if (options.status) params.set("status", options.status);
+  if (options.q) params.set("q", options.q);
 
-/**
- * Returns full order details for the order detail / history / return pages.
- * User is inferred from the JWT cookie; do not pass userId from the client.
- */
-export async function getUserOrderFullDetails(
-  orderId: string,
-): Promise<UserOrderDetail | null> {
-  // TODO: apiFetch<UserOrderDetail>(`/api/v1/orders/${orderId}/`)
-  void orderId;
-  return null;
+  const query = params.toString();
+  const url = `/api/v1/orders/${query ? `?${query}` : ""}`;
+
+  try {
+    const response = await apiGet<{
+      count: number;
+      total_pages: number;
+      current_page: number;
+      page_size: number;
+      results: import("@/types/order").OrderListItemDRFResponse[];
+    }>(url);
+
+    return {
+      orders: response.results.map(mapOrderListItemDRF),
+      totalCount: response.count,
+      totalPages: response.total_pages,
+    };
+  } catch (error) {
+    console.error("Error fetching user orders:", error);
+    return { orders: [], totalCount: 0, totalPages: 0 };
+  }
 }
 
 /**
  * Returns order details needed for the checkout success and tracking pages.
+ * For guest orders, pass payment_intent to authorize access.
  */
 export async function getOrderSuccessDetails(
   orderId: string,
+  paymentIntent?: string,
 ): Promise<UserOrderDetail | null> {
-  // TODO: apiFetch<UserOrderDetail>(`/api/v1/orders/${orderId}/success/`)
-  void orderId;
-  return null;
-}
+  try {
+    const url = paymentIntent
+      ? `/api/v1/orders/${orderId}/?payment_intent=${encodeURIComponent(paymentIntent)}`
+      : `/api/v1/orders/${orderId}/`;
 
-// ─── Address mutations ────────────────────────────────────────────────────────
+    const response = await apiGet<OrderDetailDRFResponse>(url);
 
-export interface UpsertAddressInput {
-  id?: string;
-  name?: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  street: string;
-  details?: string;
-  postalCode: string;
-  city: string;
-  province: string;
-  country: string;
-  isDefault?: boolean;
-}
-
-/**
- * Creates or updates a saved address for the authenticated user.
- */
-export async function upsertAddress(
-  input: UpsertAddressInput,
-): Promise<UserAddress> {
-  // TODO: apiFetch<UserAddress>("/api/v1/users/me/addresses/", { method: input.id ? "PATCH" : "POST", body: JSON.stringify(input) })
-  void input;
-  return {
-    id: input.id ?? "new",
-    userId: "",
-    name: input.name ?? null,
-    firstName: input.firstName,
-    lastName: input.lastName,
-    phone: input.phone,
-    street: input.street,
-    details: input.details ?? null,
-    postalCode: input.postalCode,
-    city: input.city,
-    province: input.province,
-    country: input.country,
-    isDefault: input.isDefault ?? false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-}
-
-/**
- * Deletes a saved address for the authenticated user.
- */
-export async function deleteAddress(addressId: string): Promise<void> {
-  // TODO: apiFetch(`/api/v1/users/me/addresses/${addressId}/`, { method: "DELETE" })
-  void addressId;
-}
-
-/**
- * Sets an address as the user's default.
- */
-export async function setDefaultAddress(addressId: string): Promise<void> {
-  // TODO: apiFetch(`/api/v1/users/me/addresses/${addressId}/set-default/`, { method: "POST" })
-  void addressId;
+    return mapOrderDetailDRF(response);
+  } catch (error) {
+    console.error("Error fetching order success details:", error);
+    return null;
+  }
 }
 
 /**
@@ -166,7 +193,7 @@ export async function requestReturn(
 }
 
 /**
- * Returns or creates a Stripe PaymentIntent client_secret for a pending order.
+ * Returns a Stripe PaymentIntent client_secret to resume card payment (PENDING / FAILED).
  */
 export async function getPaymentIntent(orderId: string): Promise<{
   clientSecret: string;
@@ -174,7 +201,27 @@ export async function getPaymentIntent(orderId: string): Promise<{
   currency: string;
   error?: string;
 }> {
-  // TODO: apiFetch(`/api/v1/orders/${orderId}/payment-intent/`)
-  void orderId;
-  return { clientSecret: "", amount: 0, currency: "eur" };
+  try {
+    const data = await apiGet<{
+      client_secret: string;
+      amount_minor: number;
+      currency: string;
+    }>(`/api/v1/orders/${orderId}/payment-intent/`);
+    return {
+      clientSecret: data.client_secret,
+      amount: data.amount_minor,
+      currency: (data.currency || "EUR").toLowerCase(),
+    };
+  } catch (e) {
+    const message =
+      e instanceof APIError
+        ? e.message
+        : "Could not load payment session. Please try again.";
+    return {
+      clientSecret: "",
+      amount: 0,
+      currency: "eur",
+      error: message,
+    };
+  }
 }

@@ -4,7 +4,8 @@ import { FaArrowLeft } from "react-icons/fa6";
 
 import { Button } from "@/components/ui/button";
 
-import { getOrderForReturn } from "@/lib/api/orders";
+import { serverGetAdminOrderById } from "@/lib/api/orders/server";
+import { findImageByColorOrFallback } from "@/lib/products/color-matching";
 
 import { ReturnForm } from "@/features/admin/components/orders/ReturnForm";
 
@@ -17,7 +18,7 @@ type Props = {
 export default async function AdminOrderReturnPage({ params }: Props) {
   const { id } = await params;
 
-  const order = await getOrderForReturn(id);
+  const order = await serverGetAdminOrderById(id);
 
   if (!order) notFound();
 
@@ -65,9 +66,10 @@ export default async function AdminOrderReturnPage({ params }: Props) {
 
   const returnableItems: ReturnableItem[] = order.items.map((item) => {
     const productImages = item.product?.images || [];
-    const matchingImg =
-      productImages.find((img: any) => img.color === item.colorSnapshot) ||
-      productImages[0];
+    const matchingImg = findImageByColorOrFallback(
+      productImages,
+      item.colorSnapshot,
+    );
 
     return {
       id: item.id,

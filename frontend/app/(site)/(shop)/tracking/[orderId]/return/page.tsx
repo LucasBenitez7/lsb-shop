@@ -6,7 +6,7 @@ import { FaArrowLeft } from "react-icons/fa6";
 import { GuestReturnForm } from "@/features/tracking/components/GuestReturnForm";
 import { Button } from "@/components/ui/button";
 
-import { getOrderSuccessDetails } from "@/lib/api/account";
+import { serverGetOrderSuccessDetails } from "@/lib/api/account/server";
 import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
 import { canOrderBeReturned, getReturnableItems } from "@/lib/orders/utils";
 
@@ -25,7 +25,7 @@ export default async function GuestOrderReturnPage({ params }: Props) {
   await verifyGuestAccessOrRedirect(orderId);
 
   // 2. Obtener detalles
-  const order = await getOrderSuccessDetails(orderId);
+  const order = await serverGetOrderSuccessDetails(orderId);
 
   if (!order) notFound();
 

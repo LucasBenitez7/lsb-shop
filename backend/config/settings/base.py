@@ -262,6 +262,11 @@ DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET")
 
+# Orders — unpaid checkout rows older than this are expired by Celery Beat.
+ORDER_PENDING_EXPIRY_MINUTES = int(
+    config("ORDER_PENDING_EXPIRY_MINUTES", default=60, cast=int)
+)
+
 # Email
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = config("EMAIL_HOST", default="smtp.resend.com")

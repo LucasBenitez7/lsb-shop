@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
 
-import { getUserOrderFullDetails } from "@/lib/api/account";
-import { auth } from "@/lib/auth/server";
+import { serverGetUserOrderFullDetails } from "@/lib/api/account/server";
+import { auth } from "@/lib/api/auth/server";
+import { colorsMatch } from "@/lib/products/color-matching";
 import { formatHistoryReason, getEventVisuals } from "@/lib/orders/utils";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,7 @@ export default async function UserOrderHistoryPage({ params }: Props) {
   const session = await auth();
   if (!session?.user?.id) return redirect("/auth/login");
 
-  const order = await getUserOrderFullDetails(id);
+  const order = await serverGetUserOrderFullDetails(id);
 
   if (!order) notFound();
 
@@ -192,9 +193,10 @@ export default async function UserOrderHistoryPage({ params }: Props) {
                               matchedLiveItem?.product?.images || [];
                             const matchingImg =
                               productImages.find((img) =>
-                                historyItem.variant?.includes(
-                                  img.color || "###",
-                                ),
+                                historyItem.variant
+                                  ?.split("/")
+                                  .map((s) => s.trim())
+                                  .some((part) => colorsMatch(img.color, part)),
                               ) || productImages[0];
                             const imgUrl = matchingImg?.url;
 

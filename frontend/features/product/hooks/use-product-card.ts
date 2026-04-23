@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 
 import { type PublicProductListItem } from "@/lib/products/types";
+import { colorsMatch } from "@/lib/products/color-matching";
 import {
   getUniqueColors,
   getUniqueSizes,
@@ -76,12 +77,8 @@ export function useProductCard(item: PublicProductListItem) {
       return [];
     }
 
-    // Filtrar imágenes por color seleccionado (normalizar mayúsculas y espacios)
-    const normalizedSelected = selectedColor?.trim().toLowerCase();
     const colorImages = item.images.filter(
-      (img) =>
-        !img.color ||
-        img.color.trim().toLowerCase() === normalizedSelected,
+      (img) => !img.color || colorsMatch(img.color, selectedColor),
     );
 
     // Si hay imágenes del color seleccionado, usarlas
@@ -153,7 +150,7 @@ export function useProductCard(item: PublicProductListItem) {
     const variantToAdd = sortedVariants.find(
       (v) =>
         v.size === size &&
-        (selectedColor ? v.color === selectedColor : true) &&
+        (selectedColor ? colorsMatch(v.color, selectedColor) : true) &&
         v.stock > 0,
     );
 

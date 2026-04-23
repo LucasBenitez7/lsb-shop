@@ -51,6 +51,7 @@ function unauthenticatedAuth() {
     status: "unauthenticated" as const,
     refresh: vi.fn(),
     logout: vi.fn(),
+    clearSession: vi.fn(),
   };
 }
 
@@ -73,6 +74,7 @@ function authenticatedAuth() {
     status: "authenticated" as const,
     refresh: vi.fn(),
     logout: vi.fn(),
+    clearSession: vi.fn(),
   };
 }
 

@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
 
 import { SYSTEM_MSGS } from "@/lib/orders/constants";
-import { getAdminOrderById } from "@/lib/api/orders";
+import { colorsMatch } from "@/lib/products/color-matching";
+import { serverGetAdminOrderById } from "@/lib/api/orders/server";
 import { formatHistoryReason, getEventVisuals } from "@/lib/orders/utils";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +21,7 @@ type Props = {
 
 export default async function OrderHistoryPage({ params }: Props) {
   const { id } = await params;
-  const order = await getAdminOrderById(id);
+  const order = await serverGetAdminOrderById(id);
 
   if (!order) notFound();
 
@@ -181,10 +182,12 @@ export default async function OrderHistoryPage({ params }: Props) {
 
                             const variantString = historyItem.variant || "";
 
-                            const matchingImg =
-                              productImages.find((img) =>
-                                variantString.includes(img.color || "###"),
-                              ) || productImages[0];
+                            const matchingImg = productImages.find((img) =>
+                              variantString
+                                .split("/")
+                                .map((s) => s.trim())
+                                .some((part) => colorsMatch(img.color, part)),
+                            ) || productImages[0];
 
                             const imgUrl = matchingImg?.url;
 

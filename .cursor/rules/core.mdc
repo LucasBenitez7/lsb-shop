@@ -217,7 +217,8 @@ All tool config lives in `backend/pyproject.toml`. Never create separate `.flake
 - `app/` contains ONLY routing files: `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`
 - Components in `features/{domain}/components/` — never inside `app/`
 - No business logic, no Prisma, no Server Actions with business logic, no NextAuth
-- All API calls via `lib/api/` functions
+- All API calls via `lib/api/` functions, organized per domain (`index.ts` client, `server.ts` RSC, `mappers.ts` for shared DRF→app types — do not duplicate mapping). When editing `frontend/lib/api/` or `frontend/types/`, follow `.cursor/rules/frontend-api-dry.mdc` for DRY (extract mappers/helpers only when a second identical use exists or is added).
+- RSC session check: `import { auth } from "@/lib/api/auth/server"` only
 - Zustand for UI state only (modals, sheets) — never server state
 
 # Agent autonomy

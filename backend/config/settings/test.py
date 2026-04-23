@@ -31,3 +31,11 @@ STORAGES = {
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
+
+# Stripe — dummy values so pytest does not require
+# a .env (webhook tests use the secret).
+STRIPE_SECRET_KEY = "sk_test_unit_tests_dummy"  # noqa: S105  # pragma: allowlist secret  # nosec B105
+STRIPE_WEBHOOK_SECRET = "whsec_unit_tests_dummy"  # noqa: S105  # pragma: allowlist secret  # nosec B105
+
+# Expire stale pending orders after 1 minute in tests.
+ORDER_PENDING_EXPIRY_MINUTES = 1

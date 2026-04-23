@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /**
- * Cookie header for server-side `fetch` to Django (matches `auth()` in `lib/auth/server.ts`).
+ * Cookie header for server-side `fetch` to Django (same cookies `auth()` uses in `lib/api/auth/server.ts`).
  * Only call from Server Components, route handlers, or server actions.
  */
 export async function buildServerCookieHeader(): Promise<string | null> {

@@ -1,0 +1,45 @@
+---
+description: DRY for lib/api + domain types — shared mappers, no duplicated DRF mapping; optional interface bases/extends in types/ when semantics match
+globs: ["frontend/lib/api/**/*.ts", "frontend/types/**/*.ts"]
+alwaysApply: false
+---
+
+# DRY in `lib/api/` (and related types)
+
+Apply these rules **when the change would otherwise duplicate logic** that already exists or will be needed in two call sites (browser + RSC, or two domains). Skip abstraction when there is truly a single use and no second consumer in sight.
+
+## 1. DRF JSON → app types (snake_case → camelCase)
+
+- **Never** paste the same field-by-field object mapping in more than one file for the same endpoint shape.
+- If **`lib/api/{domain}/index.ts`** and **`lib/api/{domain}/server.ts`** both map the same response → use **`lib/api/{domain}/mappers.ts`** with pure functions (`mapXxxDRF`, etc.) and import from both.
+- DRF-facing types: either **`types/*.ts`** (e.g. `*DRFResponse`) or **`lib/api/{domain}/drf.ts`** — **one** canonical place per shape; do not redefine the same interface in `index.ts` and `server.ts`.
+
+## 2. Request builders and URLs
+
+- If the same path template, query string, or request body shape is built in two files, extract a **small shared helper** in the same domain folder (e.g. `buildOrderDetailUrl(orderId, paymentIntent?)`) or reuse an existing `query.ts` pattern like `products/query.ts`.
+- Do not copy-paste long `encodeURIComponent` chains; one helper per domain is enough.
+
+## 3. Error handling patterns
+
+- Prefer **consistent** handling per layer: client uses `APIError` from `client.ts`; server modules may re-wrap `serverFetchJson` failures (e.g. 401 → `APIError`) in **one** place per exported function, not nested duplicate try/catch in every caller.
+
+## 4. When *not* to DRY
+
+- One-off mapping used in a **single** file with no planned `server.ts` twin → inline mapping is fine until a second consumer appears.
+- Trivial one-liners (e.g. `String(id)`) duplicated once — do not create a util file.
+- Prefer **readability** over clever shared abstractions that obscure the data flow.
+
+## 5. Before finishing a change in `lib/api/`
+
+- Search the domain folder for the same serializer field names (`snake_case`) mapped twice.
+- If you added `server.ts`, grep `index.ts` for overlapping response handling and consolidate into `mappers.ts`.
+
+## 6. Domain TypeScript interfaces (`types/*.ts`) — `extends` and shared bases
+
+- **DRY** (*Don't Repeat Yourself*) is the general principle: do not copy-paste the same *meaningful* shape in many places; one source of truth is easier to change and review.
+- When **two or more domain interfaces** (never `*DRF*` / `*DRFPayload*` API contracts) share **several identical fields** and the **same meaning** (e.g. two list-row types sharing `id`, `createdAt`, `paymentStatus`, …), prefer a **small base interface** and `extends` instead of duplicating those properties.
+- **When it is a bad idea:** different lifecycles or semantics (e.g. nullable shipping on `Order` vs required lines on `UserAddress`), forcing one base confuses readers — use separate types or only extract what truly matches (`PostalAddressLines` vs `PostalAddressLinesNullable`).
+- **When it is neutral:** a single consumer and no second type — inline fields are fine; add a base only when a second interface appears or is clearly coming.
+- Avoid **deep** inheritance chains (A extends B extends C …); prefer one shallow base + composition if the graph grows.
+
+Canonical project doc: `docs/FRONTEND_API.md`.

@@ -11,5 +11,6 @@ export type {
   OrderHistoryEntry,
   ReturnableItem,
   UserOrderListItem,
+  UserOrderListItemLine,
   UserReturnableItem,
 } from "@/types/order";

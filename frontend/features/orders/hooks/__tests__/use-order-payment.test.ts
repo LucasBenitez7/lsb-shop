@@ -5,16 +5,24 @@ import { useOrderPayment } from "@/features/orders/hooks/use-order-payment";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-const { mockGetPaymentIntent } = vi.hoisted(() => ({
+const { mockGetPaymentIntent, mockGetOrderSuccessDetails } = vi.hoisted(() => ({
   mockGetPaymentIntent: vi.fn(),
+  mockGetOrderSuccessDetails: vi.fn(),
 }));
 
 vi.mock("@/lib/api/account", () => ({
   getPaymentIntent: mockGetPaymentIntent,
+  getOrderSuccessDetails: mockGetOrderSuccessDetails,
+}));
+
+const mockRefresh = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: mockRefresh }),
 }));
 
 vi.mock("sonner", () => ({
-  toast: { error: vi.fn(), success: vi.fn() },
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
 }));
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -22,6 +30,7 @@ vi.mock("sonner", () => ({
 describe("useOrderPayment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetOrderSuccessDetails.mockReset();
   });
 
   it("inicializa con isOpen false, isLoading false y clientSecret null", () => {

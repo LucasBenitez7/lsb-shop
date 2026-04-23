@@ -9,14 +9,16 @@ import { Container } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { getOrderSuccessDetails } from "@/lib/api/account";
+import { serverGetOrderSuccessDetails } from "@/lib/api/account/server";
 import { parseCurrency } from "@/lib/currency";
 import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
 import {
+  formatOrderPaymentMethodLabel,
   getOrderShippingDetails,
   shouldShowHistoryButton,
   getOrderTotals,
 } from "@/lib/orders/utils";
+import { findImageByColorOrFallback } from "@/lib/products/color-matching";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +33,7 @@ export default async function GuestOrderPage({ params }: Props) {
   await verifyGuestAccessOrRedirect(orderId);
 
   // 2. Obtener Pedido
-  const order = await getOrderSuccessDetails(orderId);
+  const order = await serverGetOrderSuccessDetails(orderId);
 
   if (!order) notFound();
 
@@ -130,11 +132,7 @@ export default async function GuestOrderPage({ params }: Props) {
         <OrderSummaryCard
           id={order.id}
           createdAt={order.createdAt}
-          paymentMethod={
-            order.paymentMethod
-              ? order.paymentMethod.replace("_", " ")
-              : "Tarjeta de Crédito"
-          }
+          paymentMethod={formatOrderPaymentMethodLabel(order)}
           contact={{
             name: contactName,
             email: order.email,
@@ -143,9 +141,10 @@ export default async function GuestOrderPage({ params }: Props) {
           shippingInfo={getOrderShippingDetails(order)}
           items={order.items.map((item) => {
             const productImages = item.product?.images || [];
-            const matchingImg =
-              productImages.find((img) => img.color === item.colorSnapshot) ||
-              productImages[0];
+            const matchingImg = findImageByColorOrFallback(
+              productImages,
+              item.colorSnapshot,
+            );
             return {
               id: item.id,
               name: item.nameSnapshot,

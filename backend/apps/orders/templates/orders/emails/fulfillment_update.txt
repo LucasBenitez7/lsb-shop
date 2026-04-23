@@ -1,0 +1,6 @@
+Hola {{ order.first_name }},
+
+El estado de tu pedido #{{ order.pk }} es ahora: {{ status_display }}.
+
+Detalles: {{ order_detail_url }}
+Seguimiento: {{ tracking_url }}

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/api/auth/server";
 
 import { LoginForm } from "@/features/auth/components/LoginForm";
 

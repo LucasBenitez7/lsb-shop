@@ -1,3 +1,4 @@
+import type { PostalAddressLinesNullable } from "@/types/address";
 import type { PaymentStatus, FulfillmentStatus } from "@/types/enums";
 import type { ProductImage } from "@/types/product";
 
@@ -11,9 +12,17 @@ interface OrderLinkedProduct {
   images: OrderLinkedImage[];
 }
 
-// ─── Shared ───────────────────────────────────────────────────────────────────
+// ─── Shared primitives ────────────────────────────────────────────────────────
 
 export type OrderActionActor = "user" | "admin" | "system";
+
+/** Aggregates on order detail views (see {@link OrderDetailBase}). */
+export interface OrderSummary {
+  originalQty: number;
+  returnedQty: number;
+  refundedAmountMinor: number;
+  netTotalMinor: number;
+}
 
 // ─── Order history entry ──────────────────────────────────────────────────────
 
@@ -46,7 +55,7 @@ export interface OrderItem {
 
 // ─── Order base ───────────────────────────────────────────────────────────────
 
-export interface Order {
+export interface Order extends PostalAddressLinesNullable {
   id: string;
   userId: string | null;
   email: string;
@@ -58,6 +67,8 @@ export interface Order {
   isCancelled: boolean;
   currency: string;
   paymentMethod: string | null;
+  /** Human-readable card line when paid via Stripe (e.g. "Visa •••• 4242"). */
+  paymentMethodDisplay?: string | null;
   itemsTotalMinor: number;
   shippingCostMinor: number;
   taxMinor: number;
@@ -66,18 +77,18 @@ export interface Order {
   storeLocationId: string | null;
   pickupLocationId: string | null;
   pickupSearch: string | null;
-  street: string | null;
   addressExtra: string | null;
-  postalCode: string | null;
-  city: string | null;
-  province: string | null;
-  country: string | null;
   returnReason: string | null;
   deliveredAt: string | Date | null;
   createdAt: string | Date;
   updatedAt: string | Date;
   /** Stripe PaymentIntent id — used to verify guest success page access. */
   stripePaymentIntentId?: string | null;
+  /**
+   * Stripe PaymentIntent.status when order is still PENDING/FAILED in DB.
+   * Used to avoid offering a second charge while webhook catches up.
+   */
+  stripePaymentIntentStatus?: string | null;
 }
 
 // ─── User linked to order ─────────────────────────────────────────────────────
@@ -91,105 +102,82 @@ export interface OrderUser {
 
 // ─── SECTION 1: Admin ─────────────────────────────────────────────────────────
 
-export interface AdminOrderListItem {
+/** Shared list-row fields for admin vs. user order tables (status, totals header). */
+export interface OrderListItemBase {
   id: string;
   createdAt: Date | string;
-
   paymentStatus: PaymentStatus;
   fulfillmentStatus: FulfillmentStatus;
   isCancelled: boolean;
-
   totalMinor: number;
   currency: string;
+}
 
-  user: {
-    name: string | null;
-    email: string | null;
-    image?: string | null;
-  } | null;
-
+export interface AdminOrderListItem extends OrderListItemBase {
+  // Reuses OrderUser shape instead of duplicating the inline object
+  user: OrderUser | null;
   guestInfo: {
     firstName: string | null;
     lastName: string | null;
     email: string;
   };
-
   itemsCount: number;
   refundedAmountMinor: number;
   netTotalMinor: number;
   history?: { snapshotStatus: string }[];
 }
 
-export interface AdminOrderDetail extends Order {
+/** Line items, timeline, and summary shared by admin and user order detail views. */
+export interface OrderDetailBase extends Order {
   items: OrderItem[];
-  user: OrderUser | null;
   history: OrderHistoryEntry[];
-  summary: {
-    originalQty: number;
-    returnedQty: number;
-    refundedAmountMinor: number;
-    netTotalMinor: number;
-  };
+  summary: OrderSummary;
+}
+
+export interface AdminOrderDetail extends OrderDetailBase {
+  user: OrderUser | null;
 }
 
 // ─── SECTION 2: User ─────────────────────────────────────────────────────────
 
-export interface UserOrderListItem {
+/** Line preview on account order list cards (subset of fields vs. full {@link OrderItem}). */
+export interface UserOrderListItemLine {
   id: string;
-  createdAt: Date | string;
+  quantity: number;
+  nameSnapshot: string;
+  sizeSnapshot: string | null;
+  colorSnapshot: string | null;
+  product?: OrderLinkedProduct | null;
+}
 
-  paymentStatus: PaymentStatus;
-  fulfillmentStatus: FulfillmentStatus;
-  isCancelled: boolean;
-
-  totalMinor: number;
-  currency: string;
+export interface UserOrderListItem extends OrderListItemBase {
   priceMinorSnapshot?: number;
   quantityReturned?: number;
-
   deliveredAt: Date | string | null;
-
-  items: {
-    id: string;
-    quantity: number;
-    nameSnapshot: string;
-    sizeSnapshot: string | null;
-    colorSnapshot: string | null;
-    product?: OrderLinkedProduct | null;
-  }[];
+  items: UserOrderListItemLine[];
 }
 
-export interface UserOrderDetail extends Order {
-  items: OrderItem[];
-  history: OrderHistoryEntry[];
-  summary: {
-    originalQty: number;
-    returnedQty: number;
-    refundedAmountMinor: number;
-    netTotalMinor: number;
-  };
-}
+export interface UserOrderDetail extends OrderDetailBase {}
 
 // ─── SECTION 3: Returns ───────────────────────────────────────────────────────
 
-export interface ReturnableItem {
+/** Base fields shared by ReturnableItem and UserReturnableItem. */
+interface ReturnableItemBase {
   id: string;
   nameSnapshot: string;
   sizeSnapshot: string | null;
   colorSnapshot: string | null;
-  quantity: number;
-  quantityReturned: number;
-  quantityReturnRequested: number;
   image?: string;
 }
 
-export interface UserReturnableItem {
-  id: string;
-  nameSnapshot: string;
-  sizeSnapshot: string | null;
-  colorSnapshot: string | null;
+export interface ReturnableItem extends ReturnableItemBase {
+  quantity: number;
+  quantityReturned: number;
+  quantityReturnRequested: number;
+}
+
+export interface UserReturnableItem extends ReturnableItemBase {
   maxQuantity: number;
-  image?: string;
 }
 
 // ─── SECTION 4: Utility types ─────────────────────────────────────────────────
@@ -207,9 +195,12 @@ export interface HistoryDetailsJson {
 
 export interface GetOrdersParams {
   page?: number;
+  pageSize?: number;
   limit?: number;
   sort?: string;
   query?: string;
+  q?: string;
+  status?: string;
   userId?: string;
   statusTab?: string;
   paymentFilter?: PaymentStatus[];
@@ -258,4 +249,151 @@ export interface OrderDisplayData {
   };
 }
 
-export type DisplayOrder = OrderDisplayData;
+// ─── SECTION 6: Backend API Types (DRF snake_case) ───────────────────────────
+// These types represent raw responses from Django REST Framework.
+// They are ONLY used inside lib/api/ to transform data — never passed to UI components.
+
+export interface OrderItemDRFResponse {
+  id: number;
+  variant_id: number;
+  product_id: number;
+  product_slug: string;
+  name_snapshot: string;
+  price_minor_snapshot: number;
+  size_snapshot: string;
+  color_snapshot: string;
+  quantity: number;
+  subtotal_minor: number;
+  /** Resolved from ProductImage (color match or first). */
+  image_url: string | null;
+}
+
+export interface OrderListItemDRFResponse {
+  id: number;
+  email: string;
+  payment_status: string;
+  fulfillment_status: string;
+  is_cancelled: boolean;
+  total_minor: number;
+  currency: string;
+  created_at: string;
+  items_count: number;
+  items: {
+    id: number;
+    name_snapshot: string;
+    size_snapshot: string | null;
+    color_snapshot: string | null;
+    quantity: number;
+    price_minor_snapshot: number;
+    subtotal_minor: number;
+    image_url: string | null;
+    product_slug: string;
+  }[];
+}
+
+export interface OrderDetailDRFResponse {
+  id: number;
+  user_id: number | null;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  payment_status: string;
+  fulfillment_status: string;
+  is_cancelled: boolean;
+  currency: string;
+  payment_method: string;
+  payment_method_display?: string;
+  items_total_minor: number;
+  shipping_cost_minor: number;
+  tax_minor: number;
+  total_minor: number;
+  shipping_type: string;
+  store_location_id: string | null;
+  pickup_location_id: string | null;
+  pickup_search: string | null;
+  street: string;
+  address_extra: string;
+  postal_code: string;
+  city: string;
+  province: string;
+  country: string;
+  return_reason: string | null;
+  delivered_at: string | null;
+  created_at: string;
+  updated_at: string;
+  stripe_payment_intent_id: string | null;
+  /** Present when payment is not PAID yet; mirrors Stripe PI status. */
+  stripe_payment_intent_status?: string | null;
+  items: OrderItemDRFResponse[];
+}
+
+/** Normalized checkout payload for `createOrder()` — not the Zod form type (`CreateOrderInput` in `lib/orders/schema.ts`). */
+export interface CreateOrderApiInput {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  shippingType: string;
+  street?: string;
+  details?: string;
+  postalCode?: string;
+  city?: string;
+  province?: string;
+  country?: string;
+  storeLocationId?: string;
+  pickupLocationId?: string;
+  items: { variantId: string; quantity: number }[];
+}
+
+/** POST /api/v1/orders/ request body (matches `OrderCreateSerializer`). */
+export interface CreateOrderDRFPayload {
+  items: { variant_id: number; quantity: number }[];
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  street: string;
+  address_extra: string;
+  postal_code: string;
+  province: string;
+  city: string;
+  country: string;
+  shipping_type: string;
+  payment_method: string;
+  shipping_cost_minor?: number;
+  tax_minor?: number;
+  currency?: string;
+}
+
+/**
+ * POST /api/v1/orders/ success JSON (matches `OrderCreatedSerializer` + `client_secret` in context).
+ * Reuses `OrderItemDRFResponse` for line items (same shape as `OrderItemReadSerializer`).
+ */
+export interface CreateOrderDRFResponse {
+  id: number;
+  payment_status: string;
+  fulfillment_status: string;
+  is_cancelled: boolean;
+  items_total_minor: number;
+  shipping_cost_minor: number;
+  tax_minor: number;
+  total_minor: number;
+  currency: string;
+  stripe_payment_intent_id: string | null;
+  client_secret: string | null;
+  payment_method: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  street: string;
+  address_extra: string;
+  postal_code: string;
+  province: string;
+  city: string;
+  country: string;
+  shipping_type: string;
+  created_at: string;
+  items: OrderItemDRFResponse[];
+}

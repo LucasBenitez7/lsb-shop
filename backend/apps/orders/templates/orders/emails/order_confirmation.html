@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pedido confirmado</title>
+</head>
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen-Sans,Ubuntu,Cantarell,'Helvetica Neue',sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#ffffff;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;margin:0 auto;padding:20px 0 48px;">
+          <tr>
+            <td>
+              {% include "orders/emails/_email_header.html" %}
+
+              <h2 style="margin:0 0 20px;padding:0 0 10px;border-bottom:1px solid #e6e6e6;font-size:18px;font-weight:bold;text-align:center;color:#1a1a1a;">
+                Detalles del Pedido Nº <span style="text-transform:uppercase;">{{ order.pk }}</span>
+              </h2>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #e5e5e5;border-radius:4px;overflow:hidden;box-shadow:0 1px 3px 0 rgba(0,0,0,0.1);margin-top:20px;background-color:#ffffff;">
+                <tr>
+                  <td style="padding:8px 14px;">
+
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:14px;">
+                      <tr>
+                        <td width="60%" valign="top" style="vertical-align:top;">
+                          <p style="margin:0 0 4px;font-size:14px;line-height:16px;font-weight:700;text-transform:uppercase;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">Método de pago</p>
+                          <p style="margin:0;font-size:14px;line-height:20px;font-weight:500;color:#171717;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">{{ payment_method_display }}</p>
+                        </td>
+                        <td width="40%" valign="top" style="vertical-align:top;">
+                          <p style="margin:0 0 4px;font-size:14px;line-height:16px;font-weight:700;text-transform:uppercase;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">Realizado</p>
+                          <p style="margin:0;font-size:14px;line-height:20px;font-weight:500;color:#171717;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">{{ created_display }}</p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:14px;">
+                      <tr>
+                        <td width="60%" valign="top" style="vertical-align:top;">
+                          <p style="margin:0 0 4px;font-size:14px;line-height:16px;font-weight:700;text-transform:uppercase;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">Datos de contacto</p>
+                          <p style="margin:0;font-size:14px;line-height:20px;font-weight:500;color:#171717;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">{{ contact_name }}</p>
+                          <p style="margin:0;font-size:14px;line-height:20px;font-weight:500;color:#171717;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">{{ contact_phone_display }}</p>
+                          <p style="margin:0;font-size:14px;line-height:20px;font-weight:500;color:#171717;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">{{ order.email }}</p>
+                        </td>
+                        <td width="40%" valign="top" style="vertical-align:top;">
+                          <p style="margin:0 0 4px;font-size:14px;line-height:16px;font-weight:700;text-transform:uppercase;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">{{ shipping_label }}</p>
+                          {% for line in shipping_address_lines %}
+                          <p style="margin:0;font-size:14px;line-height:20px;font-weight:500;color:#171717;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">{{ line }}</p>
+                          {% endfor %}
+                        </td>
+                      </tr>
+                    </table>
+
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:1px solid #e5e5e5;padding-top:6px;">
+                      <tr>
+                        <td>
+                          <p style="margin:10px 0 16px;font-size:18px;line-height:28px;font-weight:700;color:#171717;">Productos ({{ line_rows|length }})</p>
+                          {% for line in line_rows %}
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:10px;">
+                            <tr>
+                              <td width="80" valign="top" style="vertical-align:top;width:80px;">
+                                {% if line.image_url %}
+                                <img src="{{ line.image_url }}" alt="{{ line.name }}" width="64" height="85" style="display:block;width:64px;height:85px;object-fit:cover;border-radius:2px;border:1px solid #e5e5e5;" />
+                                {% else %}
+                                <div style="width:64px;height:85px;border-radius:2px;border:1px solid #e5e5e5;background-color:#f5f5f5;"></div>
+                                {% endif %}
+                              </td>
+                              <td valign="top" style="vertical-align:top;padding-left:0;">
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                  <tr>
+                                    <td valign="top" style="vertical-align:top;">
+                                      <p style="margin:0 0 2px;font-size:14px;font-weight:500;color:#171717;">{{ line.name }}</p>
+                                    </td>
+                                    <td valign="top" align="right" style="vertical-align:top;text-align:right;white-space:nowrap;">
+                                      <p style="margin:0;font-size:14px;font-weight:500;">
+                                        {% if line.show_compare_discount %}
+                                        <span style="text-decoration:line-through;color:#737373;font-size:12px;margin-right:6px;">{{ line.compare_line_total_display }}</span>
+                                        <span style="color:#dc2626;">{{ line.line_total_display }}</span>
+                                        {% else %}
+                                        <span style="color:#171717;">{{ line.line_total_display }}</span>
+                                        {% endif %}
+                                      </p>
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td colspan="2" style="padding-top:2px;">
+                                      {% if line.subtitle %}
+                                      <span style="font-size:12px;color:#171717;font-weight:500;">{{ line.subtitle }}</span>
+                                      <span style="font-size:12px;color:#171717;font-weight:500;"> · X{{ line.quantity }}</span>
+                                      {% else %}
+                                      <span style="font-size:12px;color:#171717;font-weight:500;">X{{ line.quantity }}</span>
+                                      {% endif %}
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+                          {% endfor %}
+                        </td>
+                      </tr>
+                    </table>
+
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:1px solid #e5e5e5;padding-top:16px;margin-top:16px;">
+                      <tr>
+                        <td>
+                          <p style="margin:0 0 4px;font-size:14px;color:#171717;font-weight:500;">Subtotal</p>
+                        </td>
+                        <td align="right" style="text-align:right;">
+                          <p style="margin:0 0 4px;font-size:14px;font-weight:500;color:#171717;">{{ subtotal_row_display }}</p>
+                        </td>
+                      </tr>
+                      {% if has_order_discount %}
+                      <tr>
+                        <td>
+                          <p style="margin:0 0 4px;font-size:14px;color:#dc2626;font-weight:500;">Descuentos</p>
+                        </td>
+                        <td align="right" style="text-align:right;">
+                          <p style="margin:0 0 4px;font-size:14px;font-weight:500;color:#dc2626;">{{ total_discount_display }}</p>
+                        </td>
+                      </tr>
+                      {% endif %}
+                      <tr>
+                        <td>
+                          <p style="margin:0 0 4px;font-size:14px;color:#171717;font-weight:500;">Envío</p>
+                        </td>
+                        <td align="right" style="text-align:right;">
+                          <p style="margin:0 0 4px;font-size:14px;font-weight:500;{% if order.shipping_cost_minor == 0 %}color:#16a34a;{% else %}color:#171717;{% endif %}">{{ shipping_cost_display }}</p>
+                        </td>
+                      </tr>
+                      {% if tax_minor > 0 %}
+                      <tr>
+                        <td style="border-top:1px solid #171717;padding-top:4px;">
+                          <p style="margin:0 0 4px;font-size:14px;color:#171717;font-weight:500;">Impuestos</p>
+                        </td>
+                        <td align="right" style="border-top:1px solid #171717;padding-top:4px;text-align:right;">
+                          <p style="margin:0 0 4px;font-size:14px;font-weight:500;color:#171717;">{{ tax_display }}</p>
+                        </td>
+                      </tr>
+                      {% endif %}
+                      <tr>
+                        <td>
+                          <p style="margin:4px 0 0;font-size:16px;font-weight:700;color:#171717;">TOTAL</p>
+                        </td>
+                        <td align="right" style="text-align:right;">
+                          <p style="margin:4px 0 0;font-size:16px;font-weight:700;color:#171717;">{{ total_display }}</p>
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;margin-bottom:20px;">
+                <tr>
+                  <td align="center" style="text-align:center;">
+                    <a href="{{ order_detail_url }}" style="display:inline-block;background-color:#000000;border-radius:2px;color:#fff;font-size:16px;font-weight:600;text-decoration:none;text-align:center;padding:12px 60px;">Ver pedido en la web</a>
+                  </td>
+                </tr>
+              </table>
+
+              {% include "orders/emails/_email_footer.html" %}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
