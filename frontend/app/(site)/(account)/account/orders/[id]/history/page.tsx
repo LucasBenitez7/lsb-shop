@@ -8,8 +8,18 @@ import { Image } from "@/components/ui/image";
 
 import { serverGetUserOrderFullDetails } from "@/lib/api/account/server";
 import { auth } from "@/lib/api/auth/server";
-import { colorsMatch } from "@/lib/products/color-matching";
-import { formatHistoryReason, getEventVisuals } from "@/lib/orders/utils";
+import {
+  historyRowDisplayQuantity,
+  imageUrlForHistoryRow,
+  matchOrderItemForHistoryRow,
+  parseHistoryDetailItem,
+  type HistoryDetailItemRow,
+} from "@/lib/orders/history-items";
+import {
+  formatHistoryReason,
+  formatSnapshotStatusForDisplay,
+  getEventVisuals,
+} from "@/lib/orders/utils";
 import { cn } from "@/lib/utils";
 
 import type { HistoryDetailsJson } from "@/types/order";
@@ -32,9 +42,12 @@ export default async function UserOrderHistoryPage({ params }: Props) {
   const relevantEvents = order.history.filter((event) => {
     if (event.type !== "INCIDENT") return false;
 
+    // Ocultar cierre de pedido si llegara como INCIDENT (legacy); Django usa STATUS_CHANGE + ORDER_*.
     if (
       event.snapshotStatus === "Cancelado" ||
-      event.snapshotStatus === "Expirado"
+      event.snapshotStatus === "Expirado" ||
+      event.snapshotStatus === "ORDER_CANCELLED" ||
+      event.snapshotStatus === "ORDER_EXPIRED"
     ) {
       return false;
     }
@@ -81,10 +94,12 @@ export default async function UserOrderHistoryPage({ params }: Props) {
         {relevantEvents.map((event) => {
           const details =
             (event.details as unknown as HistoryDetailsJson) || {};
-          const itemsList = details.items || [];
+          const itemsList: HistoryDetailItemRow[] = (details.items || [])
+            .map(parseHistoryDetailItem)
+            .filter((r): r is HistoryDetailItemRow => r != null);
           const note = details.note;
           const totalAffectedQty = itemsList.reduce(
-            (acc, i) => acc + i.quantity,
+            (acc, row) => acc + historyRowDisplayQuantity(row),
             0,
           );
 
@@ -145,7 +160,7 @@ export default async function UserOrderHistoryPage({ params }: Props) {
                           <StatusIcon className={cn("size-4", statusColor)} />
                         )}
                         <h3 className="font-semibold text-base">
-                          {event.snapshotStatus}
+                          {formatSnapshotStatusForDisplay(event.snapshotStatus)}
                         </h3>
                       </div>
 
@@ -186,19 +201,19 @@ export default async function UserOrderHistoryPage({ params }: Props) {
 
                         <div className="divide-y divide-neutral-100">
                           {itemsList.map((historyItem, idx) => {
-                            const matchedLiveItem = order.items.find(
-                              (i) => i.nameSnapshot === historyItem.name,
+                            const matchedLiveItem = matchOrderItemForHistoryRow(
+                              order.items,
+                              historyItem,
                             );
-                            const productImages =
-                              matchedLiveItem?.product?.images || [];
-                            const matchingImg =
-                              productImages.find((img) =>
-                                historyItem.variant
-                                  ?.split("/")
-                                  .map((s) => s.trim())
-                                  .some((part) => colorsMatch(img.color, part)),
-                              ) || productImages[0];
-                            const imgUrl = matchingImg?.url;
+                            const imgUrl = imageUrlForHistoryRow(
+                              matchedLiveItem,
+                              historyItem,
+                            );
+                            const displayName =
+                              historyItem.name?.trim() ||
+                              matchedLiveItem?.nameSnapshot ||
+                              "Producto";
+                            const qty = historyRowDisplayQuantity(historyItem);
 
                             return (
                               <div
@@ -210,7 +225,7 @@ export default async function UserOrderHistoryPage({ params }: Props) {
                                   {imgUrl ? (
                                     <Image
                                       src={imgUrl}
-                                      alt={historyItem.name}
+                                      alt={displayName}
                                       fill
                                       className="object-cover"
                                       sizes="200px"
@@ -225,7 +240,7 @@ export default async function UserOrderHistoryPage({ params }: Props) {
                                 {/* INFO */}
                                 <div className="flex flex-col h-full">
                                   <span className="font-medium text-sm pb-1">
-                                    {historyItem.name}
+                                    {displayName}
                                   </span>
                                   {historyItem.variant && (
                                     <span className="text-xs font-medium">
@@ -233,7 +248,7 @@ export default async function UserOrderHistoryPage({ params }: Props) {
                                     </span>
                                   )}
                                   <span className="text-xs font-medium">
-                                    X{historyItem.quantity}
+                                    X{qty}
                                   </span>
                                 </div>
                               </div>

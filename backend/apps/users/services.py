@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 import structlog
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from apps.core.exceptions import ResourceNotFound, ShopError
 from apps.users.models import GuestSession
@@ -66,7 +68,7 @@ class GuestService:
     @staticmethod
     def request_otp(email: str) -> GuestSession:
         session = GuestSession.create_for_email(email)
-        log.info("guest.otp.requested", email=email)
+        log.info("guest.otp.requested", guest_session_id=session.pk)
         return session
 
     @staticmethod
@@ -84,8 +86,10 @@ class GuestService:
             raise InvalidOTP() from None
 
         session.is_verified = True
-        session.save(update_fields=["is_verified"])
-        log.info("guest.otp.verified", email=email)
+        # Allow browsing tracking for a while after OTP (OTP window alone is too short).
+        session.expires_at = timezone.now() + timedelta(days=7)
+        session.save(update_fields=["is_verified", "expires_at"])
+        log.info("guest.otp.verified", guest_session_id=session.pk)
         return session
 
     @staticmethod

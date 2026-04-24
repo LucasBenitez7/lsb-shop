@@ -30,7 +30,7 @@ def render_verification_email(
         "verification_url": verification_url,
         "greeting_name": (user.first_name or "").strip() or user.email,
     }
-    subject = "Verifica tu correo — LSB Shop"
+    subject = "¡Bienvenido a LSB Shop! Verifica tu correo"
     text = render_to_string("users/emails/verification.txt", ctx)
     html = render_to_string("users/emails/verification.html", ctx)
     return subject, text, html

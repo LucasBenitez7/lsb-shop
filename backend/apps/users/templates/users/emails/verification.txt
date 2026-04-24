@@ -1,7 +1,7 @@
 {% autoescape off %}
 {% if greeting_name %}Hola {{ greeting_name }},{% else %}Hola,{% endif %}
 
-Gracias por registrarte en LSB Shop. Verifica tu correo abriendo este enlace (válido 24 horas):
+¡Te damos la bienvenida! Gracias por unirte a LSB Shop. Para activar tu cuenta y poder iniciar sesión, verifica tu correo con este enlace (válido 24 horas):
 
 {{ verification_url }}
 

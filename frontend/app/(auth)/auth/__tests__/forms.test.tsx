@@ -237,7 +237,7 @@ describe("LoginForm", () => {
       screen.getByRole("button", { name: "Continuar como invitado" }),
     );
 
-    expect(mockPush).toHaveBeenCalledWith("/checkout");
+    expect(mockPush).toHaveBeenCalledWith("/checkout?guest=1");
   });
 });
 

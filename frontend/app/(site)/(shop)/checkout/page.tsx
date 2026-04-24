@@ -13,6 +13,7 @@ import { Container } from "@/components/ui";
 import { serverGetUserAddresses } from "@/lib/api/account/server";
 import { auth } from "@/lib/api/auth/server";
 import { APIError } from "@/lib/api/client";
+import { isGuestCheckoutGuestParam } from "@/lib/auth/guest-checkout";
 
 import type { Metadata } from "next";
 
@@ -31,6 +32,8 @@ export default async function CheckoutPage({
     payment_intent?: string;
     redirect_status?: string;
     checkout_payment?: string;
+    /** When set, checkout runs without account (same UI, guest shipping + payment). */
+    guest?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -45,22 +48,27 @@ export default async function CheckoutPage({
 
   const session = await auth();
   const user = session?.user || null;
+  const guestCheckout = isGuestCheckoutGuestParam(sp.guest);
+  const hasPaymentResume = sp.checkout_payment === "1" && Boolean(sp.orderId);
 
-  // Checkout requires authentication — guests and expired sessions go to login
-  if (!user) {
+  // Logged-in users always use the normal flow (ignore guest flag).
+  // Unauthenticated: allow guest checkout (?guest=1) or Stripe return (?checkout_payment=1&orderId=).
+  if (!user && !guestCheckout && !hasPaymentResume) {
     redirect("/auth/login?redirectTo=%2Fcheckout");
   }
 
   let savedAddresses: UserAddress[] = [];
 
-  try {
-    savedAddresses = await serverGetUserAddresses();
-  } catch (error) {
-    if (error instanceof APIError && error.status === 401) {
-      redirect("/auth/login?session_expired=true&redirectTo=%2Fcheckout");
+  if (user) {
+    try {
+      savedAddresses = await serverGetUserAddresses();
+    } catch (error) {
+      if (error instanceof APIError && error.status === 401) {
+        redirect("/auth/login?session_expired=true&redirectTo=%2Fcheckout");
+      }
+      // Other errors (network, etc.) — continue with empty addresses
+      console.error("Error loading addresses:", error);
     }
-    // Other errors (network, etc.) — continue with empty addresses
-    console.error("Error loading addresses:", error);
   }
 
   const defaultAddress = savedAddresses.find((a) => a.isDefault);

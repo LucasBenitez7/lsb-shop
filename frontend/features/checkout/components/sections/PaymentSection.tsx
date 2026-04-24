@@ -7,15 +7,25 @@ import { FaCreditCard } from "react-icons/fa6";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { type CreateOrderInput } from "@/lib/orders/schema";
+import {
+  checkoutGuestStripeReturnPath,
+  checkoutStripeReturnPath,
+} from "@/lib/checkout/stripe-return-paths";
 
 import { StripeEmbedForm } from "./StripeEmbedForm";
 
 type Props = {
   isOpen: boolean;
   stripeData: { clientSecret: string; orderId: string } | null;
+  /** When true, Stripe `return_url` keeps `guest=1` so post-3DS checkout SSR allows access. */
+  isGuestCheckout?: boolean;
 };
 
-export function PaymentSection({ isOpen = false, stripeData }: Props) {
+export function PaymentSection({
+  isOpen = false,
+  stripeData,
+  isGuestCheckout = false,
+}: Props) {
   const { setValue, watch } = useFormContext<CreateOrderInput>();
   const paymentMethod = watch("paymentMethod");
 
@@ -54,6 +64,11 @@ export function PaymentSection({ isOpen = false, stripeData }: Props) {
               <StripeEmbedForm
                 clientSecret={stripeData.clientSecret}
                 orderId={stripeData.orderId}
+                stripeReturnPath={
+                  isGuestCheckout
+                    ? checkoutGuestStripeReturnPath(stripeData.orderId)
+                    : checkoutStripeReturnPath(stripeData.orderId)
+                }
               />
             ) : (
               <div className="space-y-4 animate-pulse">

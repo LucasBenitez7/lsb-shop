@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
 import { AuthProvider } from "@/features/auth/components/AuthProvider";
 import { CartSyncProvider } from "@/features/cart/components/CartSyncProvider";
-import { SessionGuard } from "@/components/SessionGuard";
+import { SessionGuard } from "@/features/auth/components/SessionGuard";
 
 // Development helper — exposes window.__clearDevState() in dev mode
 if (process.env.NODE_ENV === "development") {
@@ -26,12 +27,14 @@ function GoogleBridge({ children }: { children: React.ReactNode }) {
 export default function Providers({ children }: ProvidersProps) {
   return (
     <GoogleBridge>
-      <AuthProvider>
-        <CartSyncProvider>
-          <SessionGuard />
-          {children}
-        </CartSyncProvider>
-      </AuthProvider>
+      <Suspense fallback={null}>
+        <AuthProvider>
+          <CartSyncProvider>
+            <SessionGuard />
+            {children}
+          </CartSyncProvider>
+        </AuthProvider>
+      </Suspense>
     </GoogleBridge>
   );
 }

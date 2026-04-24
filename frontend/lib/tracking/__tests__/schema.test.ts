@@ -9,10 +9,14 @@ import {
 describe("guestAccessStep1Schema", () => {
   it("acepta orderId y email válidos", () => {
     const result = guestAccessStep1Schema.safeParse({
-      orderId: "order_123",
-      email: "guest@example.com",
+      orderId: "  #42 ",
+      email: "Guest@Example.com",
     });
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.orderId).toBe("42");
+      expect(result.data.email).toBe("guest@example.com");
+    }
   });
 
   it("rechaza orderId vacío", () => {
@@ -28,11 +32,23 @@ describe("guestAccessStep1Schema", () => {
 
   it("rechaza email inválido", () => {
     const result = guestAccessStep1Schema.safeParse({
-      orderId: "order_123",
+      orderId: "99",
       email: "notanemail",
     });
     expect(result.success).toBe(false);
-    expect(result.error?.issues[0].message).toBe("Introduce un email válido");
+    const messages = result.error?.issues.map((i) => i.message) ?? [];
+    expect(messages).toContain("Introduce un email válido");
+  });
+
+  it("rechaza orderId con letras", () => {
+    const result = guestAccessStep1Schema.safeParse({
+      orderId: "ORD-123",
+      email: "guest@example.com",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe(
+      "El número de pedido solo puede contener dígitos.",
+    );
   });
 
   it("rechaza objeto vacío", () => {

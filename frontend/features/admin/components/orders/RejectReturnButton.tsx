@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ import { REJECTION_REASONS } from "@/lib/orders/constants";
 import { rejectReturnAction } from "@/lib/api/orders/mutations";
 
 export function RejectReturnButton({ orderId }: { orderId: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedReason, setSelectedReason] = useState("");
@@ -44,6 +46,7 @@ export function RejectReturnButton({ orderId }: { orderId: string }) {
     else {
       toast.success("Devolución rechazada.");
       setOpen(false);
+      router.refresh();
     }
     setLoading(false);
   };

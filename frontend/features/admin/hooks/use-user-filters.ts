@@ -15,11 +15,14 @@ export function useUserFilters() {
 
   // --- ESCRITURA URL ---
   const updateParams = useCallback(
-    (updates: Record<string, string | null>) => {
+    (updates: Record<string, string | null | undefined>) => {
       const params = new URLSearchParams(searchParams.toString());
       Object.entries(updates).forEach(([key, value]) => {
-        if (value) params.set(key, value);
-        else params.delete(key);
+        if (value !== null && value !== undefined && value !== "") {
+          params.set(key, value);
+        } else {
+          params.delete(key);
+        }
       });
 
       if (updates.page === undefined) params.set("page", "1");
@@ -31,6 +34,12 @@ export function useUserFilters() {
 
   // --- HANDLERS ---
   const handleSortChange = (val: string) => updateParams({ sort: val });
+
+  const activeRole = searchParams.get("role") || "";
+
+  const handleRoleChange = (val: string) => {
+    updateParams({ role: val === "all" ? null : val });
+  };
 
   const toggleRole = (roleValue: string) => {
     if (activeRoles.includes(roleValue)) {
@@ -47,8 +56,10 @@ export function useUserFilters() {
   return {
     activeSort,
     activeRoles,
+    activeRole,
     hasActiveFilters,
     handleSortChange,
+    handleRoleChange,
     toggleRole,
     clearFilters,
   };

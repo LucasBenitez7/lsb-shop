@@ -44,21 +44,34 @@ export function UserOrderCardBadge({
 
   if (fulfillmentStatus === "DELIVERED" || fulfillmentStatus === "RETURNED") {
     const formattedDate = deliveredAt
-      ? new Date(deliveredAt).toLocaleString("es-ES", {
+      ? new Date(deliveredAt).toLocaleDateString("es-ES", {
+          weekday: "long",
           day: "numeric",
           month: "long",
           year: "numeric",
         })
-      : "recientemente";
+      : null;
 
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 text-sm font-semibold text-green-700",
+          "flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-sm font-semibold text-green-700",
           className,
         )}
       >
-        Entregado en fecha: <span className="lowercase">{formattedDate}</span>
+        <span>Entregado el</span>
+        {formattedDate && deliveredAt ? (
+          <time
+            className="font-medium text-green-800 normal-case"
+            dateTime={new Date(deliveredAt).toISOString()}
+          >
+            {formattedDate}
+          </time>
+        ) : (
+          <span className="font-normal text-green-800/90 text-xs">
+            (fecha no disponible)
+          </span>
+        )}
       </div>
     );
   }

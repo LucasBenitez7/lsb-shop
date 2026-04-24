@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FaArrowLeft } from "react-icons/fa6";
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { serverGetOrderSuccessDetails } from "@/lib/api/account/server";
 import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
 import { canOrderBeReturned, getReturnableItems } from "@/lib/orders/utils";
+import { trackingPaymentAccessQuery } from "@/lib/tracking/guest-order-link";
 
 import type { UserReturnableItem } from "@/lib/orders/types";
 
@@ -16,16 +16,20 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ orderId: string }>;
+  searchParams: Promise<{ payment_intent?: string }>;
 };
 
-export default async function GuestOrderReturnPage({ params }: Props) {
+export default async function GuestOrderReturnPage({ params, searchParams }: Props) {
   const { orderId } = await params;
+  const { payment_intent: paymentIntent } = await searchParams;
 
   // 1. Verificar Acceso de Invitado
-  await verifyGuestAccessOrRedirect(orderId);
+  await verifyGuestAccessOrRedirect(orderId, paymentIntent);
+
+  const accessQuery = trackingPaymentAccessQuery(paymentIntent);
 
   // 2. Obtener detalles
-  const order = await serverGetOrderSuccessDetails(orderId);
+  const order = await serverGetOrderSuccessDetails(orderId, paymentIntent);
 
   if (!order) notFound();
 
@@ -46,7 +50,7 @@ export default async function GuestOrderReturnPage({ params }: Props) {
             : "El pedido debe estar pagado y entregado para poder solicitar una devolución."}
         </p>
         <Button asChild variant="outline">
-          <Link href={`/tracking/${order.id}`}>Volver al pedido</Link>
+          <Link href={`/tracking/${order.id}${accessQuery}`}>Volver al pedido</Link>
         </Button>
       </div>
     );
@@ -62,7 +66,7 @@ export default async function GuestOrderReturnPage({ params }: Props) {
           Ya no quedan productos disponibles para devolver en este pedido.
         </p>
         <Button asChild variant="outline">
-          <Link href={`/tracking/${order.id}`}>Volver al pedido</Link>
+          <Link href={`/tracking/${order.id}${accessQuery}`}>Volver al pedido</Link>
         </Button>
       </div>
     );
@@ -72,7 +76,7 @@ export default async function GuestOrderReturnPage({ params }: Props) {
     <div className="space-y-4 w-full max-w-5xl mx-auto py-10 px-4">
       <div className="relative flex items-center justify-center border-b pb-4">
         <Link
-          href={`/tracking/${orderId}`}
+          href={`/tracking/${orderId}${accessQuery}`}
           className="absolute left-0 hover:bg-neutral-100 p-2 rounded-xs transition-colors"
         >
           <FaArrowLeft className="h-4 w-4" />

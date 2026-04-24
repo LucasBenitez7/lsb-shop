@@ -69,7 +69,9 @@ export default function ChangePasswordForm() {
           Cambiar contraseña
         </CardTitle>
         <CardDescription>
-          Asegúrate de usar una contraseña segura y única.
+          Debes indicar tu contraseña actual: así confirmamos que eres tú antes de
+          guardar la nueva. Si no la recuerdas, cierra sesión y en el login elige
+          la opción para recuperar contraseña (recibirás un enlace por email).
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0">

@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FaArrowLeft, FaBoxOpen } from "react-icons/fa6";
@@ -8,20 +7,25 @@ import { Button } from "@/components/ui/button";
 
 import { serverGetOrderSuccessDetails } from "@/lib/api/account/server";
 import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
+import { trackingPaymentAccessQuery } from "@/lib/tracking/guest-order-link";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ orderId: string }>;
+  searchParams: Promise<{ payment_intent?: string }>;
 };
 
-export default async function GuestOrderHistoryPage({ params }: Props) {
+export default async function GuestOrderHistoryPage({ params, searchParams }: Props) {
   const { orderId } = await params;
+  const { payment_intent: paymentIntent } = await searchParams;
 
   // 1. Verificar Acceso de Invitado
-  await verifyGuestAccessOrRedirect(orderId);
+  await verifyGuestAccessOrRedirect(orderId, paymentIntent);
 
-  const order = await serverGetOrderSuccessDetails(orderId);
+  const accessQuery = trackingPaymentAccessQuery(paymentIntent);
+
+  const order = await serverGetOrderSuccessDetails(orderId, paymentIntent);
 
   if (!order) notFound();
 
@@ -31,7 +35,9 @@ export default async function GuestOrderHistoryPage({ params }: Props) {
 
     if (
       event.snapshotStatus === "Cancelado" ||
-      event.snapshotStatus === "Expirado"
+      event.snapshotStatus === "Expirado" ||
+      event.snapshotStatus === "ORDER_CANCELLED" ||
+      event.snapshotStatus === "ORDER_EXPIRED"
     ) {
       return false;
     }
@@ -44,7 +50,7 @@ export default async function GuestOrderHistoryPage({ params }: Props) {
       {/* HEADER */}
       <div className="relative flex items-center justify-center border-b pb-4">
         <Link
-          href={`/tracking/${order.id}`}
+          href={`/tracking/${order.id}${accessQuery}`}
           className="absolute left-0 hover:bg-neutral-100 p-2 rounded-xs transition-colors"
         >
           <FaArrowLeft className="size-4" />
@@ -68,7 +74,7 @@ export default async function GuestOrderHistoryPage({ params }: Props) {
               No hay devoluciones ni incidencias registradas en este pedido.
             </p>
             <Button asChild variant="outline">
-              <Link href={`/tracking/${order.id}`}>
+              <Link href={`/tracking/${order.id}${accessQuery}`}>
                 Volver al detalle del pedido
               </Link>
             </Button>

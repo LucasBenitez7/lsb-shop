@@ -3,15 +3,26 @@ import { FaCalendar, FaBoxOpen } from "react-icons/fa6";
 import { Card, CardContent } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
 
-import { formatHistoryReason, getEventVisuals } from "@/lib/orders/utils";
-import { colorsMatch } from "@/lib/products/color-matching";
+import {
+  formatHistoryReason,
+  formatSnapshotStatusForDisplay,
+  getEventVisuals,
+} from "@/lib/orders/utils";
+import {
+  historyRowDisplayQuantity,
+  imageUrlForHistoryRow,
+  matchOrderItemForHistoryRow,
+  parseHistoryDetailItem,
+  type HistoryDetailItemRow,
+} from "@/lib/orders/history-items";
 import { cn } from "@/lib/utils";
 
-import type { HistoryDetailsJson, HistoryItemJson } from "@/lib/orders/types";
+import type { HistoryDetailsJson } from "@/lib/orders/types";
+import type { OrderItem } from "@/types/order";
 
 type Props = {
   events: any[];
-  orderItems: any[];
+  orderItems: OrderItem[];
 };
 
 export function GuestHistoryList({ events, orderItems }: Props) {
@@ -19,10 +30,12 @@ export function GuestHistoryList({ events, orderItems }: Props) {
     <>
       {events.map((event) => {
         const details = (event.details as unknown as HistoryDetailsJson) || {};
-        const itemsList = details.items || [];
+        const itemsList: HistoryDetailItemRow[] = (details.items || [])
+          .map(parseHistoryDetailItem)
+          .filter((r): r is HistoryDetailItemRow => r != null);
         const note = details.note;
         const totalAffectedQty = itemsList.reduce(
-          (acc: number, i: HistoryItemJson) => acc + i.quantity,
+          (acc, row) => acc + historyRowDisplayQuantity(row),
           0,
         );
 
@@ -83,7 +96,7 @@ export function GuestHistoryList({ events, orderItems }: Props) {
                         <StatusIcon className={cn("size-4", statusColor)} />
                       )}
                       <h3 className="font-semibold text-base">
-                        {event.snapshotStatus}
+                        {formatSnapshotStatusForDisplay(event.snapshotStatus)}
                       </h3>
                     </div>
 
@@ -123,22 +136,20 @@ export function GuestHistoryList({ events, orderItems }: Props) {
                       </div>
 
                       <div className="divide-y divide-neutral-100">
-                        {itemsList.map((historyItem: HistoryItemJson, idx: number) => {
-                          const matchedLiveItem = orderItems.find(
-                            (i: { nameSnapshot?: string }) =>
-                              i.nameSnapshot === historyItem.name,
+                        {itemsList.map((historyItem, idx: number) => {
+                          const matchedLiveItem = matchOrderItemForHistoryRow(
+                            orderItems,
+                            historyItem,
                           );
-                          const productImages =
-                            matchedLiveItem?.product?.images || [];
-                          const matchingImg =
-                            productImages.find(
-                              (img: { color?: string | null }) =>
-                                historyItem.variant
-                                  ?.split("/")
-                                  .map((s) => s.trim())
-                                  .some((part) => colorsMatch(img.color, part)),
-                            ) || productImages[0];
-                          const imgUrl = matchingImg?.url;
+                          const imgUrl = imageUrlForHistoryRow(
+                            matchedLiveItem,
+                            historyItem,
+                          );
+                          const displayName =
+                            historyItem.name?.trim() ||
+                            matchedLiveItem?.nameSnapshot ||
+                            "Producto";
+                          const qty = historyRowDisplayQuantity(historyItem);
 
                           return (
                             <div
@@ -150,7 +161,7 @@ export function GuestHistoryList({ events, orderItems }: Props) {
                                 {imgUrl ? (
                                   <Image
                                     src={imgUrl}
-                                    alt={historyItem.name}
+                                    alt={displayName}
                                     fill
                                     className="object-cover"
                                     sizes="200px"
@@ -165,7 +176,7 @@ export function GuestHistoryList({ events, orderItems }: Props) {
                               {/* INFO */}
                               <div className="flex flex-col h-full">
                                 <span className="font-medium text-sm pb-1">
-                                  {historyItem.name}
+                                  {displayName}
                                 </span>
                                 {historyItem.variant && (
                                   <span className="text-xs font-medium">
@@ -173,7 +184,7 @@ export function GuestHistoryList({ events, orderItems }: Props) {
                                   </span>
                                 )}
                                 <span className="text-xs font-medium">
-                                  X{historyItem.quantity}
+                                  X{qty}
                                 </span>
                               </div>
                             </div>

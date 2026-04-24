@@ -4,13 +4,27 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/features/auth/components/AuthProvider";
+import {
+  isCheckoutAuthLightRoute,
+  isCheckoutSuccessRoute,
+} from "@/lib/checkout/stripe-return-paths";
 
 /**
- * Paths that require authentication. If the session expires while the user
- * is on one of these, redirect to login. Otherwise, just clear the session
- * and let them continue as a guest.
+ * After `api-session-expired`, redirect to login only on these routes.
+ * Note: `/checkout/success` is NOT protected — it shares the `/checkout` prefix
+ * but must remain reachable for guests with stale JWT cookies.
  */
-const PROTECTED_PATH_PREFIXES = ["/account", "/admin", "/checkout"];
+function shouldRedirectToLoginAfterSessionExpired(
+  pathname: string,
+  search: URLSearchParams,
+): boolean {
+  if (isCheckoutSuccessRoute(pathname)) return false;
+  if (isCheckoutAuthLightRoute(pathname, search)) return false;
+  if (pathname.startsWith("/account")) return true;
+  if (pathname.startsWith("/admin")) return true;
+  if (pathname === "/checkout" || pathname.startsWith("/checkout/")) return true;
+  return false;
+}
 
 /**
  * Listens for `api-session-expired` events emitted by `apiFetch` when both
@@ -19,8 +33,8 @@ const PROTECTED_PATH_PREFIXES = ["/account", "/admin", "/checkout"];
  * When fired it:
  *  1. Clears the auth state immediately (user → null, status → unauthenticated)
  *     so the Header dropdown disappears right away.
- *  2. If the user is on a protected page (account, checkout, admin), redirects
- *     to login and saves the path for return.
+ *  2. If the user is on a protected page (account, admin, checkout except success),
+ *     redirects to login and saves the path for return.
  *  3. If the user is on a public page (home, products), does NOT redirect —
  *     they can continue browsing as a guest.
  *
@@ -35,20 +49,18 @@ export function SessionGuard() {
       if (!(event.detail?.status === 401 && event.detail?.sessionExpired)) return;
 
       const currentPath = window.location.pathname;
+      const search = new URLSearchParams(window.location.search);
 
       // 1. Always clear session state immediately — UI updates right away
       clearSession();
 
-      // 2. Only redirect if the user is on a protected page
-      const isProtectedPage = PROTECTED_PATH_PREFIXES.some((prefix) =>
-        currentPath.startsWith(prefix),
-      );
-
-      if (isProtectedPage) {
-        sessionStorage.setItem("redirectAfterLogin", currentPath);
-        router.push("/auth/login?session_expired=true");
+      // 2. Only redirect on true protected routes (not thank-you / guest success).
+      if (!shouldRedirectToLoginAfterSessionExpired(currentPath, search)) {
+        return;
       }
-      // else: user stays on current page (home, products, etc.) — they can browse as guest
+
+      sessionStorage.setItem("redirectAfterLogin", currentPath);
+      router.push("/auth/login?session_expired=true");
     };
 
     window.addEventListener(

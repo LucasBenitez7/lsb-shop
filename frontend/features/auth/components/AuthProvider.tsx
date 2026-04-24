@@ -9,9 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { getMe, logout as apiLogout } from "@/lib/api/auth";
+import { isCheckoutAuthLightRoute } from "@/lib/checkout/stripe-return-paths";
 import { APIError } from "@/lib/api/client";
 
 import type { User } from "@/types/user";
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const refresh = useCallback(async () => {
     try {
@@ -51,9 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (isCheckoutAuthLightRoute(pathname, searchParams)) {
+      setUser(null);
+      setStatus("unauthenticated");
+      return;
+    }
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   const clearSession = useCallback(() => {
     setUser(null);

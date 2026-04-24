@@ -49,13 +49,16 @@ export function mapOrderListItemDRF(
     isCancelled: item.is_cancelled,
     totalMinor: item.total_minor,
     currency: item.currency,
-    deliveredAt: null,
+    deliveredAt: item.delivered_at ?? null,
     items: item.items.map((line) => ({
       id: String(line.id),
       quantity: line.quantity,
       nameSnapshot: line.name_snapshot,
       sizeSnapshot: line.size_snapshot,
       colorSnapshot: line.color_snapshot,
+      quantityReturned: line.quantity_returned ?? 0,
+      quantityReturnRequested: line.quantity_return_requested ?? 0,
+      compareAtUnitMinorSnapshot: line.compare_at_unit_minor_snapshot ?? null,
       product:
         line.image_url || line.product_slug
           ? {
@@ -68,7 +71,10 @@ export function mapOrderListItemDRF(
                     },
                   ]
                 : [],
-              compareAtPrice: null,
+              compareAtPrice:
+                line.compare_at_unit_minor_snapshot != null
+                  ? line.compare_at_unit_minor_snapshot
+                  : null,
             }
           : null,
     })),
@@ -135,6 +141,8 @@ export function mapOrderDetailDRF(response: OrderDetailDRFResponse): UserOrderDe
     country: response.country,
     returnReason: response.return_reason,
     rejectionReason: response.rejection_reason ?? null,
+    carrier: response.carrier ?? null,
+    trackingNumber: response.tracking_number ?? null,
     deliveredAt: response.delivered_at,
     createdAt: response.created_at,
     updatedAt: response.updated_at,
@@ -150,6 +158,7 @@ export function mapOrderDetailDRF(response: OrderDetailDRFResponse): UserOrderDe
       quantityReturned: item.quantity_returned ?? 0,
       quantityReturnRequested: item.quantity_return_requested ?? 0,
       priceMinorSnapshot: item.price_minor_snapshot,
+      compareAtUnitMinorSnapshot: item.compare_at_unit_minor_snapshot ?? null,
       product:
         item.image_url || item.product_slug
           ? {
@@ -162,7 +171,7 @@ export function mapOrderDetailDRF(response: OrderDetailDRFResponse): UserOrderDe
                     },
                   ]
                 : [],
-              compareAtPrice: null,
+              compareAtPrice: item.compare_at_unit_minor_snapshot ?? null,
             }
           : null,
     })),

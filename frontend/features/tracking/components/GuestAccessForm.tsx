@@ -41,6 +41,11 @@ import {
   type GuestAccessStep2Values,
 } from "@/lib/tracking/schema";
 
+/**
+ * Guest tracking OTP flow — matches acme-commerce-starter `GuestAccessForm` pattern:
+ * local `debugOtp` drives the OTP UI and syncs into react-hook-form via `setValue`,
+ * so `input-otp` stays decoupled from Controller `value`/`onChange` quirks.
+ */
 export function GuestAccessForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,7 +58,6 @@ export function GuestAccessForm() {
     email: string;
   } | null>(null);
 
-  // DEBUG: otp state
   const [debugOtp, setDebugOtp] = useState("");
 
   const form1 = useForm<GuestAccessStep1Values>({
@@ -66,7 +70,6 @@ export function GuestAccessForm() {
     defaultValues: { otp: "" },
   });
 
-  // SYNC DEBUG
   useEffect(() => {
     form2.setValue("otp", debugOtp, {
       shouldValidate: debugOtp.length === 6,
@@ -74,18 +77,28 @@ export function GuestAccessForm() {
     });
   }, [debugOtp, form2]);
 
+  useEffect(() => {
+    const id = searchParams.get("orderId");
+    if (id) form1.setValue("orderId", id);
+  }, [searchParams, form1]);
+
   const onStep1Submit = async (values: GuestAccessStep1Values) => {
     setLoading(true);
     try {
       const res = await requestGuestAccess(values.orderId, values.email);
-      if (res.error) {
-        toast.error(res.error);
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo enviar el código");
       } else {
-        toast.success(res.message);
+        toast.success(
+          res.message ??
+            "Te hemos enviado un código de verificación al email del pedido.",
+        );
         setOrderDetails(values);
+        setDebugOtp("");
+        form2.reset({ otp: "" });
         setStep(2);
       }
-    } catch (err) {
+    } catch {
       toast.error("Ocurrió un error");
     } finally {
       setLoading(false);
@@ -102,15 +115,16 @@ export function GuestAccessForm() {
         orderDetails.email,
         values.otp,
       );
-      if (res.error) {
-        toast.error(res.error);
-        setLoading(false);
-      } else {
-        toast.success("Acceso verificado");
-        router.push(`/tracking/${orderDetails.orderId}`);
+      if (!res.ok) {
+        toast.error(res.error ?? "Código incorrecto");
+        return;
       }
-    } catch (err) {
+      toast.success("Acceso verificado");
+      router.push(`/tracking/${orderDetails.orderId}`);
+      router.refresh();
+    } catch {
       toast.error("Ocurrió un error");
+    } finally {
       setLoading(false);
     }
   };
@@ -148,6 +162,7 @@ export function GuestAccessForm() {
                         onBlur={field.onBlur}
                         ref={field.ref}
                         disabled={loading}
+                        autoComplete="one-time-code"
                         containerClassName="justify-center z-10"
                       >
                         <InputOTPGroup>
@@ -177,7 +192,11 @@ export function GuestAccessForm() {
                   type="button"
                   size="lg"
                   variant="outline"
-                  onClick={() => setStep(1)}
+                  onClick={() => {
+                    setStep(1);
+                    setDebugOtp("");
+                    form2.reset({ otp: "" });
+                  }}
                   disabled={loading}
                 >
                   <FaArrowLeft className="mr-2 size-4" /> Volver al paso

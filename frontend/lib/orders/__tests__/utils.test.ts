@@ -33,6 +33,7 @@ import {
   calculateDiscounts,
   getReturnableItems,
   getReturnStatusBadge,
+  formatSnapshotStatusForDisplay,
   getOrderCancellationDetails,
   getOrderCancellationDetailsUser,
   getOrderTotals,
@@ -66,6 +67,14 @@ describe("formatHistoryReason", () => {
     expect(formatHistoryReason(SYSTEM_MSGS.ORDER_EXPIRED)).toBe(
       "Expirado por falta de pago (Tiempo límite excedido)",
     );
+  });
+
+  it("traduce motivo de expiración en inglés del backend", () => {
+    expect(
+      formatHistoryReason(
+        "Automatically expired (payment not completed in time).",
+      ),
+    ).toBe(SYSTEM_MSGS.ORDER_EXPIRED);
   });
 
   it("devuelve texto mapeado para RETURN_ACCEPTED", () => {
@@ -339,6 +348,25 @@ describe("getReturnStatusBadge", () => {
     expect(result?.label).toBe("Solicitud Pendiente");
   });
 
+  it("devuelve Solicitud Pendiente con código DRF RETURN_REQUESTED", () => {
+    const result = getReturnStatusBadge({
+      paymentStatus: "PAID",
+      fulfillmentStatus: "DELIVERED",
+      history: [{ snapshotStatus: "RETURN_REQUESTED" }],
+    });
+    expect(result?.label).toBe("Solicitud Pendiente");
+  });
+
+  it("devuelve Solicitud Pendiente si las líneas tienen quantityReturnRequested", () => {
+    const result = getReturnStatusBadge({
+      paymentStatus: "PAID",
+      fulfillmentStatus: "DELIVERED",
+      history: [],
+      items: [{ quantityReturnRequested: 1 }],
+    });
+    expect(result?.label).toBe("Solicitud Pendiente");
+  });
+
   it("no muestra Solicitud Pendiente si la devolución ya fue aceptada", () => {
     const result = getReturnStatusBadge({
       paymentStatus: "PAID",
@@ -351,6 +379,18 @@ describe("getReturnStatusBadge", () => {
     expect(result?.label).not.toBe("Solicitud Pendiente");
   });
 
+  it("no muestra Solicitud Pendiente tras RETURN_PROCESSED (Django)", () => {
+    const result = getReturnStatusBadge({
+      paymentStatus: "PAID",
+      fulfillmentStatus: "DELIVERED",
+      history: [
+        { snapshotStatus: "RETURN_REQUESTED" },
+        { snapshotStatus: "RETURN_PROCESSED" },
+      ],
+    });
+    expect(result?.label).not.toBe("Solicitud Pendiente");
+  });
+
   it("no muestra Solicitud Pendiente si la devolución fue rechazada", () => {
     const result = getReturnStatusBadge({
       paymentStatus: "PAID",
@@ -358,6 +398,18 @@ describe("getReturnStatusBadge", () => {
       history: [
         { snapshotStatus: SYSTEM_MSGS.RETURN_REQUESTED },
         { snapshotStatus: "Solicitud Rechazada" },
+      ],
+    });
+    expect(result?.label).not.toBe("Solicitud Pendiente");
+  });
+
+  it("no muestra Solicitud Pendiente tras RETURN_REJECTED (Django)", () => {
+    const result = getReturnStatusBadge({
+      paymentStatus: "PAID",
+      fulfillmentStatus: "DELIVERED",
+      history: [
+        { snapshotStatus: "RETURN_REQUESTED" },
+        { snapshotStatus: "RETURN_REJECTED" },
       ],
     });
     expect(result?.label).not.toBe("Solicitud Pendiente");
@@ -412,6 +464,58 @@ describe("getOrderCancellationDetails", () => {
     });
     expect(result?.isExpired).toBe(true);
     expect(result?.bannerTitle).toBe("El pedido ha expirado");
+  });
+
+  it("detecta expiración con snapshot ORDER_EXPIRED (Django)", () => {
+    const result = getOrderCancellationDetails({
+      isCancelled: true,
+      history: [
+        {
+          snapshotStatus: "ORDER_EXPIRED",
+          actor: "system",
+          reason: "Automatically expired (payment not completed in time).",
+          createdAt: new Date(),
+        },
+      ],
+    });
+    expect(result?.isExpired).toBe(true);
+  });
+
+  it("detecta cancelación con snapshot ORDER_CANCELLED (Django)", () => {
+    const result = getOrderCancellationDetails({
+      isCancelled: true,
+      history: [
+        {
+          snapshotStatus: "ORDER_CANCELLED",
+          actor: "user",
+          reason: SYSTEM_MSGS.CANCELLED_BY_USER,
+          createdAt: new Date(),
+        },
+      ],
+    });
+    expect(result?.isExpired).toBe(false);
+    expect(result?.bannerTitle).toContain("el Cliente");
+  });
+});
+
+// ─── formatSnapshotStatusForDisplay ───────────────────────────────────────────
+describe("formatSnapshotStatusForDisplay", () => {
+  it("traduce códigos DRF de devolución", () => {
+    expect(formatSnapshotStatusForDisplay("RETURN_REQUESTED")).toBe(
+      SYSTEM_MSGS.RETURN_REQUESTED,
+    );
+    expect(formatSnapshotStatusForDisplay("RETURN_PROCESSED")).toBe(
+      "Devolución procesada",
+    );
+    expect(formatSnapshotStatusForDisplay("RETURN_REJECTED")).toBe(
+      "Devolución rechazada",
+    );
+  });
+
+  it("traduce FULFILLMENT_* a etiqueta de logística", () => {
+    expect(formatSnapshotStatusForDisplay("FULFILLMENT_SHIPPED")).toBe(
+      "Enviado",
+    );
   });
 });
 
@@ -790,6 +894,14 @@ describe("formatOrderForDisplay", () => {
     expect(result.paymentStatus).toBe("PAID");
     expect(result.isCancelled).toBe(false);
     expect(result.paymentMethod).toBe("Tarjeta");
+    expect(result.stripePaymentIntentId).toBeNull();
+  });
+
+  it("incluye stripePaymentIntentId en el resultado de display cuando existe", () => {
+    const result = formatOrderForDisplay(
+      makeFullOrder({ stripePaymentIntentId: "pi_abc" }) as any,
+    );
+    expect(result.stripePaymentIntentId).toBe("pi_abc");
   });
 
   it("formatOrderForDisplay usa paymentMethodDisplay cuando existe", () => {

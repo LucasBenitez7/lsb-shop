@@ -14,12 +14,12 @@ import {
 
 import { formatCurrency } from "@/lib/currency";
 
-import type { UserOrderListItem } from "@/types/order";
+import type { OrderListItemBase } from "@/types/order";
 
 export function RecentOrdersTable({
   orders,
 }: {
-  orders: UserOrderListItem[];
+  orders: OrderListItemBase[];
 }) {
   if (orders.length === 0) {
     return (

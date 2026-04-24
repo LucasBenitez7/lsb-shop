@@ -24,12 +24,15 @@ interface OrderTableProps {
   orders: AdminOrderListItem[];
   showRefunds?: boolean;
   maskEmails?: boolean;
+  /** When false (e.g. demo role), hide admin return shortcut links. */
+  canWrite?: boolean;
 }
 
 export function OrderTable({
   orders,
   showRefunds,
   maskEmails,
+  canWrite = true,
 }: OrderTableProps) {
   const searchParams = useSearchParams();
   const query = searchParams.get("query");
@@ -143,12 +146,22 @@ export function OrderTable({
 
                 {/* 6. ACCIONES */}
                 <TableCell className="text-center">
-                  <Link
-                    href={`/admin/orders/${order.id}`}
-                    className="fx-underline-anim font-medium text-sm"
-                  >
-                    Ver detalles
-                  </Link>
+                  <div className="flex flex-col items-center gap-1.5 sm:flex-row sm:justify-center sm:gap-3">
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="fx-underline-anim font-medium text-sm"
+                    >
+                      Ver detalles
+                    </Link>
+                    {canWrite && isReturnPending && (
+                      <Link
+                        href={`/admin/orders/${order.id}/return`}
+                        className="font-medium text-sm text-orange-700 hover:underline"
+                      >
+                        Gestionar devolución
+                      </Link>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             );

@@ -49,6 +49,8 @@ export interface OrderItem {
   quantityReturned: number;
   quantityReturnRequested: number;
   priceMinorSnapshot: number;
+  /** Unit compare-at (minor) at checkout when product was on sale; display strikethrough. */
+  compareAtUnitMinorSnapshot: number | null;
   currentStock?: number;
   product: OrderLinkedProduct | null;
 }
@@ -79,6 +81,11 @@ export interface Order extends PostalAddressLinesNullable {
   pickupSearch: string | null;
   addressExtra: string | null;
   returnReason: string | null;
+  rejectionReason: string | null;
+  /** Set when admin marks order as shipped (carrier / courier name). */
+  carrier: string | null;
+  /** Set when admin marks order as shipped (customer tracking id). */
+  trackingNumber: string | null;
   deliveredAt: string | Date | null;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -148,6 +155,8 @@ export interface UserOrderListItemLine {
   sizeSnapshot: string | null;
   colorSnapshot: string | null;
   product?: OrderLinkedProduct | null;
+  quantityReturned?: number;
+  quantityReturnRequested?: number;
 }
 
 export interface UserOrderListItem extends OrderListItemBase {
@@ -183,9 +192,12 @@ export interface UserReturnableItem extends ReturnableItemBase {
 // ─── SECTION 4: Utility types ─────────────────────────────────────────────────
 
 export interface HistoryItemJson {
-  name: string;
-  quantity: number;
+  name?: string;
+  quantity?: number;
   variant?: string | null;
+  /** Return flows persist ``item_id`` instead of name snapshot. */
+  item_id?: number;
+  quantity_approved?: number;
 }
 
 export interface HistoryDetailsJson {
@@ -212,6 +224,8 @@ export interface GetOrdersParams {
 export interface OrderDisplayData {
   id: string;
   userId: string | null;
+  /** Lets guests open `/tracking/:id` after success (Django allows GET with matching PI). */
+  stripePaymentIntentId?: string | null;
   email: string;
   createdAt: Date | string;
   paymentStatus: string;
@@ -263,9 +277,23 @@ export interface OrderItemDRFResponse {
   size_snapshot: string;
   color_snapshot: string;
   quantity: number;
+  quantity_returned?: number;
+  quantity_return_requested?: number;
   subtotal_minor: number;
   /** Resolved from ProductImage (color match or first). */
   image_url: string | null;
+  compare_at_unit_minor_snapshot: number | null;
+}
+
+/** Single history row from `GET /api/v1/orders/{id}/` (DRF). */
+export interface OrderHistoryDRFResponse {
+  id: number;
+  type: string;
+  snapshot_status: string;
+  reason: string;
+  actor: string;
+  details: unknown;
+  created_at: string;
 }
 
 export interface OrderListItemDRFResponse {
@@ -277,6 +305,8 @@ export interface OrderListItemDRFResponse {
   total_minor: number;
   currency: string;
   created_at: string;
+  /** Present on list payloads from Django `OrderListSerializer`. */
+  delivered_at?: string | null;
   items_count: number;
   items: {
     id: number;
@@ -284,10 +314,13 @@ export interface OrderListItemDRFResponse {
     size_snapshot: string | null;
     color_snapshot: string | null;
     quantity: number;
+    quantity_returned?: number;
+    quantity_return_requested?: number;
     price_minor_snapshot: number;
     subtotal_minor: number;
     image_url: string | null;
     product_slug: string;
+    compare_at_unit_minor_snapshot?: number | null;
   }[];
 }
 
@@ -319,6 +352,9 @@ export interface OrderDetailDRFResponse {
   province: string;
   country: string;
   return_reason: string | null;
+  rejection_reason?: string | null;
+  carrier?: string | null;
+  tracking_number?: string | null;
   delivered_at: string | null;
   created_at: string;
   updated_at: string;
@@ -326,6 +362,7 @@ export interface OrderDetailDRFResponse {
   /** Present when payment is not PAID yet; mirrors Stripe PI status. */
   stripe_payment_intent_status?: string | null;
   items: OrderItemDRFResponse[];
+  history?: OrderHistoryDRFResponse[];
 }
 
 /** Normalized checkout payload for `createOrder()` — not the Zod form type (`CreateOrderInput` in `lib/orders/schema.ts`). */

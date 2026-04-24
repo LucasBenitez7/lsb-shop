@@ -2,12 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 
 import {
   patchCartItemQuantity,
   removeCartItem,
   validateCartStock,
 } from "@/lib/api/cart";
+import { APIError } from "@/lib/api/client";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { useCartStore } from "@/store/useCartStore";
 import { useStore } from "@/store/useStore";
@@ -44,8 +46,12 @@ export function useCartLogic() {
         );
         replaceItems(next);
         setStockError(null);
-      } catch {
-        /* optional: toast */
+      } catch (e) {
+        const message =
+          e instanceof APIError
+            ? e.message
+            : "No se pudo actualizar la cantidad. Inténtalo de nuevo.";
+        toast.error(message);
       }
     },
     [replaceItems],
@@ -66,8 +72,12 @@ export function useCartLogic() {
           }));
         }
         setStockError(null);
-      } catch {
-        /* optional: toast */
+      } catch (e) {
+        const message =
+          e instanceof APIError
+            ? e.message
+            : "No se pudo eliminar el producto. Inténtalo de nuevo.";
+        toast.error(message);
       }
     },
     [items, replaceItems],

@@ -115,6 +115,39 @@ def test_update_fulfillment_status_paid_preparing_to_shipped() -> None:
         order=order,
         new_status=FulfillmentStatus.SHIPPED,
         actor="admin",
+        carrier="Correos",
     )
     order.refresh_from_db()
     assert order.fulfillment_status == FulfillmentStatus.SHIPPED
+    assert order.carrier == "Correos"
+    assert order.tracking_number.startswith(f"LSB-{order.pk}-")
+    assert len(order.tracking_number) <= 100
+
+
+@pytest.mark.django_db
+def test_update_fulfillment_status_shipped_requires_carrier_from_preparing() -> None:
+    order, _ = _paid_delivered_order(user=None)
+    order.fulfillment_status = FulfillmentStatus.PREPARING
+    order.save(update_fields=["fulfillment_status"])
+    with pytest.raises(ValidationError):
+        update_fulfillment_status(
+            order=order,
+            new_status=FulfillmentStatus.SHIPPED,
+            actor="admin",
+            carrier="",
+        )
+
+
+@pytest.mark.django_db
+def test_update_fulfillment_status_shipped_rejects_unknown_carrier() -> None:
+    order, _ = _paid_delivered_order(user=None)
+    order.fulfillment_status = FulfillmentStatus.PREPARING
+    order.save(update_fields=["fulfillment_status"])
+    with pytest.raises(ValidationError) as exc:
+        update_fulfillment_status(
+            order=order,
+            new_status=FulfillmentStatus.SHIPPED,
+            actor="admin",
+            carrier="Unknown Carrier Inc",
+        )
+    assert "carrier" in exc.value.message_dict

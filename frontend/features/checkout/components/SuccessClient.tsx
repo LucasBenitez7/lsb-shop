@@ -8,6 +8,7 @@ import { OrderSummaryCard } from "@/features/orders/components/OrderSummaryCard"
 import { Button } from "@/components/ui/button";
 
 import { clearGuestAddress } from "@/lib/checkout/guest-address-storage";
+import { guestTrackingDetailsHref } from "@/lib/tracking/guest-order-link";
 
 import { clearCart as clearCartApi } from "@/lib/api/cart";
 import { useCartStore } from "@/store/useCartStore";
@@ -97,7 +98,12 @@ export function SuccessClient({ order }: { order: DisplayOrder }) {
             </Button>
           ) : (
             <Button asChild variant="default" className="flex-1 py-3 text-sm">
-              <Link href={`/tracking?orderId=${order.id}`}>
+              <Link
+                href={guestTrackingDetailsHref(
+                  order.id,
+                  order.stripePaymentIntentId,
+                )}
+              >
                 Ver detalles del pedido
               </Link>
             </Button>

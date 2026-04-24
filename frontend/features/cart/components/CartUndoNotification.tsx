@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { addCartItem } from "@/lib/api/cart";
+import { APIError } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 import { useCartStore } from "@/store/useCartStore";
@@ -95,8 +97,13 @@ export function CartUndoNotification({ className }: Props) {
                 );
                 replaceItems(items);
                 dismissLastRemovedItem();
-              } catch {
+              } catch (e) {
                 isRestoring.current = false;
+                const message =
+                  e instanceof APIError
+                    ? e.message
+                    : "No se pudo restaurar el producto en la cesta.";
+                toast.error(message);
               } finally {
                 setRestoring(false);
               }

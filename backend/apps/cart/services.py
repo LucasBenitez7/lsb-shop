@@ -106,9 +106,15 @@ def add_or_update_line(
     variants = get_variants_for_cart([variant_id])
     variant = variants.get(variant_id)
     if variant is None:
+        log.warning("cart.add_line.variant_not_found", variant_id=variant_id)
         return get_cart_items(cache_key), "Variant not found."
     line = _line_from_variant(variant, quantity=quantity)
     if line is None:
+        log.warning(
+            "cart.add_line.not_sellable",
+            variant_id=variant_id,
+            product_id=variant.product_id,
+        )
         return get_cart_items(cache_key), "Product is not available."
 
     items = get_cart_items(cache_key)
@@ -140,9 +146,15 @@ def set_line_quantity(
     variants = get_variants_for_cart([variant_id])
     variant = variants.get(variant_id)
     if variant is None:
+        log.warning("cart.set_quantity.variant_not_found", variant_id=variant_id)
         return get_cart_items(cache_key), "Variant not found."
     line = _line_from_variant(variant, quantity=quantity)
     if line is None:
+        log.warning(
+            "cart.set_quantity.not_sellable",
+            variant_id=variant_id,
+            product_id=variant.product_id,
+        )
         return get_cart_items(cache_key), "Product is not available."
 
     items = get_cart_items(cache_key)
@@ -223,6 +235,12 @@ def validate_and_refresh_lines(
         if int(fresh["quantity"]) < int(it["quantity"]):
             messages.append("Some quantities were adjusted to available stock.")
         out.append(fresh)
+    if messages:
+        log.warning(
+            "cart.validate_adjustments",
+            adjustment_event_count=len(messages),
+            remaining_lines=len(out),
+        )
     return out, messages
 
 

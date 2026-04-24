@@ -25,7 +25,18 @@ pnpm dev
 # http://localhost:3000
 ```
 
-### 4. Celery Worker ⚠️ IMPORTANTE
+### 4. Celery Worker y emails en desarrollo
+
+**Emails transaccionales (registro / verificación, reset password, OTP invitado, etc.):** en `config.settings.development`, **`CELERY_TASK_ALWAYS_EAGER`** vale **`true` por defecto**, así que esas tareas se ejecutan **en el mismo proceso que Django** al hacer `register` o similar: **no hace falta tener el worker levantado** para recibir el correo de bienvenida/verificación (solo Django + Redis si la app lo usa para otra cosa).
+
+Para probar el flujo **async real** (igual que producción), pon en `backend/.env`:
+
+```env
+CELERY_TASK_ALWAYS_EAGER=false
+```
+
+y arranca el worker:
+
 ```bash
 cd backend
 .\start-celery-dev.ps1
@@ -33,18 +44,19 @@ cd backend
 # celery -A config worker --loglevel=info --pool=solo
 ```
 
-**Sin el Celery worker**, las tareas asíncronas NO se ejecutarán:
+**Sin worker** con `CELERY_TASK_ALWAYS_EAGER=false`, estas tareas **no** se ejecutan:
+
 - Borrado de imágenes de Cloudinary
-- Envío de emails (pedido, verificación registro, reset password — ver `apps/orders/mailers.py` y `apps/users/tasks.py`)
-- Expiración de carritos y órdenes
+- Envío de emails encolados con `.delay()`
+- Expiración de carritos y órdenes (tareas disparadas en background)
 
 ### Correo real en local (bandeja Gmail / iCloud, etc.)
 
 1. Crea API key en [Resend](https://resend.com/) y pégala en `backend/.env` como **`RESEND_API_KEY=re_...`** (sin comillas).
-2. **`DEFAULT_FROM_EMAIL`**: debe ser un remitente que Resend permita (dominio verificado en Resend, o el remitente de prueba que te indiquen en el dashboard). Si Resend rechaza el `From`, verás error en la terminal de **Celery** al enviar.
-3. Reinicia **Celery worker** (y Django si ya estaba arrancado) para cargar el `.env`.
+2. **`DEFAULT_FROM_EMAIL`**: debe ser un remitente que Resend permita (dominio verificado en Resend, o el remitente de prueba que te indiquen en el dashboard). Si Resend rechaza el `From`, verás el error en la **terminal de Django** (con eager) o en la del **worker** (sin eager).
+3. Reinicia **Django** tras cambiar `.env`.
 
-Con `RESEND_API_KEY` vacío, `development` sigue usando **solo consola** (el cuerpo del mail se ve en la terminal del worker, no en tu inbox).
+Con `RESEND_API_KEY` vacío, `development` usa **consola** como backend de email: el cuerpo del mail aparece en la **terminal donde corre `runserver`** (no en tu inbox).
 
 ### 5. Celery Beat (opcional para cron jobs)
 ```bash
@@ -81,6 +93,10 @@ Celery Beat ejecuta tareas programadas (cron):
    [info] cloudinary.deleted public_id=lsb-shop/products/xyz123
    ```
 4. Verifica en Cloudinary Dashboard que las imágenes fueron borradas
+
+## Deploy API (Railway) — logs y salud
+
+Sin Sentry ni Grafana obligatorio: **`docs/RAILWAY_OBSERVABILITY.md`** (JSON a stdout, `/health/`, variables, usuario demo Unfold).
 
 ## Documentación del repo
 

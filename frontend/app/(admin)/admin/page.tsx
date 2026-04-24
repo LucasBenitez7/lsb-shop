@@ -212,7 +212,12 @@ export default async function AdminPage() {
               <FaClipboardList className="size-4 text-slate-500" />
             </CardHeader>
             <CardContent className="px-4">
-              <div className="text-2xl font-bold">{stats.paidOrders}</div>
+              <Link
+                href="/admin/orders"
+                className="text-2xl font-bold hover:text-blue-700 transition-colors block w-fit"
+              >
+                {stats.paidOrders}
+              </Link>
               <p className="text-xs text-foreground">
                 {stats.pendingOrders > 0 && (
                   <span className="text-amber-600 font-medium">
@@ -238,7 +243,12 @@ export default async function AdminPage() {
               <FaUsers className="size-4 text-slate-500" />
             </CardHeader>
             <CardContent className="px-4">
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
+              <Link
+                href="/admin/users"
+                className="text-2xl font-bold hover:text-blue-700 transition-colors block w-fit"
+              >
+                {stats.totalUsers}
+              </Link>
               <p className="text-xs text-foreground">Usuarios registrados</p>
             </CardContent>
           </Card>
