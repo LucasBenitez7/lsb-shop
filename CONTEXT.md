@@ -31,7 +31,7 @@ Replaces the previous monolith `acme-commerce-starter` (Next.js full-stack). The
 | API docs | drf-spectacular (OpenAPI 3 + Swagger) |
 | Admin UI | django-unfold |
 | Logging | structlog (JSON) |
-| Error tracking | Sentry |
+| Error correlation (5xx) | `ErrorFingerprintMiddleware` + Redis fingerprint — no Sentry SDK en este repo |
 | Linting | Ruff |
 | Type check | mypy + django-stubs |
 | Security | Bandit + Safety |
@@ -317,10 +317,11 @@ Responsabilidades que **no bloquean** Fase 2 pero hay que cerrar para no arrastr
 
 | Área | Qué queda |
 |------|-----------|
-| **CI** | Workflow solo **backend**; añadir job **frontend** (lint / `typecheck` / Vitest acotado) cuando la suite o el scope estén acordados. |
-| **Vitest** | `pnpm test:run` completo aún falla en tests **fuera de auth** por mocks desalineados con imports reales (p. ej. `OrderSummaryCard` en `features/orders` vs mock en `SuccessClient.test`; `useCartStore`/`useUIStore` vs mocks `@/store/cart`). Corregir en un PR de “test hygiene”. |
+| **CI** | Workflow solo **backend** (`.github/workflows/ci.yml`). Job **frontend** (lint + `typecheck` + Vitest) → **Fase 7** cuando se fije alcance y se migre ESLint 9 (flat config). |
+| **Vitest** | `pnpm test:run` — **suite completa en verde** (fixtures de país ISO-2 `ES`, etc.). |
+| **ESLint** | `pnpm run lint` falla con ESLint 9 hasta existir `eslint.config.js` (migración desde `.eslintrc.*`). **Pulir en Fase 7** junto al job de CI. |
 | **E2E** | Playwright (auth, checkout) como gate opcional cuando `.env` e API estén estables en CI. |
-| **Typecheck** | `pnpm run typecheck` en CI para **todo** el front cuando el árbol compile sin deuda grande. |
+| **Typecheck** | `pnpm run typecheck` en CI para **todo** el front cuando el gate de lint esté alineado. |
 | **Auditoría** | `grep` periódico: `next-auth`, `Prisma`, Server Actions que toquen negocio/BD. |
 | **Deploy** | Railway/Vercel: `CORS`, `JWT_AUTH_COOKIE_DOMAIN`, secrets, email real (Resend). |
 | **Guest / tracking** | Validar UI de tracking + OTP de punta a punta cuando el flujo y API estén listos (puede solaparse con fases de pedidos). |
@@ -456,7 +457,7 @@ En `acme-commerce-starter` el carrito era **puro Zustand + localStorage** (sin p
 
 | Tema | Nota |
 |------|------|
-| UX errores red | Toasts opcionales en fallos de API del carrito (hoy muchos `catch` silenciosos) |
+| UX errores red | **Hecho (Sprint 6.3):** toasts en hooks/sync/undo del carrito; más paths silenciosos → grepear en Fase 7 si hace falta |
 | E2E Playwright | Flujo carrito guest → login → merge si se quiere cobertura E2E explícita |
 
 ---
@@ -665,6 +666,17 @@ Decisiones deliberadas de no implementar ahora, documentadas para no perderlas.
 
 **Objetivo:** soporte operativo en Django, observabilidad y documentación de API. El **admin Next** de catálogo se cubre en **Fase 3**.
 
+**Estado (repo, abril 2026):** MVP de Fase 6 **cerrado en código y docs** — checklist operativo y DoD viven en esta sección y en [`docs/RAILWAY_OBSERVABILITY.md`](docs/RAILWAY_OBSERVABILITY.md) / [`docs/UNFOLD_SUPPORT_WORKFLOW.md`](docs/UNFOLD_SUPPORT_WORKFLOW.md). **Paso manual pendiente:** ejecutar `ensure_demo_staff` en Railway y tachar §5 de `RAILWAY_OBSERVABILITY.md`.
+
+**Definition of done (Fase 6 MVP) — cumplido en repo:**
+
+- [x] `/health/` con estado real de dependencias (DB + Redis + Celery opcional).
+- [x] Logs estructurados (structlog JSON en producción) en rutas calientes; ampliación puntual → backlog abajo.
+- [x] Runbook Railway: JSON a stdout, búsqueda, health, multi-servicio (`RAILWAY_OBSERVABILITY.md`).
+- [x] Comando `ensure_demo_staff` + variables `DEMO_STAFF_*` documentados (§4–§5); checkbox de “ejecutado en prod” lo marca el operador.
+- [x] Flujo Unfold solo lectura / soporte (`UNFOLD_SUPPORT_WORKFLOW.md`); acciones masivas `@admin.action` en Unfold **omitidas** a propósito (panel Next cubre escritura).
+- [x] OpenAPI con ejemplos mínimos: crear/recuperar/cancelar/solicitar devolución de pedido, OTP invitado, payment-intent, acuse webhook Stripe.
+
 ### Tareas
 
 **StoreConfig / contenido**
@@ -673,28 +685,26 @@ Decisiones deliberadas de no implementar ahora, documentadas para no perderlas.
 
 **Admin Django (django-unfold)**
 
-- [ ]  Unfold instalado y configurado (ya en apps)
-- [ ]  Registro útil para soporte: productos, categorías, órdenes, usuarios, payments — sin duplicar innecesariamente cada flujo largo del panel Next
-- [ ]  Usuario demo con permisos acotados
-- [ ]  Acciones internas (cancelar orden, aprobar devolución, etc.) donde aporten valor frente al panel React
+- [x]  Unfold instalado y configurado (`INSTALLED_APPS` + dict **`UNFOLD`** en `config/settings/base.py`)
+- [x]  Registro útil para soporte: productos, categorías, órdenes (listado + **inlines** ítem / historial en solo lectura), usuarios, favoritos, `StoreSettings` — sin duplicar flujos largos del panel Next; **`payments/`** sin modelos ORM aún → nada que registrar
+- [x]  Usuario demo con permisos acotados — comando `ensure_demo_staff` + env `DEMO_STAFF_*` + [`docs/RAILWAY_OBSERVABILITY.md`](docs/RAILWAY_OBSERVABILITY.md) §4 (ejecutar en prod y tachar §5)
+- [x]  Acciones internas en Unfold (`@admin.action`) — **omitidas** a propósito; panel Next cubre cancelación / devoluciones
 
 **Observabilidad**
 
-- [ ]  structlog configurado en todos los servicios clave
-- [ ]  Middleware de error tracking con fingerprint en Redis
-- [ ]  Grafana Cloud configurado — Loki como destino de logs
-- [ ]  Dashboard en Grafana: errores por tipo, frecuencia, usuario
-- [ ]  Alertas en Grafana cuando error_count > threshold
-- [ ]  django-debug-toolbar en development
-- [ ]  django-health-check: `/health/` con DB + Redis + Celery
-- [ ]  Logs de auditoría para acciones críticas (pago, cancelación, etc.)
+- [x]  structlog en rutas calientes + JSON en producción (ampliación puntual → backlog)
+- [x]  Middleware de error tracking con fingerprint en Redis
+- [ ]  Grafana Cloud — Loki / dashboards / alertas (opcional; ver **Backlog consolidado** más abajo)
+- [x]  django-debug-toolbar en development (`DEBUG=True`)
+- [x]  `/health/` con DB + Redis + Celery opcional (`LivenessHealthCheckView`)
+- [ ]  Logs de auditoría persistentes para acciones críticas (estrategia / backlog)
 
 **Docs API**
 
 - [x]  drf-spectacular configurado (`DEFAULT_SCHEMA_CLASS`, `INSTALLED_APPS`)
 - [x]  Swagger UI en `/api/docs/`
 - [x]  ReDoc en `/api/redoc/`
-- [ ]  Ejemplos / descripciones finas en schema (orders, payments, etc.) — mejora continua
+- [x]  Ejemplos mínimos en schema (orders, payments webhook, guest OTP); ampliar más endpoints → mejora continua
 - [ ]  Colecciones HTTP locales versionadas (opcional; hoy no obligatorio)
 
 **Rama:** `feat/phase-6-unfold-observability`
@@ -716,8 +726,8 @@ Decisiones deliberadas de no implementar ahora, documentadas para no perderlas.
 
 **CI/CD completo**
 
-- [ ]  Backend: Ruff + mypy + Bandit + Safety + pytest unit + pytest integration
-- [ ]  Frontend: ESLint + tsc + Vitest
+- [ ]  Backend: Ruff + mypy + Bandit + Safety + pytest unit + pytest integration (hoy: Ruff, mypy, Bandit, pytest en CI; Safety con `|| true`)
+- [ ]  Frontend: ESLint + tsc + Vitest — **`pnpm run typecheck`** y **`pnpm test:run`** ya verdes localmente; **ESLint** bloqueado hasta migración flat config (ver **Backlog consolidado**)
 - [ ]  E2E: Playwright en main/dev
 - [ ]  API: smoke tests automatizados
 - [ ]  Load: Locust smoke
@@ -756,9 +766,30 @@ For a **manual** `uv run mypy` from `backend/` without `.env`, export those vari
 
 ## Current status
 
-**Current phase:** **Fase 5 — Órdenes + Pagos Stripe**.
+**Current phase:** **Fase 7 — Testing + CI/CD + Deploy** (MVP Fase 6 en repo cerrado: guía + runbooks; operador: `ensure_demo_staff` en Railway según `RAILWAY_OBSERVABILITY.md` §5).
 
-**Fase 1:** cerrada. **Fase 2:** cerrada. **Fase 3:** cerrada. **Fase 4:** cerrada.
+**Fases cerradas en `dev` (abril 2026):** **1** (auth), **2** (catálogo), **3** (admin Next), **4** (carrito Redis), **5** (órdenes + Stripe + emails + dashboard stats — alcance MVP; detalle y micro-backlog en [`docs/ORDERS_PHASE5_PLAN.md`](docs/ORDERS_PHASE5_PLAN.md) §14).
+
+### Transición Fase 5 → 6 — listado de foco y pendientes
+
+**Qué implica empezar Fase 6:** operación cómoda en Django (Unfold), logs/alertas/métricas, health checks y refinar documentación OpenAPI — sin duplicar torpemente el panel Next.
+
+| Bucket | Pendiente / deuda |
+|--------|-------------------|
+| **Fase 5 — cierre documental** | Un checkbox en checklist Fase 5: tests ampliados → **meta Fase 7**, no bloquean MVP. **E2E Playwright (auth, checkout, carrito)** queda **exclusivamente en Fase 7** — no en Fase 6. Opcional: más correos (`payment_failed`, pedido expirado, cancelación) y `mail.outbox` más estricto ([`ORDERS_PHASE5_PLAN.md`](docs/ORDERS_PHASE5_PLAN.md) §14 y § correos opcionales). |
+| **Fase 6 — admin Next (devoluciones)** | Flujo gestionar/rechazar ya cableado a DRF; pulido: enlace **Gestionar devolución** en listado cuando hay solicitud pendiente (solo si `canWriteAdmin`); `router.refresh()` tras rechazo para sincronizar RSC. |
+| **Fase 6 — Unfold** | **Cerrado (MVP repo):** mismo base + [`docs/UNFOLD_SUPPORT_WORKFLOW.md`](docs/UNFOLD_SUPPORT_WORKFLOW.md) + `ensure_demo_staff`. **`@admin.action`:** omitido. **`payments/` ORM:** N/A. |
+| **Fase 6 — observabilidad** | **Hecho (MVP):** structlog caliente + JSON prod, fingerprint 5xx, `/health/`, runbook Railway. **Opcional / backlog:** Grafana/Loki, auditoría persistente. |
+| **Fase 6 — docs API** | **MVP:** ejemplos `extend_schema` en orders / payments webhook / guest OTP. Colecciones HTTP / schema completo → opcional. |
+| **Deuda Fase 1** (no bloqueó catálogo) | CI job front completo cuando acordéis gate; **`typecheck` global front en CI** cuando deuda baje; `IsAdmin`/`IsOwner` en ViewSets products/orders si falta revisión; deploy secrets/CORS. (E2E / Playwright → **Fase 7**.) |
+| **Deuda Fase 3** | Vars Cloudinary en `.env.local` para upload firmado si aún no en prod. |
+| **Deuda Fase 4** | Toasts en errores de API del carrito — **hecho** en Sprint 6.3 (`use-cart-logic`, `CartSyncProvider`, `CartUndoNotification`). (E2E guest→login→merge → **Fase 7**.) |
+| **Mejoras futuras** (`CONTEXT` tabla) | Refunds Stripe reales; reembolso parcial granular; throttling DRF; soft-deactivate variantes con órdenes. |
+| **Fase 7** (siguiente gran bloque) | Cobertura backend services, Locust, Playwright contra Django, CI completo (Ruff, mypy, Bandit, pytest, ESLint, tsc, Vitest), deploy Railway+Vercel, README monorepo, Trivy/Codecov/release-please según lista Fase 7. |
+
+**Rama sugerida Fase 6:** `feat/phase-6-unfold-observability` (ver sección Fase 6 más abajo).
+
+**Fase 1:** cerrada. **Fase 2:** cerrada. **Fase 3:** cerrada. **Fase 4:** cerrada. **Fase 5:** cerrada (MVP; ver tabla arriba para opcionales).
 
 **Estado detallado por área (abril 2026):**
 
@@ -805,12 +836,33 @@ lib/api/
 
 Regla: **GET desde Server Component** → función normal en `server.ts` o `index.ts`. **Mutación llamada desde Client Component** → `"use server"` en `mutations.ts` (reenvía cookie + llama `revalidatePath`). No hay lógica de negocio en ninguno — eso es Django.
 
-**Fases 1–3 cerradas.** Deuda explícita documentada en las secciones correspondientes y en **Mejoras Futuras**.
+**Fases 1–5 cerradas** (Fase 5 = MVP órdenes/Stripe; ver **Current status**). Deuda explícita en secciones por fase, tabla de transición arriba y **Mejoras Futuras**.
 
 **Fase 1:** cerrada en `dev`.
 **Fase 2:** cerrada; catálogo + favoritos + categorías públicas operativos.
 **Fase 3:** cerrada; admin Next operativo (productos, categorías, settings, usuarios, presets).
 **Fase 4:** cerrada; carrito Redis + API + front (`CartSyncProvider`, merge guest→usuario, validate).
+**Fase 5:** cerrada en MVP; opcionales y tests ampliados → tabla **Transición Fase 5 → 6**.
+
+---
+
+## Backlog consolidado — pendientes (entre fases y Fase 7)
+
+Lista única para no perder trabajo acordado fuera del MVP actual. Origen indica de qué fase salió el ítem.
+
+| Origen | Pendiente | Notas |
+|--------|-----------|--------|
+| **Operativo / deploy** | Ejecutar `ensure_demo_staff` en Railway y tachar checklist | [`docs/RAILWAY_OBSERVABILITY.md`](docs/RAILWAY_OBSERVABILITY.md) §4–§5 |
+| **Fase 5 — producto** | Correos opcionales: pago fallido (`payment_intent.payment_failed`), pedido expirado (`expire_pending_orders`), cancelación por cliente/admin | [`docs/ORDERS_PHASE5_PLAN.md`](docs/ORDERS_PHASE5_PLAN.md) §14 |
+| **Fase 6 — observabilidad** | Grafana Cloud / Loki, dashboards, alertas; log drain si Railway no basta | Opcional si JSON + UI Railway cubren |
+| **Fase 6 — observabilidad** | Estrategia de **auditoría persistente** (pagos aplicados, cancel, decisiones de devolución) | Medium; hoy fingerprint + structlog |
+| **Fase 6 — observabilidad** | Ampliar **structlog** a más rutas/servicios según dolor en prod | Parcial por diseño |
+| **Fase 6 — docs API** | Colecciones HTTP versionadas (Bruno, Insomnia, …) | Low |
+| **Fase 6 — admin Next** | Pulido: enlace «Gestionar devolución» en listado cuando hay solicitud pendiente (`canWriteAdmin`); `router.refresh()` tras rechazo | Ver tabla transición § arriba |
+| **Fase 1 / 7 — CI** | Job GitHub Actions **frontend**: tras migrar **ESLint 9** (`eslint.config.js`), añadir `pnpm lint` + `typecheck` + `test:run` (o subset acordado) | Hoy CI solo backend |
+| **Fase 7 — calidad** | Safety CLI: en local puede pedir registro; en CI el paso no bloquea el job (workflow ignora fallo del scan). Revisar política de dependencias cuando el equipo lo priorice | |
+| **Fase 7 — testing** | Cobertura services ≥80%, Locust smoke, Playwright contra API Django, E2E carrito guest→login→merge | Lista completa en § Fase 7 |
+| **Mejoras futuras** | Stripe refunds API, throttling DRF, reembolso parcial granular, soft-deactivate variantes con órdenes | Tabla **Mejoras Futuras** arriba |
 
 ---
 
@@ -820,10 +872,12 @@ Documentos markdown del repo (cuál abrir según la tarea):
 
 | Documento | Para qué sirve | Cuándo abrirlo |
 |-----------|----------------|----------------|
-| **`CONTEXT.md`** (este archivo) | Visión global: stack, arquitectura, fases, estado. | Onboarding o al cambiar de fase. |
+| **`CONTEXT.md`** (este archivo) | Visión global: stack, arquitectura, fases, estado, **Backlog consolidado** (pendientes multi-fase). | Onboarding o al cambiar de fase. |
 | **`DEVELOPMENT.md`** | Arranque local: Postgres/Redis, Django, Celery, Stripe, enlaces. | Configurar entorno o depurar servicios. |
 | **`docs/PRODUCTS_DOMAIN.md`** | Catálogo: modelos, API DRF, filtros, caché, permisos. | Productos, categorías, presets, `lib/api/products`. |
 | **`docs/ORDERS_PHASE5_PLAN.md`** | Plan Fase 5 (pedidos + Stripe); **§14** = estado y backlog. | Órdenes, checkout, devoluciones, emails. |
+| **`docs/RAILWAY_OBSERVABILITY.md`** | API en Railway: logs JSON, `/health/`, env, usuario demo Unfold, checklist deploy. | Deploy/staging o depuración sin Sentry. |
+| **`docs/UNFOLD_SUPPORT_WORKFLOW.md`** | Flujo soporte en Django Unfold (`/admin/`), usuario demo solo lectura. | Staff que use el admin Django o revisión post-`ensure_demo_staff`. |
 | **`docs/FRONTEND_API.md`** | Convenciones `lib/api/`: client vs server, mappers, tipos. | Nuevo código en `lib/api/` o `types/`. |
 | **`docs/SPRINT4_TESTING_GUIDE.md`** | Prueba manual checkout → Stripe → success. | Probar flujo de compra o webhooks en local. |
 

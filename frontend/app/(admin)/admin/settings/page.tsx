@@ -20,8 +20,8 @@ export default async function SettingsPage() {
       <div className="border-b pb-2">
         <h1 className="text-2xl lg:text-3xl font-semibold">Configuración</h1>
         <p className="text-muted-foreground">
-          Gestiona el contenido de la página de inicio y otras opciones
-          globales.
+          Portada, textos del hero y opciones globales de la tienda. Los pedidos,
+          envíos y devoluciones se gestionan desde Pedidos en el menú lateral.
         </p>
       </div>
 

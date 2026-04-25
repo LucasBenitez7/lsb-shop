@@ -51,7 +51,7 @@ export function OrderHistoryCard({ order }: Props) {
           </div>
 
           <div className="flex flex-col space-y-1">
-            <span className="text-sm uppercase font-semibold">Relizado</span>
+            <span className="text-sm uppercase font-semibold">Realizado</span>
             <span className="text-xs font-medium flex items-center gap-1.5">
               {createdDate}
             </span>

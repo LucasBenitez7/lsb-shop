@@ -2,7 +2,8 @@ import sys
 
 from decouple import config
 
-from .base import *
+from .base import *  # noqa: F403
+from .base import _env_truthy
 
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
@@ -26,10 +27,20 @@ if _resend_key:
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-# Celery — opción B: False + Redis + worker:
-#   uv run celery -A config.celery worker -l info
+# Celery — default eager in dev: transactional emails run in-process (no worker needed).
+# Set CELERY_TASK_ALWAYS_EAGER=false in .env to test async with Redis + worker.
 # Tests: CELERY_TASK_ALWAYS_EAGER=True en config.settings.test.
-CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_ALWAYS_EAGER = _env_truthy(
+    config("CELERY_TASK_ALWAYS_EAGER", default="true", cast=str),
+)
+
+# ``/health/`` Celery ping: default off in dev (200 without a worker).
+# Set HEALTH_CHECK_CELERY_PING=true in .env for strict checks like production.
+HEALTH_CHECK_CELERY_PING = config(
+    "HEALTH_CHECK_CELERY_PING",
+    default="false",
+    cast=_env_truthy,
+)
 # Windows: prefork/billiard suele fallar (PermissionError); usar pool solo.
 if sys.platform == "win32":
     CELERY_WORKER_POOL = "solo"

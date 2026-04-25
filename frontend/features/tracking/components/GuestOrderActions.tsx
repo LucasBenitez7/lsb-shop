@@ -6,11 +6,14 @@ import { FaRotateLeft } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 
 import { canOrderBeReturned } from "@/lib/orders/utils";
+import { trackingPaymentAccessQuery } from "@/lib/tracking/guest-order-link";
 
 import type { PaymentStatus, FulfillmentStatus } from "@/types/enums";
 
 type Props = {
   orderId: string;
+  /** When set, appended so return flow can authorize guest order fetch. */
+  paymentIntent?: string;
   paymentStatus: PaymentStatus;
   fulfillmentStatus: FulfillmentStatus;
   isCancelled: boolean;
@@ -19,6 +22,7 @@ type Props = {
 
 export function GuestOrderActions({
   orderId,
+  paymentIntent,
   paymentStatus,
   fulfillmentStatus,
   isCancelled,
@@ -33,10 +37,11 @@ export function GuestOrderActions({
   });
 
   if (canReturn) {
+    const access = trackingPaymentAccessQuery(paymentIntent);
     return (
       <div className={className}>
         <Button asChild variant="default" className="w-full sm:w-fit">
-          <Link href={`/tracking/${orderId}/return`}>
+          <Link href={`/tracking/${orderId}/return${access}`}>
             <FaRotateLeft className="size-3.5" />
             Solicitar Devolución
           </Link>

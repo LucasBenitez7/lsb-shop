@@ -10,6 +10,8 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import (
     PermissionDenied,
@@ -38,6 +40,7 @@ from apps.orders.serializers import (
     OrderDetailSerializer,
     OrderFulfillmentUpdateSerializer,
     OrderListSerializer,
+    OrderPaymentIntentResumeSerializer,
     OrderProcessReturnSerializer,
     OrderRejectReturnSerializer,
     OrderReturnRequestSerializer,
@@ -65,6 +68,11 @@ class OrderListCreateView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        operation_id="orders_list",
+        summary="List authenticated user's orders",
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request) -> Response:
         """List user's orders — requires authentication."""
         if not request.user.is_authenticated:
@@ -111,6 +119,40 @@ class OrderListCreateView(APIView):
             status=status.HTTP_200_OK,
         )
 
+    @extend_schema(
+        operation_id="orders_create",
+        summary="Create checkout order",
+        description=(
+            "Guest or authenticated checkout with Stripe card PaymentIntent; "
+            "response includes `client_secret` when payment is card."
+        ),
+        request=OrderCreateSerializer,
+        responses={201: OrderCreatedSerializer},
+        examples=[
+            OpenApiExample(
+                "Card checkout (minimal)",
+                value={
+                    "items": [{"variant_id": 1, "quantity": 1}],
+                    "email": "buyer@example.com",
+                    "first_name": "Jane",
+                    "last_name": "Doe",
+                    "phone": "+34600000000",
+                    "street": "Calle Mayor 1",
+                    "address_extra": "2º B",
+                    "postal_code": "28013",
+                    "province": "Madrid",
+                    "city": "Madrid",
+                    "country": "ES",
+                    "shipping_type": "HOME",
+                    "payment_method": "card",
+                    "shipping_cost_minor": 0,
+                    "tax_minor": 0,
+                    "currency": "EUR",
+                },
+                request_only=True,
+            ),
+        ],
+    )
     def post(self, request) -> Response:
         """Create a new order (guest or authenticated)."""
         serializer = OrderCreateSerializer(data=request.data)
@@ -159,6 +201,27 @@ class OrderRetrieveView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        operation_id="orders_retrieve",
+        summary="Retrieve order detail",
+        description=(
+            "Owner, staff, matching `payment_intent` query (guest Stripe return), "
+            "or guest session cookie aligned with order email."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="payment_intent",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description=(
+                    "Stripe PaymentIntent id; use when unauthenticated to read a "
+                    "guest order after checkout redirect."
+                ),
+            ),
+        ],
+        responses={200: OrderDetailSerializer},
+    )
     def get(self, request, pk: int) -> Response:
         order = get_object_or_404(
             Order.objects.prefetch_related(
@@ -231,6 +294,27 @@ class OrderPaymentIntentView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Resume card payment (client_secret)",
+        description=(
+            "Returns Stripe `client_secret` for the account order page when the "
+            "order is unpaid and eligible for card capture."
+        ),
+        responses={200: OrderPaymentIntentResumeSerializer},
+        examples=[
+            OpenApiExample(
+                "Resume payload",
+                value={
+                    "client_secret": (  # pragma: allowlist secret
+                        "pi_mock_abcdefgh_placeholder"  # noqa: S105  # nosec B105
+                    ),
+                    "amount_minor": 4999,
+                    "currency": "EUR",
+                },
+                response_only=True,
+            ),
+        ],
+    )
     def get(self, request, pk: int) -> Response:
         order = get_object_or_404(Order, pk=pk)
         user = request.user
@@ -268,6 +352,27 @@ class OrderCancelView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        summary="Cancel order",
+        description=(
+            "Staff: any cancellable order. Authenticated owner: own pending order. "
+            "Guest: must send `email` matching the order."
+        ),
+        request=OrderCancelSerializer,
+        responses={200: OrderCancelledSerializer},
+        examples=[
+            OpenApiExample(
+                "Authenticated owner",
+                value={"email": "", "reason": "Changed my mind"},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Guest (email required)",
+                value={"email": "buyer@example.com", "reason": ""},
+                request_only=True,
+            ),
+        ],
+    )
     def post(self, request, pk: int) -> Response:
         """
         Cancel the order identified by ``pk``.
@@ -326,6 +431,29 @@ class OrderRequestReturnView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        summary="Request order return",
+        description=(
+            "Owner or guest (with matching `email`) for a delivered guest or user "
+            "order; `items` use server order line ids (`item_id`) and quantities."
+        ),
+        request=OrderReturnRequestSerializer,
+        responses={200: OrderDetailSerializer},
+        examples=[
+            OpenApiExample(
+                "Return two lines",
+                value={
+                    "reason": "Defective item",
+                    "email": "",
+                    "items": [
+                        {"item_id": 101, "quantity": 1},
+                        {"item_id": 102, "quantity": 2},
+                    ],
+                },
+                request_only=True,
+            ),
+        ],
+    )
     def post(self, request, pk: int) -> Response:
         order = get_object_or_404(
             Order.objects.prefetch_related("items"),
@@ -409,7 +537,10 @@ class AdminOrderFulfillmentView(APIView):
             raise PermissionDenied("Staff access required.")
 
         order = get_object_or_404(Order, pk=pk)
-        serializer = OrderFulfillmentUpdateSerializer(data=request.data)
+        serializer = OrderFulfillmentUpdateSerializer(
+            data=request.data,
+            context={"order": order},
+        )
         serializer.is_valid(raise_exception=True)
         new_status = serializer.validated_data["fulfillment_status"]
 
@@ -418,6 +549,7 @@ class AdminOrderFulfillmentView(APIView):
                 order=order,
                 new_status=new_status,
                 actor="admin",
+                carrier=serializer.validated_data.get("carrier", ""),
             )
         except DjangoValidationError as exc:
             if hasattr(exc, "message_dict") and exc.message_dict:
@@ -600,6 +732,10 @@ class AdminDashboardStatsView(APIView):
         preparing_orders_count = Order.objects.filter(
             fulfillment_status=FulfillmentStatus.PREPARING,
             is_cancelled=False,
+            payment_status__in=(
+                PaymentStatus.PAID,
+                PaymentStatus.PARTIALLY_REFUNDED,
+            ),
         ).count()
 
         pending_returns_count = (

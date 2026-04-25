@@ -118,6 +118,22 @@ describe("SuccessClient", () => {
     expect(link).toHaveAttribute("href", "/tracking?orderId=order-123");
   });
 
+  it("incluye payment_intent en tracking cuando hay stripePaymentIntentId", () => {
+    render(
+      <SuccessClient
+        order={makeOrder({
+          userId: null,
+          stripePaymentIntentId: "pi_test_abc",
+        })}
+      />,
+    );
+    const link = screen.getByRole("link", { name: /ver detalles del pedido/i });
+    expect(link).toHaveAttribute(
+      "href",
+      "/tracking/order-123?payment_intent=pi_test_abc",
+    );
+  });
+
   it("muestra enlace para volver a la tienda", () => {
     render(<SuccessClient order={makeOrder()} />);
     const link = screen.getByRole("link", { name: /volver a la tienda/i });

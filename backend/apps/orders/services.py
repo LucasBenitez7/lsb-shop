@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 import uuid
 from collections import defaultdict
 from datetime import timedelta
@@ -22,7 +23,10 @@ from apps.cart.selectors import (
     is_product_sellable,
     money_to_minor,
 )
-from apps.orders.constants import ALLOWED_SHIPPING_TYPES_CHECKOUT
+from apps.orders.constants import (
+    ALLOWED_SHIPPING_CARRIERS,
+    ALLOWED_SHIPPING_TYPES_CHECKOUT,
+)
 from apps.orders.models import (
     FulfillmentStatus,
     HistoryType,
@@ -242,6 +246,10 @@ def get_card_payment_client_secret_for_resume(*, order: Order) -> tuple[str, int
             if st in _RESUME_PAYABLE_PI_STATUSES:
                 cs = intent.client_secret
                 if isinstance(cs, str):
+                    log.info(
+                        "orders.payment_resume.reused_intent",
+                        order_id=order.pk,
+                    )
                     return cs, order.total_minor, order.currency
 
     pi_id, secret = _create_card_payment_intent(
@@ -254,6 +262,7 @@ def get_card_payment_client_secret_for_resume(*, order: Order) -> tuple[str, int
     order.save(
         update_fields=["stripe_payment_intent_id", "payment_status", "updated_at"]
     )
+    log.info("orders.payment_resume.new_intent", order_id=order.pk)
     return secret, order.total_minor, order.currency
 
 
@@ -497,6 +506,14 @@ def create_order(
         order.stripe_payment_intent_id = pi_id
         order.save(update_fields=["stripe_payment_intent_id", "updated_at"])
 
+    log.info(
+        "orders.created",
+        order_id=order.pk,
+        actor=actor,
+        payment_method=payment_method or "unknown",
+        has_stripe_payment_intent=bool(order.stripe_payment_intent_id),
+        line_count=len(line_snapshots),
+    )
     return order, client_secret
 
 
@@ -973,14 +990,25 @@ def process_order_return(
     return order
 
 
+def generate_internal_tracking_number(order_id: int) -> str:
+    """Store-facing tracking ref generated server-side (not a carrier AWB)."""
+    token = secrets.token_hex(5).upper()
+    return f"LSB-{order_id}-{token}"
+
+
 @transaction.atomic
 def update_fulfillment_status(
     *,
     order: Order,
     new_status: str,
     actor: str = "admin",
+    carrier: str = "",
 ) -> Order:
-    """Admin-only fulfillment progression (paid orders)."""
+    """Admin-only fulfillment progression (paid orders).
+
+    When moving to ``SHIPPED``, ``carrier`` must be an allowed label;
+    ``tracking_number`` is generated server-side for emails and tracking UI.
+    """
     order = Order.objects.select_for_update().get(pk=order.pk)
 
     if order.is_cancelled:
@@ -1010,7 +1038,16 @@ def update_fulfillment_status(
         )
 
     order.fulfillment_status = new_status
-    update_fields = ["fulfillment_status", "updated_at"]
+    update_fields: list[str] = ["fulfillment_status", "updated_at"]
+    if new_status == FulfillmentStatus.SHIPPED:
+        carrier_clean = (carrier or "").strip()[:100]
+        if carrier_clean not in ALLOWED_SHIPPING_CARRIERS:
+            raise ValidationError(
+                {"carrier": "Select a valid shipping carrier from the list."}
+            )
+        order.carrier = carrier_clean
+        order.tracking_number = generate_internal_tracking_number(order.pk)[:100]
+        update_fields.extend(["carrier", "tracking_number"])
     if new_status == FulfillmentStatus.DELIVERED:
         order.delivered_at = timezone.now()
         update_fields.append("delivered_at")

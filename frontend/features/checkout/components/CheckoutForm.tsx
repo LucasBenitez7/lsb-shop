@@ -165,6 +165,7 @@ export function CheckoutForm({
           <PaymentSection
             isOpen={showStripePaymentSection}
             stripeData={stripeData}
+            isGuestCheckout={isGuestUser}
           />
         </div>
       ) : null}

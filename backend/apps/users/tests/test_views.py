@@ -14,6 +14,7 @@ from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.test import APIClient
 
+from apps.orders.tests.factories import OrderFactory
 from apps.users.models import GuestSession
 from apps.users.tests.factories import GuestSessionFactory, UserFactory
 
@@ -27,8 +28,13 @@ class TestGuestOTPViews:
     ) -> None:
         settings.CELERY_TASK_ALWAYS_EAGER = True
         mail.outbox.clear()
+        order = OrderFactory(email="guest@example.com", user=None)
         url = reverse("guest-request-otp")
-        response = api_client.post(url, {"email": "guest@example.com"}, format="json")
+        response = api_client.post(
+            url,
+            {"email": "guest@example.com", "order_id": order.pk},
+            format="json",
+        )
         assert response.status_code == 200
         assert "detail" in response.data
         assert len(mail.outbox) == 1
@@ -37,7 +43,46 @@ class TestGuestOTPViews:
 
     def test_request_otp_invalid_email_returns_400(self, api_client: APIClient) -> None:
         url = reverse("guest-request-otp")
-        response = api_client.post(url, {"email": "not-an-email"}, format="json")
+        response = api_client.post(
+            url, {"email": "not-an-email", "order_id": 1}, format="json"
+        )
+        assert response.status_code == 400
+
+    def test_request_otp_missing_order_id_returns_400(
+        self, api_client: APIClient
+    ) -> None:
+        url = reverse("guest-request-otp")
+        response = api_client.post(url, {"email": "a@b.com"}, format="json")
+        assert response.status_code == 400
+
+    def test_request_otp_unknown_order_returns_400(self, api_client: APIClient) -> None:
+        url = reverse("guest-request-otp")
+        response = api_client.post(
+            url, {"email": "guest@example.com", "order_id": 999_999}, format="json"
+        )
+        assert response.status_code == 400
+
+    def test_request_otp_email_mismatch_returns_400(
+        self, api_client: APIClient
+    ) -> None:
+        order = OrderFactory(email="real@example.com", user=None)
+        url = reverse("guest-request-otp")
+        response = api_client.post(
+            url,
+            {"email": "other@example.com", "order_id": order.pk},
+            format="json",
+        )
+        assert response.status_code == 400
+
+    def test_request_otp_user_order_returns_400(self, api_client: APIClient) -> None:
+        user = UserFactory()
+        order = OrderFactory(email=user.email, user=user)
+        url = reverse("guest-request-otp")
+        response = api_client.post(
+            url,
+            {"email": user.email, "order_id": order.pk},
+            format="json",
+        )
         assert response.status_code == 400
 
     def test_verify_otp_success_returns_session_payload(
@@ -55,6 +100,7 @@ class TestGuestOTPViews:
         assert response.data["token"] == session.token
         session.refresh_from_db()
         assert session.is_verified is True
+        assert session.expires_at > timezone.now() + timedelta(days=6)
 
     def test_verify_otp_wrong_code_returns_400(self, api_client: APIClient) -> None:
         GuestSessionFactory(email="g@example.com", otp="111111")
@@ -278,6 +324,32 @@ class TestUserViewSetList:
         assert {o.id for o in others}.issubset(ids)
         assert response.data["count"] >= 3
 
+    def test_list_as_admin_includes_orders_count(
+        self, admin_client: APIClient, admin_user
+    ) -> None:
+        from apps.orders.models import FulfillmentStatus, PaymentStatus
+        from apps.orders.tests.factories import OrderFactory
+
+        buyer = UserFactory()
+        OrderFactory(
+            user=buyer,
+            payment_status=PaymentStatus.PAID,
+            fulfillment_status=FulfillmentStatus.DELIVERED,
+            is_cancelled=False,
+        )
+        OrderFactory(
+            user=buyer,
+            payment_status=PaymentStatus.PENDING,
+            fulfillment_status=FulfillmentStatus.UNFULFILLED,
+            is_cancelled=True,
+        )
+        url = reverse("user-list")
+        response = admin_client.get(url)
+        assert response.status_code == 200
+        rows = {row["id"]: row for row in response.data["results"]}
+        assert rows[buyer.id]["orders_count"] == 1
+        assert "orders_count" in rows[admin_user.id]
+
     def test_retrieve_other_user_as_non_admin_returns_404(
         self, auth_client: APIClient, user
     ) -> None:
@@ -323,6 +395,45 @@ class TestUserViewSetList:
         assert response.data["email"] != other.email
         assert response.data["email"] == "o***@***.com"
         assert response.data["phone"] == "***"
+
+
+@pytest.mark.django_db
+class TestUserOrderStats:
+    def test_order_stats_as_admin_returns_counts_and_paid_spend(
+        self, admin_client: APIClient
+    ) -> None:
+        from apps.orders.models import FulfillmentStatus, PaymentStatus
+        from apps.orders.tests.factories import OrderFactory
+
+        customer = UserFactory()
+        OrderFactory(
+            user=customer,
+            payment_status=PaymentStatus.PAID,
+            fulfillment_status=FulfillmentStatus.DELIVERED,
+            total_minor=5000,
+            is_cancelled=False,
+        )
+        OrderFactory(
+            user=customer,
+            payment_status=PaymentStatus.PENDING,
+            fulfillment_status=FulfillmentStatus.UNFULFILLED,
+            total_minor=9999,
+            is_cancelled=False,
+        )
+        url = reverse("user-order-stats", kwargs={"pk": customer.pk})
+        response = admin_client.get(url)
+        assert response.status_code == 200
+        assert response.data["total_orders"] == 2
+        assert response.data["total_spent_minor"] == 5000
+
+    def test_order_stats_as_user_for_self_succeeds(
+        self, auth_client: APIClient, user
+    ) -> None:
+        url = reverse("user-order-stats", kwargs={"pk": user.pk})
+        response = auth_client.get(url)
+        assert response.status_code == 200
+        assert response.data["total_orders"] == 0
+        assert response.data["total_spent_minor"] == 0
 
 
 @pytest.mark.django_db

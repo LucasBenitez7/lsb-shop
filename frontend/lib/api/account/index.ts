@@ -1,3 +1,4 @@
+import { getMe, resendVerificationEmail } from "@/lib/api/auth";
 import { APIError, apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api/client";
 import { mapOrderDetailDRF, mapOrderListItemDRF, mapUserAddressDRF } from "./mappers";
 
@@ -156,10 +157,17 @@ export async function cancelOrder(
   orderId: string,
   reason?: string,
 ): Promise<{ success: boolean; message?: string }> {
-  // TODO: apiFetch(`/api/v1/orders/${orderId}/cancel/`, { method: "POST", body: JSON.stringify({ reason }) })
-  void orderId;
-  void reason;
-  return { success: true };
+  try {
+    await apiPost(`/api/v1/orders/${encodeURIComponent(orderId)}/cancel/`, {
+      email: "",
+      reason: reason ?? "",
+    });
+    return { success: true };
+  } catch (e) {
+    const message =
+      e instanceof APIError ? e.message : "Could not cancel order. Please try again.";
+    return { success: false, message };
+  }
 }
 
 /**
@@ -169,8 +177,17 @@ export async function requestVerificationEmail(): Promise<{
   success: boolean;
   message?: string;
 }> {
-  // TODO: apiFetch("/api/v1/auth/send-email-verification/", { method: "POST" })
-  return { success: true };
+  try {
+    const me = await getMe();
+    await resendVerificationEmail(me.email);
+    return { success: true };
+  } catch (e) {
+    const message =
+      e instanceof APIError
+        ? e.message
+        : "Could not send verification email. Please try again.";
+    return { success: false, message };
+  }
 }
 
 // ─── Order mutations ──────────────────────────────────────────────────────────
@@ -187,9 +204,26 @@ export interface ReturnRequestInput {
 export async function requestReturn(
   input: ReturnRequestInput,
 ): Promise<{ success: boolean; message?: string }> {
-  // TODO: apiFetch<{ success: boolean }>(`/api/v1/orders/${input.orderId}/return/`, { method: "POST", body: JSON.stringify(input) })
-  void input;
-  return { success: true };
+  try {
+    await apiPost(
+      `/api/v1/orders/${encodeURIComponent(input.orderId)}/request-return/`,
+      {
+        reason: input.reason,
+        items: input.items.map((row) => ({
+          item_id: Number.parseInt(row.itemId, 10),
+          quantity: row.qty,
+        })),
+        email: "",
+      },
+    );
+    return { success: true };
+  } catch (e) {
+    const message =
+      e instanceof APIError
+        ? e.message
+        : "Could not submit return request. Please try again.";
+    return { success: false, message };
+  }
 }
 
 /**

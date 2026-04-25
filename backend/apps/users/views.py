@@ -4,12 +4,17 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from rest_framework import filters, status, viewsets
+from django.db.models import Count, IntegerField, Q, Sum
+from django.db.models.functions import Coalesce
+from drf_spectacular.utils import OpenApiExample, extend_schema, inline_serializer
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.orders.models import Order
+from apps.orders.models import PaymentStatus as OrderPaymentStatus
 from apps.users.models import UserAddress
 from apps.users.serializers import (
     GuestOTPRequestSerializer,
@@ -35,22 +40,47 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["email", "first_name", "last_name", "phone"]
+    search_fields = ["=id", "email", "first_name", "last_name", "phone"]
     ordering_fields = ["email", "first_name", "last_name", "created_at", "role"]
     ordering = ["-created_at"]
 
     def get_queryset(self):
         user = self.request.user
+        qs = User.objects.annotate(
+            orders_count=Count(
+                "orders",
+                filter=Q(orders__is_cancelled=False),
+            ),
+        )
         if not user.is_staff:
-            return User.objects.filter(id=user.id)
-
-        qs = User.objects.all()
+            return qs.filter(id=user.id)
 
         role = self.request.query_params.get("role")
         if role:
             qs = qs.filter(role=role)
 
         return qs
+
+    @action(detail=True, methods=["get"], url_path="order-stats")
+    def order_stats(self, request, pk=None) -> Response:
+        """Paid order count and spend for a user (self or staff)."""
+        target = self.get_object()
+        qs = Order.objects.filter(user_id=target.pk, is_cancelled=False)
+        total_orders = qs.count()
+        spent = qs.filter(
+            payment_status__in=[
+                OrderPaymentStatus.PAID,
+                OrderPaymentStatus.PARTIALLY_REFUNDED,
+            ]
+        ).aggregate(
+            total=Coalesce(Sum("total_minor"), 0, output_field=IntegerField()),
+        )["total"]
+        return Response(
+            {
+                "total_orders": total_orders,
+                "total_spent_minor": int(spent),
+            },
+        )
 
     @action(
         detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated]
@@ -80,6 +110,27 @@ class GuestOTPRequestView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
 
+    @extend_schema(
+        summary="Request guest order tracking OTP",
+        description=(
+            "Sends a one-time code to the email when it matches a guest-only order "
+            "with the given `order_id`."
+        ),
+        request=GuestOTPRequestSerializer,
+        responses={
+            200: inline_serializer(
+                name="GuestOTPRequestResponse",
+                fields={"detail": serializers.CharField()},
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Request OTP",
+                value={"email": "buyer@example.com", "order_id": 42},
+                request_only=True,
+            ),
+        ],
+    )
     def post(self, request):
         serializer = GuestOTPRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -89,7 +140,12 @@ class GuestOTPRequestView(APIView):
         send_guest_otp_email.delay(email, session.otp)
 
         return Response(
-            {"detail": "OTP sent to your email."}, status=status.HTTP_200_OK
+            {
+                "detail": (
+                    "Te hemos enviado un código de verificación al email del pedido."
+                ),
+            },
+            status=status.HTTP_200_OK,
         )
 
 
@@ -97,6 +153,22 @@ class GuestOTPVerifyView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
 
+    @extend_schema(
+        summary="Verify guest OTP",
+        description=(
+            "Exchanges email + OTP for a guest session token "
+            "(HTTP-only cookie on clients that set it)."
+        ),
+        request=GuestOTPVerifySerializer,
+        responses={200: GuestSessionSerializer},
+        examples=[
+            OpenApiExample(
+                "Verify",
+                value={"email": "buyer@example.com", "otp": "123456"},
+                request_only=True,
+            ),
+        ],
+    )
     def post(self, request):
         serializer = GuestOTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

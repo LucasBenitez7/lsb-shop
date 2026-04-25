@@ -38,9 +38,43 @@ const SYSTEM_REASON_MAP: Record<string, string> = {
     "Expirado por falta de pago (Tiempo límite excedido)",
 };
 
+/** Backend (Django) order history `snapshot_status` codes → Spanish UI labels. */
+const SNAPSHOT_STATUS_DISPLAY: Record<string, string> = {
+  ORDER_CREATED: "Pedido creado",
+  ORDER_EXPIRED: SPECIAL_STATUS_CONFIG.EXPIRED.label,
+  ORDER_CANCELLED: SPECIAL_STATUS_CONFIG.CANCELLED.label,
+  RETURN_REQUESTED: SYSTEM_MSGS.RETURN_REQUESTED,
+  RETURN_REJECTED: "Devolución rechazada",
+  RETURN_PROCESSED: "Devolución procesada",
+  PAYMENT_SUCCEEDED: "Pago confirmado",
+  PAYMENT_FAILED: "Pago fallido",
+};
+
+export function formatSnapshotStatusForDisplay(snapshotStatus: string): string {
+  if (SNAPSHOT_STATUS_DISPLAY[snapshotStatus]) {
+    return SNAPSHOT_STATUS_DISPLAY[snapshotStatus];
+  }
+  if (snapshotStatus.startsWith("FULFILLMENT_")) {
+    const code = snapshotStatus.slice("FULFILLMENT_".length);
+    const cfg =
+      FULFILLMENT_STATUS_CONFIG[
+        code as keyof typeof FULFILLMENT_STATUS_CONFIG
+      ];
+    return cfg?.label ?? snapshotStatus;
+  }
+  return snapshotStatus;
+}
+
 export function formatHistoryReason(reason: string | null | undefined) {
   if (!reason) return "Evento registrado";
-  return SYSTEM_REASON_MAP[reason] || reason;
+  if (SYSTEM_REASON_MAP[reason]) return SYSTEM_REASON_MAP[reason];
+  if (
+    reason.includes("Automatically expired") &&
+    reason.includes("payment not completed")
+  ) {
+    return SYSTEM_MSGS.ORDER_EXPIRED;
+  }
+  return reason;
 }
 
 // Helper visual potente
@@ -81,14 +115,33 @@ export function getEventVisuals(
     statusColor = "text-red-600";
 
     if (
+      snapshotStatus === "RETURN_PROCESSED" ||
       snapshotStatus.includes("Completada") ||
       snapshotStatus.includes("Aceptada")
     ) {
       statusIcon = FaCheck;
       statusColor = "text-green-600";
-    } else if (snapshotStatus.includes("Rechazada")) {
+    } else if (
+      snapshotStatus === "RETURN_REJECTED" ||
+      snapshotStatus.includes("Rechazada")
+    ) {
       statusIcon = FaBan;
       statusColor = "text-red-600";
+    } else if (
+      snapshotStatus === "RETURN_REQUESTED" ||
+      snapshotStatus === SYSTEM_MSGS.RETURN_REQUESTED
+    ) {
+      statusIcon = FaTriangleExclamation;
+      statusColor = "text-amber-600";
+    }
+  } else if (snapshotStatus.startsWith("FULFILLMENT_")) {
+    const code = snapshotStatus.slice("FULFILLMENT_".length);
+    const cfg =
+      FULFILLMENT_STATUS_CONFIG[
+        code as keyof typeof FULFILLMENT_STATUS_CONFIG
+      ];
+    if (cfg) {
+      statusColor = cfg.color.replace("bg-", "text-");
     }
   } else {
     const paymentMatch = Object.values(PAYMENT_STATUS_CONFIG).find(
@@ -114,19 +167,34 @@ export function getEventVisuals(
   };
 }
 
+function isOrderExpiredSnapshot(snapshotStatus: string): boolean {
+  return (
+    snapshotStatus === "ORDER_EXPIRED" ||
+    snapshotStatus === SPECIAL_STATUS_CONFIG.EXPIRED.label
+  );
+}
+
+function isOrderCancelledSnapshot(snapshotStatus: string): boolean {
+  return (
+    snapshotStatus === "ORDER_CANCELLED" ||
+    snapshotStatus === SPECIAL_STATUS_CONFIG.CANCELLED.label
+  );
+}
+
 export function getOrderCancellationDetails(order: any) {
   if (!order.isCancelled) return null;
 
-  // 1. Buscamos el evento de cierre
+  // 1. Buscamos el evento de cierre (DRF usa ORDER_*; legacy monolito usaba etiquetas ES)
   const stopEvent = order.history.find(
     (h: any) =>
-      h.snapshotStatus === SPECIAL_STATUS_CONFIG.CANCELLED.label ||
-      h.snapshotStatus === SPECIAL_STATUS_CONFIG.EXPIRED.label,
+      isOrderCancelledSnapshot(h.snapshotStatus) ||
+      isOrderExpiredSnapshot(h.snapshotStatus),
   );
 
   // 2. Determinamos si es expirado
-  const isExpired =
-    stopEvent?.snapshotStatus === SPECIAL_STATUS_CONFIG.EXPIRED.label;
+  const isExpired = stopEvent
+    ? isOrderExpiredSnapshot(stopEvent.snapshotStatus)
+    : false;
 
   // 3. Calculamos Títulos y Actores
   let bannerTitle = "";
@@ -152,16 +220,15 @@ export function getOrderCancellationDetails(order: any) {
 export function getOrderCancellationDetailsUser(order: any) {
   if (!order.isCancelled) return null;
 
-  // 1. Buscamos el evento de cierre
   const stopEvent = order.history.find(
     (h: any) =>
-      h.snapshotStatus === SPECIAL_STATUS_CONFIG.CANCELLED.label ||
-      h.snapshotStatus === SPECIAL_STATUS_CONFIG.EXPIRED.label,
+      isOrderCancelledSnapshot(h.snapshotStatus) ||
+      isOrderExpiredSnapshot(h.snapshotStatus),
   );
 
-  // 2. Determinamos si es expirado
-  const isExpired =
-    stopEvent?.snapshotStatus === SPECIAL_STATUS_CONFIG.EXPIRED.label;
+  const isExpired = stopEvent
+    ? isOrderExpiredSnapshot(stopEvent.snapshotStatus)
+    : false;
 
   // 3. Calculamos Títulos y Actores
   let bannerTitle = "";
@@ -211,7 +278,17 @@ export function getOrderShippingDetails(order: Order) {
         : order.pickupSearch || order.pickupLocationId || "Sin información",
     ];
   }
-  return { label, addressLines: lines.filter(Boolean) };
+
+  const baseLines = lines.filter(Boolean);
+  const carrier = (order.carrier || "").trim();
+  const tracking = (order.trackingNumber || "").trim();
+  if (carrier || tracking) {
+    const shipLines: string[] = [];
+    if (carrier) shipLines.push(`Transportista: ${carrier}`);
+    if (tracking) shipLines.push(`Nº seguimiento: ${tracking}`);
+    return { label, addressLines: [...baseLines, ...shipLines] };
+  }
+  return { label, addressLines: baseLines };
 }
 
 /** Label for order summary UIs (prefers Stripe card snapshot from the API). */
@@ -322,19 +399,34 @@ export function getReturnableItems(
     .filter((item): item is UserReturnableItem => item !== null);
 }
 
+/** Unit compare-at in minor (for strikethrough) from snapshot or live product. */
+export function orderLineUnitCompareAtMinor(item: {
+  priceMinorSnapshot: number;
+  compareAtUnitMinorSnapshot?: number | null;
+  product?: { compareAtPrice?: number | null } | null;
+}): number | undefined {
+  const price = item.priceMinorSnapshot;
+  const snap = item.compareAtUnitMinorSnapshot;
+  if (snap != null && snap > price) return snap;
+  const cmp = item.product?.compareAtPrice;
+  if (cmp != null && cmp > price) return cmp;
+  return undefined;
+}
+
 export function calculateDiscounts(
   items: {
     priceMinorSnapshot: number;
     quantity: number;
+    compareAtUnitMinorSnapshot?: number | null;
     product?: { compareAtPrice?: number | null } | null;
   }[],
 ) {
   let originalSubtotal = 0;
   items.forEach((item) => {
-    const comparePrice = item.product?.compareAtPrice;
     const price = item.priceMinorSnapshot;
+    const comparePrice = orderLineUnitCompareAtMinor(item) ?? null;
     const finalPrice =
-      comparePrice && comparePrice > price ? comparePrice : price;
+      comparePrice != null && comparePrice > price ? comparePrice : price;
     originalSubtotal += finalPrice * item.quantity;
   });
   return originalSubtotal;
@@ -349,6 +441,7 @@ export function formatOrderForDisplay(
   return {
     id: order.id,
     userId: order.userId,
+    stripePaymentIntentId: order.stripePaymentIntentId ?? null,
     email: order.email,
     createdAt: order.createdAt,
     paymentStatus: order.paymentStatus,
@@ -378,6 +471,7 @@ export function formatOrderForDisplay(
         item.colorSnapshot,
       );
       const finalImageUrl = matchingImage?.url || null;
+      const price = item.priceMinorSnapshot;
 
       return {
         id: item.id,
@@ -387,8 +481,8 @@ export function formatOrderForDisplay(
           .filter(Boolean)
           .join(" / "),
         quantity: item.quantity,
-        price: item.priceMinorSnapshot,
-        compareAtPrice: product?.compareAtPrice ?? undefined,
+        price: price,
+        compareAtPrice: orderLineUnitCompareAtMinor(item),
         image: finalImageUrl,
       };
     }),
@@ -397,10 +491,26 @@ export function formatOrderForDisplay(
 
 export type DisplayOrder = OrderDisplayData;
 
+/** DRF / Prisma-style history codes + legacy Spanish labels from the old monolith. */
+const RETURN_REQUEST_SNAPSHOTS = new Set([
+  "RETURN_REQUESTED",
+  SYSTEM_MSGS.RETURN_REQUESTED,
+]);
+
+const RETURN_CLOSED_SNAPSHOTS = new Set([
+  "RETURN_PROCESSED",
+  "RETURN_REJECTED",
+  "Devolución Completada",
+  "Devolución Aceptada",
+  "Solicitud Rechazada",
+  "Solicitud Rechazada (Parcial)",
+]);
+
 export function getReturnStatusBadge(order: {
   paymentStatus: string;
   fulfillmentStatus: string;
   history?: { snapshotStatus: string }[];
+  items?: { quantityReturnRequested?: number }[];
 }) {
   if (
     order.paymentStatus === PaymentStatus.REFUNDED ||
@@ -420,15 +530,16 @@ export function getReturnStatusBadge(order: {
   }
 
   const history = order.history || [];
-  const hasRequest = history.some(
-    (h) => h.snapshotStatus === SYSTEM_MSGS.RETURN_REQUESTED,
+  const hasRequestFromHistory = history.some((h) =>
+    RETURN_REQUEST_SNAPSHOTS.has(h.snapshotStatus),
   );
-  const isClosed = history.some(
-    (h) =>
-      h.snapshotStatus === "Devolución Completada" ||
-      h.snapshotStatus === "Devolución Aceptada" ||
-      h.snapshotStatus === "Solicitud Rechazada" ||
-      h.snapshotStatus === "Solicitud Rechazada (Parcial)",
+  const hasRequestFromLines = (order.items || []).some(
+    (line) => (line.quantityReturnRequested ?? 0) > 0,
+  );
+  const hasRequest = hasRequestFromHistory || hasRequestFromLines;
+
+  const isClosed = history.some((h) =>
+    RETURN_CLOSED_SNAPSHOTS.has(h.snapshotStatus),
   );
 
   if (hasRequest && !isClosed) {

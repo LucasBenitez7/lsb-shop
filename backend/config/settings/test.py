@@ -16,6 +16,8 @@ CACHES = {
 }
 
 CELERY_TASK_ALWAYS_EAGER = True
+# No Celery worker in unit tests; eager mode does not answer ``control.ping``.
+HEALTH_CHECK_CELERY_PING = False
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 # Avoid Cloudinary / remote storage in unit tests

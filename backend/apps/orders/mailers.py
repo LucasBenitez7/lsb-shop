@@ -288,8 +288,32 @@ def send_return_decision_mail(*, order: Order, approved: bool) -> None:
     )
 
 
+def _fulfillment_email_extras(order: Order) -> dict[str, Any]:
+    """Carrier, tracking, and delivered timestamp for transactional copy."""
+    carrier = (order.carrier or "").strip()
+    tracking = (order.tracking_number or "").strip()
+    delivered_display = ""
+    if order.delivered_at is not None:
+        delivered_display = formats.date_format(
+            timezone.localtime(order.delivered_at),
+            "SHORT_DATETIME_FORMAT",
+        )
+    return {
+        "carrier_display": carrier,
+        "tracking_number_display": tracking,
+        "show_shipping_block": bool(carrier or tracking),
+        "delivered_display": delivered_display,
+        "show_delivered_block": bool(delivered_display),
+    }
+
+
 def send_fulfillment_update_mail(*, order: Order, status_display: str) -> None:
-    ctx = {**_transactional_context(order), "status_display": status_display}
+    order_loaded = _order_with_items_prefetched(order.pk)
+    ctx = {
+        **_transactional_context(order_loaded),
+        "status_display": status_display,
+        **_fulfillment_email_extras(order_loaded),
+    }
     text_body = render_to_string("orders/emails/fulfillment_update.txt", ctx)
     html_body = render_to_string("orders/emails/fulfillment_update.html", ctx)
     send_mail(

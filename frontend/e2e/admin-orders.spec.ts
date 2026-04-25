@@ -86,6 +86,8 @@ test.describe("Admin — Ciclo logístico completo", () => {
     ).toBeVisible({ timeout: 5_000 });
 
     await page.getByRole("button", { name: "Marcar como Enviado" }).click();
+    await page.getByLabel(/Nº de seguimiento/i).fill("E2E-TRACK-001");
+    await page.getByRole("button", { name: "Confirmar envío" }).click();
 
     await expect(
       page.getByText("Estado logístico actualizado").first(),

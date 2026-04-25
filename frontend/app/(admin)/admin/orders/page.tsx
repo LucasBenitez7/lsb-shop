@@ -3,10 +3,9 @@ import { Suspense } from "react";
 import { PaginationNav } from "@/features/catalog/components/PaginationNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { getPendingReturnsCount } from "@/lib/api/admin";
-import { isDemoRole } from "@/lib/roles";
+import { getDashboardStats } from "@/lib/api/admin";
+import { canWriteAdmin, isDemoRole } from "@/lib/roles";
 import { auth } from "@/lib/api/auth/server";
-import { getPreparingOrdersCount } from "@/lib/api/admin";
 import { serverGetAdminOrders } from "@/lib/api/orders/server";
 
 import { OrderListTabs } from "@/features/orders/components/OrderListTabs";
@@ -33,6 +32,7 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
   const sp = await searchParams;
   const session = await auth();
   const maskEmails = isDemoRole(session?.user?.role);
+  const canWrite = canWriteAdmin(session?.user?.role);
 
   const page = Number(sp.page) || 1;
 
@@ -44,20 +44,20 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
     ?.split(",")
     .filter(Boolean) as FulfillmentStatus[];
 
-  const [ordersResult, pendingReturnsCount, preparingOrdersCount] =
-    await Promise.all([
-      serverGetAdminOrders({
-        page,
-        statusTab: sp.status,
-        paymentFilter,
-        fulfillmentFilter,
-        sort: sp.sort,
-        query: sp.query,
-        userId: sp.userId,
-      }),
-      getPendingReturnsCount(),
-      getPreparingOrdersCount(),
-    ]);
+  const [ordersResult, dashboardStats] = await Promise.all([
+    serverGetAdminOrders({
+      page,
+      statusTab: sp.status,
+      paymentFilter,
+      fulfillmentFilter,
+      sort: sp.sort,
+      query: sp.query,
+      userId: sp.userId,
+    }),
+    getDashboardStats(),
+  ]);
+  const pendingReturnsCount = dashboardStats.pendingReturnsCount;
+  const preparingOrdersCount = dashboardStats.preparingOrdersCount;
 
   const { items: orders, total: totalCount, totalPages } = ordersResult;
   const isReturnsTab = sp.status === "RETURNS";
@@ -99,6 +99,7 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
             orders={orders}
             showRefunds={isReturnsTab}
             maskEmails={maskEmails}
+            canWrite={canWrite}
           />
 
           {totalPages > 1 && (

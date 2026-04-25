@@ -71,7 +71,7 @@ describe("createOrderSchema", () => {
     postalCode: "28001",
     city: "Madrid",
     province: "Madrid",
-    country: "España",
+    country: "ES",
     details: "Piso 2A",
   };
 

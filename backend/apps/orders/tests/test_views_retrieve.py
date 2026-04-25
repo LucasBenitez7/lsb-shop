@@ -199,5 +199,7 @@ class TestOrderRetrieveAPI:
         assert "province" in data
         assert "country" in data
         assert "stripe_payment_intent_id" in data
+        assert "carrier" in data
+        assert "tracking_number" in data
         assert "items" in data
         assert isinstance(data["items"], list)

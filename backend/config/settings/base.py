@@ -7,6 +7,11 @@ from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+
+def _env_truthy(value: str) -> bool:
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+
 SECRET_KEY = config("SECRET_KEY")
 DEBUG = False
 ALLOWED_HOSTS = config(
@@ -69,6 +74,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    # Last: sees the view response first on the way out — log 5xx + Redis fingerprint.
+    "apps.core.middleware.ErrorFingerprintMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -114,6 +121,14 @@ CACHES = {
 
 # Cart — stored in default cache (Redis in prod, LocMem in tests)
 CART_REDIS_TTL_SECONDS = int(config("CART_REDIS_TTL_SECONDS", default=604800))  # 7 days
+
+# When True, GET /health/ runs ``health_check.contrib.celery.Ping``
+# (needs broker + worker). ``test`` / ``development`` override defaults.
+HEALTH_CHECK_CELERY_PING = config(
+    "HEALTH_CHECK_CELERY_PING",
+    default="true",
+    cast=_env_truthy,
+)
 CART_GUEST_COOKIE_NAME = config("CART_GUEST_COOKIE_NAME", default="lsb-cart-guest")
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -249,6 +264,13 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# django-unfold — branding for /admin/ (support; primary ops stay on Next admin).
+UNFOLD = {
+    "SITE_TITLE": "lsb-shop",
+    "SITE_HEADER": "lsb-shop administration",
+    "SITE_SUBHEADER": "Internal Django admin — catalog support and quick fixes",
+}
+
 # Cloudinary
 CLOUDINARY_STORAGE = {
     "CLOUD_NAME": config("CLOUDINARY_CLOUD_NAME"),
@@ -276,6 +298,16 @@ EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="resend")
 EMAIL_HOST_PASSWORD = config("RESEND_API_KEY")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@lsbshop.com")
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
+
+# HTTP 5xx fingerprint counter (default cache = Redis in prod, LocMem in tests).
+ERROR_FINGERPRINT_ENABLED = config(
+    "ERROR_FINGERPRINT_ENABLED",
+    default="true",
+    cast=_env_truthy,
+)
+ERROR_FINGERPRINT_TTL_SECONDS = int(
+    config("ERROR_FINGERPRINT_TTL_SECONDS", default=86400, cast=int),
+)
 
 # structlog
 LOGGING = {

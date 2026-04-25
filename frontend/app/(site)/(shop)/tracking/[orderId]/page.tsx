@@ -15,28 +15,33 @@ import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
 import {
   formatOrderPaymentMethodLabel,
   getOrderShippingDetails,
-  shouldShowHistoryButton,
   getOrderTotals,
+  orderLineUnitCompareAtMinor,
+  shouldShowHistoryButton,
 } from "@/lib/orders/utils";
 import { findImageByColorOrFallback } from "@/lib/products/color-matching";
+import { trackingPaymentAccessQuery } from "@/lib/tracking/guest-order-link";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ orderId: string }>;
+  searchParams: Promise<{ payment_intent?: string }>;
 };
 
-export default async function GuestOrderPage({ params }: Props) {
+export default async function GuestOrderPage({ params, searchParams }: Props) {
   const { orderId } = await params;
+  const { payment_intent: paymentIntent } = await searchParams;
 
   // 1. Verificar Acceso de Invitado (Refactored)
-  await verifyGuestAccessOrRedirect(orderId);
+  await verifyGuestAccessOrRedirect(orderId, paymentIntent);
 
-  // 2. Obtener Pedido
-  const order = await serverGetOrderSuccessDetails(orderId);
+  // 2. Obtener Pedido (guest API requires payment_intent unless guest-session cookie is set)
+  const order = await serverGetOrderSuccessDetails(orderId, paymentIntent);
 
   if (!order) notFound();
 
+  const accessQuery = trackingPaymentAccessQuery(paymentIntent);
   const currency = parseCurrency(order.currency);
 
   const deliveryDateFormatted = order.deliveredAt
@@ -84,6 +89,7 @@ export default async function GuestOrderPage({ params }: Props) {
         <div className="flex flex-col sm:flex-row items-center justify-end gap-2 w-full sm:w-auto">
           <GuestOrderActions
             orderId={order.id}
+            paymentIntent={paymentIntent}
             paymentStatus={order.paymentStatus}
             fulfillmentStatus={order.fulfillmentStatus}
             isCancelled={order.isCancelled}
@@ -95,7 +101,7 @@ export default async function GuestOrderPage({ params }: Props) {
               variant="outline"
               className="w-full sm:w-fit bg-blue-50 hover:bg-blue-100"
             >
-              <Link href={`/tracking/${order.id}/history`}>
+              <Link href={`/tracking/${order.id}/history${accessQuery}`}>
                 <FaClipboardList className="size-3.5 mr-2" />
                 Detalles de devolución
               </Link>
@@ -154,7 +160,7 @@ export default async function GuestOrderPage({ params }: Props) {
                 .join(" / "),
               quantity: item.quantity,
               price: item.priceMinorSnapshot,
-              compareAtPrice: item.product?.compareAtPrice ?? undefined,
+              compareAtPrice: orderLineUnitCompareAtMinor(item),
               image: matchingImg?.url || null,
               badges:
                 item.quantityReturned > 0 ? (

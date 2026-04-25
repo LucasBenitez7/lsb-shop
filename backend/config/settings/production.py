@@ -10,7 +10,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
-# structlog — JSON en producción para Loki/Grafana
+# structlog — JSON a stdout (Railway Logs / cualquier agregador vía log drain)
 import structlog
 
 structlog.configure(

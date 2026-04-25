@@ -128,7 +128,12 @@ class UserSerializer(serializers.ModelSerializer):
 
     Staff *demo* users see masked email/phone for *other* users (list/retrieve);
     their own profile (`/me/` and self) stays unmasked.
+
+    ``orders_count``: non-cancelled orders (annotated in UserViewSet queryset,
+    or counted per instance when missing, e.g. dj-rest-auth user details).
     """
+
+    orders_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -145,6 +150,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
             "created_at",
             "updated_at",
+            "orders_count",
         )
         read_only_fields = (
             "id",
@@ -156,7 +162,13 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
             "created_at",
             "updated_at",
+            "orders_count",
         )
+
+    def get_orders_count(self, instance: User) -> int:
+        if hasattr(instance, "orders_count"):
+            return int(instance.orders_count)
+        return int(instance.orders.filter(is_cancelled=False).count())
 
     def to_representation(self, instance: User) -> dict:
         data = super().to_representation(instance)
@@ -174,7 +186,32 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class GuestOTPRequestSerializer(serializers.Serializer):
+    """Guest OTP: order exists, guest-only, email must match order."""
+
     email = serializers.EmailField()
+    order_id = serializers.IntegerField(min_value=1)
+
+    def validate(self, attrs: dict) -> dict:
+        from apps.orders.models import Order
+
+        email = attrs["email"].strip().lower()
+        order_id = attrs["order_id"]
+        try:
+            order = Order.objects.get(pk=order_id)
+        except Order.DoesNotExist:
+            raise serializers.ValidationError(
+                "No encontramos un pedido con ese número.",
+            ) from None
+        if order.user_id is not None:
+            raise serializers.ValidationError(
+                "Este pedido está vinculado a una cuenta. Inicia sesión para verlo.",
+            )
+        order_email = (order.email or "").strip().lower()
+        if order_email != email:
+            raise serializers.ValidationError(
+                "El email no coincide con el del pedido.",
+            )
+        return attrs
 
 
 class GuestOTPVerifySerializer(serializers.Serializer):

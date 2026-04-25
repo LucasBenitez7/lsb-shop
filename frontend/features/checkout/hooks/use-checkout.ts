@@ -10,6 +10,7 @@ import {
   getOrderSuccessDetails,
   getPaymentIntent,
 } from "@/lib/api/account";
+import { buildCheckoutSuccessHref } from "@/lib/checkout/stripe-return-paths";
 import { useCartStore } from "@/store/useCartStore";
 
 const readCartFingerprint = () => {
@@ -129,7 +130,7 @@ export function useCheckout(
         setPaymentReturnBanner(null);
         toast.success("Pago confirmado.");
         router.push(
-          `/checkout/success?orderId=${encodeURIComponent(ctx.orderId)}`,
+          buildCheckoutSuccessHref(ctx.orderId, ctx.paymentIntentHint),
         );
         return true;
       }
@@ -252,7 +253,7 @@ export function useCheckout(
       if (order.paymentStatus === "PAID") {
         setPaymentReturnBanner(null);
         toast.success("Pago confirmado.");
-        router.push(`/checkout/success?orderId=${encodeURIComponent(orderId)}`);
+        router.push(buildCheckoutSuccessHref(orderId, paymentIntent));
         return;
       }
 
@@ -390,11 +391,13 @@ export function useCheckout(
 
     if (!isValid) {
       toast.error("Por favor, completa los datos de envío obligatorios.");
+      isSubmittingRef.current = false;
       return;
     }
 
     if (items.length === 0) {
       toast.error("Tu carrito está vacío.");
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -481,12 +484,17 @@ export function useCheckout(
 
       if (res?.error) {
         localStorage.removeItem("checkout_session");
-        toast.error(res.error);
+        toast.error(res.error, { duration: 8000 });
         setIsPending(false);
         return;
       }
 
       if (res?.success && res.isStripe && res.clientSecret && res.orderId) {
+        // Block a second concurrent createOrder before React commits `stripeData` state.
+        stripeDataRef.current = {
+          clientSecret: res.clientSecret,
+          orderId: res.orderId,
+        };
         setPaymentAwaitingDbSync(null);
         setPaymentReturnBanner(null);
         setStripeData({

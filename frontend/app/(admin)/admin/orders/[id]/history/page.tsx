@@ -6,12 +6,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
 
 import { SYSTEM_MSGS } from "@/lib/orders/constants";
-import { colorsMatch } from "@/lib/products/color-matching";
+import {
+  historyRowDisplayQuantity,
+  imageUrlForHistoryRow,
+  matchOrderItemForHistoryRow,
+  parseHistoryDetailItem,
+  type HistoryDetailItemRow,
+} from "@/lib/orders/history-items";
 import { serverGetAdminOrderById } from "@/lib/api/orders/server";
-import { formatHistoryReason, getEventVisuals } from "@/lib/orders/utils";
+import {
+  formatHistoryReason,
+  formatSnapshotStatusForDisplay,
+  getEventVisuals,
+} from "@/lib/orders/utils";
 import { cn } from "@/lib/utils";
 
-import type { HistoryDetailsJson, HistoryItemJson } from "@/lib/orders/types";
+import type { HistoryDetailsJson } from "@/lib/orders/types";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +58,12 @@ export default async function OrderHistoryPage({ params }: Props) {
         {order.history.map((event) => {
           const details =
             (event.details as unknown as HistoryDetailsJson) || {};
-          const itemsList = details.items || [];
+          const itemsList: HistoryDetailItemRow[] = (details.items || [])
+            .map(parseHistoryDetailItem)
+            .filter((r): r is HistoryDetailItemRow => r != null);
           const note = details.note;
           const totalAffectedQty = itemsList.reduce(
-            (acc: number, i: HistoryItemJson) => acc + i.quantity,
+            (acc, row) => acc + historyRowDisplayQuantity(row),
             0,
           );
 
@@ -66,7 +78,8 @@ export default async function OrderHistoryPage({ params }: Props) {
 
           // Detectamos tipos de evento para limpiar la UI
           const isReturnRequest =
-            event.snapshotStatus === SYSTEM_MSGS.RETURN_REQUESTED;
+            event.snapshotStatus === SYSTEM_MSGS.RETURN_REQUESTED ||
+            event.snapshotStatus === "RETURN_REQUESTED";
           const isUserCancellation =
             event.reason === SYSTEM_MSGS.CANCELLED_BY_USER;
 
@@ -127,7 +140,7 @@ export default async function OrderHistoryPage({ params }: Props) {
                         <StatusIcon className={cn("size-4", statusColor)} />
                       )}
                       <h3 className="font-semibold text-base">
-                        {event.snapshotStatus}
+                        {formatSnapshotStatusForDisplay(event.snapshotStatus)}
                       </h3>
                     </div>
 
@@ -172,24 +185,20 @@ export default async function OrderHistoryPage({ params }: Props) {
                         </div>
 
                         <div className="py-2">
-                          {itemsList.map((historyItem: HistoryItemJson, idx: number) => {
-                            const matchedLiveItem = order.items.find(
-                              (i) => i.nameSnapshot === historyItem.name,
+                          {itemsList.map((historyItem, idx: number) => {
+                            const matchedLiveItem = matchOrderItemForHistoryRow(
+                              order.items,
+                              historyItem,
                             );
-
-                            const productImages =
-                              matchedLiveItem?.product?.images || [];
-
-                            const variantString = historyItem.variant || "";
-
-                            const matchingImg = productImages.find((img) =>
-                              variantString
-                                .split("/")
-                                .map((s) => s.trim())
-                                .some((part) => colorsMatch(img.color, part)),
-                            ) || productImages[0];
-
-                            const imgUrl = matchingImg?.url;
+                            const imgUrl = imageUrlForHistoryRow(
+                              matchedLiveItem,
+                              historyItem,
+                            );
+                            const displayName =
+                              historyItem.name?.trim() ||
+                              matchedLiveItem?.nameSnapshot ||
+                              "Producto";
+                            const qty = historyRowDisplayQuantity(historyItem);
 
                             return (
                               <div
@@ -201,7 +210,7 @@ export default async function OrderHistoryPage({ params }: Props) {
                                   {imgUrl ? (
                                     <Image
                                       src={imgUrl}
-                                      alt={historyItem.name}
+                                      alt={displayName}
                                       fill
                                       className="object-cover"
                                       sizes="200px"
@@ -216,7 +225,7 @@ export default async function OrderHistoryPage({ params }: Props) {
                                 {/* INFO */}
                                 <div className="flex flex-col h-full">
                                   <span className="font-medium text-sm pb-1">
-                                    {historyItem.name}
+                                    {displayName}
                                   </span>
                                   {historyItem.variant && (
                                     <span className="text-xs font-medium">
@@ -224,7 +233,7 @@ export default async function OrderHistoryPage({ params }: Props) {
                                     </span>
                                   )}
                                   <span className="text-xs font-medium">
-                                    X{historyItem.quantity}
+                                    X{qty}
                                   </span>
                                 </div>
                               </div>

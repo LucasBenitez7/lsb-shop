@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { toast } from "sonner";
 
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { getCart, mergeCart } from "@/lib/api/cart";
@@ -34,7 +35,9 @@ export function CartSyncProvider({ children }: { children: React.ReactNode }) {
           const items = await getCart();
           if (!cancelled) replaceItems(items);
         } catch {
-          /* ignore */
+          toast.error(
+            "No se pudo sincronizar la cesta. Comprueba la conexión e inténtalo de nuevo.",
+          );
         }
       }
     }

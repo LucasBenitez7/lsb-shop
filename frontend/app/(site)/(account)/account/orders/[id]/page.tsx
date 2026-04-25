@@ -6,6 +6,7 @@ import {
   FaCircleCheck,
   FaClock,
   FaBan,
+  FaTruck,
 } from "react-icons/fa6";
 
 import { UserOrderActions } from "@/features/orders/components/UserOrderActions";
@@ -22,6 +23,7 @@ import {
   formatOrderPaymentMethodLabel,
   getOrderCancellationDetailsUser,
   getOrderShippingDetails,
+  orderLineUnitCompareAtMinor,
 } from "@/lib/orders/utils";
 import { findImageByColorOrFallback } from "@/lib/products/color-matching";
 
@@ -190,6 +192,31 @@ export default async function OrderDetailPage({
         </CardContent>
       </Card>
 
+      {!order.isCancelled &&
+        ["SHIPPED", "DELIVERED", "RETURNED"].includes(order.fulfillmentStatus) &&
+        (order.carrier || order.trackingNumber) && (
+          <Card className="border-blue-200/80 bg-blue-50/50 shadow-sm">
+            <CardContent className="py-3 px-4 text-sm space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-blue-900">
+                <FaTruck className="size-4 shrink-0" />
+                Envío
+              </div>
+              {order.carrier ? (
+                <p>
+                  <span className="text-muted-foreground">Transportista:</span>{" "}
+                  {order.carrier}
+                </p>
+              ) : null}
+              {order.trackingNumber ? (
+                <p>
+                  <span className="text-muted-foreground">Nº seguimiento:</span>{" "}
+                  <span className="font-mono font-medium">{order.trackingNumber}</span>
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+        )}
+
       <div className="space-y-4 font-medium">
         <OrderSummaryCard
           id={order.id}
@@ -216,7 +243,7 @@ export default async function OrderDetailPage({
                 .join(" / "),
               quantity: item.quantity,
               price: item.priceMinorSnapshot,
-              compareAtPrice: item.product?.compareAtPrice ?? undefined,
+              compareAtPrice: orderLineUnitCompareAtMinor(item),
               image: matchingImg?.url || null,
               badges:
                 item.quantityReturned > 0 ? (

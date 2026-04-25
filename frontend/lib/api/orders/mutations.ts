@@ -46,15 +46,25 @@ export async function cancelOrderAdminAction(
   }
 }
 
+export type FulfillmentShippingInput = {
+  /** Required when marking as SHIPPED; must match backend allow-list. */
+  carrier: string;
+};
+
 export async function updateFulfillmentStatusAction(
   orderId: string,
   status: string,
+  shipping?: FulfillmentShippingInput,
 ): Promise<{ success?: boolean; error?: string }> {
   try {
+    const body: Record<string, unknown> = { fulfillment_status: status };
+    if (shipping?.carrier) {
+      body.carrier = shipping.carrier;
+    }
     await serverMutationJson<unknown>(
       `/api/v1/admin/orders/${encodeURIComponent(orderId)}/fulfillment/`,
       "PATCH",
-      { fulfillment_status: status },
+      body,
     );
     revalidatePath("/admin/orders");
     revalidatePath(`/admin/orders/${orderId}`);

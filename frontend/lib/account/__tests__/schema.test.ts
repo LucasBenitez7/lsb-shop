@@ -62,7 +62,7 @@ describe("baseAddressSchema", () => {
     postalCode: "28001",
     city: "Madrid",
     province: "Madrid",
-    country: "España",
+    country: "ES",
   };
 
   it("acepta una dirección válida", () => {
@@ -151,7 +151,7 @@ describe("addressFormSchema", () => {
     postalCode: "28001",
     city: "Madrid",
     province: "Madrid",
-    country: "España",
+    country: "ES",
   };
 
   it("acepta dirección sin id ni isDefault (campos opcionales)", () => {

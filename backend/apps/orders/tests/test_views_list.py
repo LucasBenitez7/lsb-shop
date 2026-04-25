@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.orders.models import FulfillmentStatus, PaymentStatus
-from apps.orders.services import create_order
+from apps.orders.services import create_order, request_order_return
 from apps.orders.tests.test_services import _payload
 from apps.products.tests.factories import ProductFactory, ProductVariantFactory
 from apps.users.tests.factories import UserFactory
@@ -48,7 +48,9 @@ class TestOrderListView:
 
         assert resp.status_code == status.HTTP_200_OK
         assert resp.data["count"] == 1
-        assert resp.data["results"][0]["id"] == order1.pk
+        row = resp.data["results"][0]
+        assert row["id"] == order1.pk
+        assert "delivered_at" in row
 
     def test_get_200_pagination(self, api_client: APIClient):
         """Pagination works correctly."""
@@ -234,3 +236,33 @@ class TestAdminOrderListView:
         assert resp.status_code == status.HTTP_200_OK
         assert resp.data["count"] == 1
         assert resp.data["results"][0]["id"] == paid.pk
+
+    def test_get_200_returns_tab_lists_pending_return_request(
+        self, api_client: APIClient
+    ) -> None:
+        """RETURNS tab includes paid+delivered orders with open return lines."""
+        staff = UserFactory(is_staff=True)
+        buyer = UserFactory()
+        product = ProductFactory()
+        variant = ProductVariantFactory(product=product, stock=10, price="5.00")
+        data = _payload(items=[{"variant_id": variant.pk, "quantity": 1}])
+        order, _ = create_order(user=buyer, validated_data=data)
+        order.payment_status = PaymentStatus.PAID
+        order.fulfillment_status = FulfillmentStatus.DELIVERED
+        order.save(update_fields=["payment_status", "fulfillment_status"])
+        line = order.items.get()
+        request_order_return(
+            order=order,
+            items=[{"item_id": line.pk, "quantity": 1}],
+            reason="Does not fit",
+            acting_user=buyer,
+            guest_email=None,
+        )
+
+        api_client.force_authenticate(user=staff)
+        resp = api_client.get("/api/v1/admin/orders/?status=RETURNS")
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["count"] >= 1
+        ids = [row["id"] for row in resp.data["results"]]
+        assert order.pk in ids

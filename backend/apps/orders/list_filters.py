@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from django.db.models import Exists, OuterRef, Q, QuerySet
 
-from apps.orders.models import FulfillmentStatus, Order, OrderHistory, PaymentStatus
+from apps.orders.models import (
+    FulfillmentStatus,
+    Order,
+    OrderHistory,
+    OrderItem,
+    PaymentStatus,
+)
 
 # Tab values from frontend ORDER_TABS (not raw DB enums).
 _TAB_PENDING_PAYMENT = "PENDING_PAYMENT"
@@ -49,7 +55,10 @@ def apply_order_status_tab_filter(
     if key == _TAB_ACTIVE:
         return qs.filter(
             is_cancelled=False,
-            payment_status=PaymentStatus.PAID,
+            payment_status__in=(
+                PaymentStatus.PAID,
+                PaymentStatus.PARTIALLY_REFUNDED,
+            ),
             fulfillment_status__in=(
                 FulfillmentStatus.UNFULFILLED,
                 FulfillmentStatus.PREPARING,
@@ -65,7 +74,7 @@ def apply_order_status_tab_filter(
         )
 
     if key == _TAB_RETURNS:
-        return qs.filter(
+        return qs.filter(is_cancelled=False).filter(
             Q(
                 payment_status__in=(
                     PaymentStatus.REFUNDED,
@@ -73,6 +82,18 @@ def apply_order_status_tab_filter(
                 )
             )
             | Q(fulfillment_status=FulfillmentStatus.RETURNED)
+            | Exists(
+                OrderHistory.objects.filter(
+                    order_id=OuterRef("pk"),
+                    snapshot_status="RETURN_REQUESTED",
+                )
+            )
+            | Exists(
+                OrderItem.objects.filter(
+                    order_id=OuterRef("pk"),
+                    quantity_return_requested__gt=0,
+                )
+            )
         )
 
     if key == _TAB_EXPIRED:

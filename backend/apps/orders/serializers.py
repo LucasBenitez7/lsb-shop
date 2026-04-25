@@ -1,6 +1,7 @@
 from django.conf import settings
 from rest_framework import serializers
 
+from apps.orders.constants import ALLOWED_SHIPPING_CARRIERS
 from apps.orders.models import (
     FulfillmentStatus,
     Order,
@@ -131,6 +132,14 @@ class OrderReturnRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False, allow_blank=True, default="")
 
 
+class OrderPaymentIntentResumeSerializer(serializers.Serializer):
+    """Response shape for GET /api/v1/orders/{id}/payment-intent/ (OpenAPI)."""
+
+    client_secret = serializers.CharField()
+    amount_minor = serializers.IntegerField()
+    currency = serializers.CharField(max_length=3)
+
+
 class OrderProcessReturnLineSerializer(serializers.Serializer):
     item_id = serializers.IntegerField(min_value=1)
     quantity_approved = serializers.IntegerField(min_value=0)
@@ -149,6 +158,36 @@ class OrderRejectReturnSerializer(serializers.Serializer):
 
 class OrderFulfillmentUpdateSerializer(serializers.Serializer):
     fulfillment_status = serializers.ChoiceField(choices=FulfillmentStatus.choices)
+    carrier = serializers.CharField(
+        max_length=100,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+
+    def validate(self, attrs: dict) -> dict:
+        order = self.context.get("order")
+        new_status = attrs["fulfillment_status"]
+        if order is not None and new_status == FulfillmentStatus.SHIPPED:
+            current = order.fulfillment_status
+            if current in (
+                FulfillmentStatus.PREPARING,
+                FulfillmentStatus.READY_FOR_PICKUP,
+            ):
+                carrier = (attrs.get("carrier") or "").strip()
+                if not carrier:
+                    raise serializers.ValidationError(
+                        {
+                            "carrier": (
+                                "Carrier is required to mark the order as shipped."
+                            )
+                        }
+                    )
+                if carrier not in ALLOWED_SHIPPING_CARRIERS:
+                    raise serializers.ValidationError(
+                        {"carrier": ("Select a valid shipping carrier from the list.")}
+                    )
+        return attrs
 
 
 class OrderHistorySerializer(serializers.ModelSerializer):
@@ -181,6 +220,7 @@ class OrderItemReadSerializer(serializers.ModelSerializer):
             "product_slug",
             "name_snapshot",
             "price_minor_snapshot",
+            "compare_at_unit_minor_snapshot",
             "size_snapshot",
             "color_snapshot",
             "quantity",
@@ -285,6 +325,8 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "country",
             "return_reason",
             "rejection_reason",
+            "carrier",
+            "tracking_number",
             "delivered_at",
             "created_at",
             "updated_at",
@@ -338,6 +380,7 @@ class OrderItemMinimalSerializer(serializers.ModelSerializer):
             "quantity_returned",
             "quantity_return_requested",
             "price_minor_snapshot",
+            "compare_at_unit_minor_snapshot",
             "subtotal_minor",
             "image_url",
             "product_slug",
@@ -365,6 +408,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             "total_minor",
             "currency",
             "created_at",
+            "delivered_at",
             "items_count",
             "items",
         )
