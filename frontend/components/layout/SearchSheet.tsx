@@ -7,12 +7,14 @@ import { HiOutlineSearch } from "react-icons/hi";
 import { IoClose } from "react-icons/io5";
 
 import { ProductGrid } from "@/features/catalog/components/ProductGrid";
+
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { VisuallyHidden } from "@/components/ui/visually-hidden";
 
-import { useDebounce } from "@/hooks/common/use-debounce";
 import { formatDisplayName } from "@/lib/format-display-name";
+
+import { useDebounce } from "@/hooks/common/use-debounce";
 
 import type { PublicProductListItem } from "@/lib/products/types";
 

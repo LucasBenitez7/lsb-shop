@@ -2,14 +2,17 @@ import "./globals.css";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 
-import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import Providers from "@/app/providers";
+
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
+
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 import { fontMono, fontSans } from "./fonts";
 
 import type { Metadata, Viewport } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteUrl = getPublicSiteUrl();
 const siteName = "LSB Shop";
 const description =
   "Descubre moda moderna con estilo propio. Ropa de calidad, novedades constantes y los mejores precios — envío rápido a toda España.";

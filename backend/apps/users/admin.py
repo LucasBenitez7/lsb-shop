@@ -1,4 +1,3 @@
-from allauth.account.models import EmailAddress
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.forms import ModelForm
@@ -6,6 +5,7 @@ from django.http import HttpRequest
 from unfold.admin import ModelAdmin
 
 from apps.users.models import GuestSession, User, UserAddress
+from apps.users.services import sync_primary_emailaddress_with_user
 
 
 @admin.register(User)
@@ -62,36 +62,7 @@ class UserAdmin(ModelAdmin, BaseUserAdmin):
         change: bool,
     ) -> None:
         super().save_model(request, obj, form, change)
-        self._sync_emailaddress_verified_flag(obj)
-
-    @staticmethod
-    def _sync_emailaddress_verified_flag(user: User) -> None:
-        """
-        dj-rest-auth checks allauth EmailAddress.verified on login, not
-        User.is_email_verified. Align both when staff edits the user here.
-        """
-        addr = EmailAddress.objects.filter(
-            user=user,
-            email__iexact=user.email,
-        ).first()
-        if addr is not None:
-            update_fields: list[str] = []
-            if addr.verified != user.is_email_verified:
-                addr.verified = user.is_email_verified
-                update_fields.append("verified")
-            if not addr.primary:
-                addr.primary = True
-                update_fields.append("primary")
-            if update_fields:
-                addr.save(update_fields=update_fields)
-            return
-        if user.is_email_verified:
-            EmailAddress.objects.create(
-                user=user,
-                email=user.email,
-                verified=True,
-                primary=True,
-            )
+        sync_primary_emailaddress_with_user(obj)
 
 
 @admin.register(GuestSession)

@@ -2,13 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FaArrowLeft } from "react-icons/fa6";
 
-import { canWriteAdmin } from "@/lib/roles";
+import { CategoryForm } from "@/features/admin/components/categories/CategoryForm";
+import { DeleteCategoryButton } from "@/features/admin/components/categories/DeleteCategoryButton";
+
 import { auth } from "@/lib/api/auth/server";
 import { getCategoryOrderList } from "@/lib/api/categories";
 import { getCategoryById } from "@/lib/api/categories/server";
-
-import { CategoryForm } from "@/features/admin/components/categories/CategoryForm";
-import { DeleteCategoryButton } from "@/features/admin/components/categories/DeleteCategoryButton";
+import { canWriteAdmin } from "@/lib/roles";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -44,6 +44,7 @@ export default async function EditCategoryPage({ params }: Props) {
     id: c.id,
     name: c.name,
     sort: c.sortOrder,
+    isFeatured: c.isFeatured,
   }));
 
   return (

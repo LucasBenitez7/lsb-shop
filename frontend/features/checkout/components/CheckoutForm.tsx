@@ -3,7 +3,11 @@
 import { FaTriangleExclamation } from "react-icons/fa6";
 import { ImSpinner8 } from "react-icons/im";
 
-import type { UserAddress } from "@/types/address";
+
+import {
+  useCheckout,
+  type CheckoutPaymentResume,
+} from "@/features/checkout/hooks/use-checkout";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,14 +18,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import {
-  useCheckout,
-  type CheckoutPaymentResume,
-} from "@/features/checkout/hooks/use-checkout";
 
 import { CheckoutAwaitingPaymentPanel } from "./CheckoutAwaitingPaymentPanel";
 import { PaymentSection } from "./sections/PaymentSection";
 import { ShippingSection } from "./sections/ShippingSection";
+
+import type { UserAddress } from "@/types/address";
 
 type Props = {
   savedAddresses?: UserAddress[];

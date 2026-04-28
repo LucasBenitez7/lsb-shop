@@ -3,7 +3,9 @@
  * Uses `serverFetchJson` to forward cookies and check authentication.
  */
 import { cache } from "react";
+
 import { serverFetchJson } from "@/lib/api/server-django";
+
 import type { User } from "@/types/user";
 
 /**

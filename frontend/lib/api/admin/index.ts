@@ -1,9 +1,11 @@
-import type { AdminUserListItem, User } from "@/types/user";
+import { serverGetAdminOrders } from "@/lib/api/orders/server";
+import { serverFetchJson } from "@/lib/api/server-django";
+
+import type { PaginatedResponse } from "@/lib/api/client";
 import type { UserAddress } from "@/types/address";
 import type { OrderListItemBase } from "@/types/order";
-import type { PaginatedResponse } from "@/lib/api/client";
-import { serverFetchJson } from "@/lib/api/server-django";
-import { serverGetAdminOrders } from "@/lib/api/orders/server";
+import type { AdminUserListItem, User } from "@/types/user";
+
 
 export interface AdminUserDetails {
   user: User;

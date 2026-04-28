@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 import { canAccessAdmin } from "@/lib/roles";
+
 import type { UserRole } from "@/types/user";
+import type { NextRequest} from "next/server";
 
 // ─── Route config ─────────────────────────────────────────────────────────────
 

@@ -8,19 +8,20 @@ import {
   FaUserShield,
 } from "react-icons/fa6";
 
+import { RecentOrdersTable } from "@/features/admin/components/users/RecentOrdersTable";
+import { UserAddressesCard } from "@/features/admin/components/users/UserAddressesCard";
+import { UserStatsCard } from "@/features/admin/components/users/UserStatsCard";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { maskEmailForDemo } from "@/lib/admin/mask-email";
 import { getAdminUserDetails } from "@/lib/api/admin";
-import { isDemoRole } from "@/lib/roles";
 import { auth } from "@/lib/api/auth/server";
+import { isDemoRole } from "@/lib/roles";
 import { formatUserDisplayName } from "@/lib/users/utils";
 
-import { RecentOrdersTable } from "@/features/admin/components/users/RecentOrdersTable";
-import { UserAddressesCard } from "@/features/admin/components/users/UserAddressesCard";
-import { UserStatsCard } from "@/features/admin/components/users/UserStatsCard";
 
 type Props = {
   params: Promise<{ id: string }>;

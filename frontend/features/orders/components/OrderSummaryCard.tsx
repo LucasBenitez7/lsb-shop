@@ -27,6 +27,8 @@ export type OrderSummaryProps = Omit<
   items: (OrderDisplayData["items"][number] & { badges?: React.ReactNode })[];
   variant?: "customer" | "admin";
   adminUserLink?: string;
+  /** When false, the phone line is hidden (e.g. portfolio demo admin). Default true. */
+  showContactPhone?: boolean;
 };
 
 function getPaymentBrandConfig(methodString: string | null) {
@@ -69,6 +71,7 @@ export function OrderSummaryCard({
   currency = "EUR",
   variant = "customer",
   adminUserLink,
+  showContactPhone = true,
 }: OrderSummaryProps) {
   const createdDateObj =
     typeof createdAt === "string" ? new Date(createdAt) : createdAt;
@@ -135,9 +138,11 @@ export function OrderSummaryCard({
             <div className="text-sm font-medium text-foreground">
               <p>{contact.name}</p>
               <p className="font-normal text-foreground">{contact.email}</p>
-              <p className="font-normal text-foreground">
-                {contact.phone || "Sin teléfono"}
-              </p>
+              {showContactPhone ? (
+                <p className="font-normal text-foreground">
+                  {contact.phone || "Sin teléfono"}
+                </p>
+              ) : null}
             </div>
           </div>
 

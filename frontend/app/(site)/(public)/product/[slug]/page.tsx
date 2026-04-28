@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ProductClient } from "@/features/product/components";
 import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
+import { ProductClient } from "@/features/product/components";
 
 import { checkIsFavorite } from "@/lib/api/favorites/server";
 import { getProductFullBySlug, getProductSlugs } from "@/lib/api/products";

@@ -52,14 +52,12 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 filter=Q(orders__is_cancelled=False),
             ),
         )
-        if not user.is_staff:
-            return qs.filter(id=user.id)
-
-        role = self.request.query_params.get("role")
-        if role:
-            qs = qs.filter(role=role)
-
-        return qs
+        if user.is_staff or getattr(user, "role", None) == User.Role.DEMO:
+            role = self.request.query_params.get("role")
+            if role:
+                qs = qs.filter(role=role)
+            return qs
+        return qs.filter(id=user.id)
 
     @action(detail=True, methods=["get"], url_path="order-stats")
     def order_stats(self, request, pk=None) -> Response:

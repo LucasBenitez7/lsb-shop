@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 import { CarouselCard } from "@/features/home/components/CarouselCard";
+
 import { Button } from "@/components/ui/button";
 
 import type { PublicProductListItem } from "@/lib/products/types";

@@ -6,12 +6,13 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import { FormProvider, useForm, type DefaultValues } from "react-hook-form";
 import { toast } from "sonner";
 
+import { useProductSubmit } from "@/features/admin/hooks/use-product-submit";
+
 import { Button } from "@/components/ui/button";
 
 import { productSchema, type ProductFormValues } from "@/lib/products/schema";
 import { sortVariantsHelper } from "@/lib/products/utils";
 
-import { useProductSubmit } from "@/features/admin/hooks/use-product-submit";
 
 type ProductWithId = ProductFormValues & {
   id: string;

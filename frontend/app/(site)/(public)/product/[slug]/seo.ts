@@ -1,5 +1,6 @@
 import { getProductMetaBySlug } from "@/lib/api/products";
 import { colorsMatch } from "@/lib/products/color-matching";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 import type {
   PublicProductDetail,
@@ -7,6 +8,14 @@ import type {
   ProductVariant,
 } from "@/types/product";
 import type { Metadata } from "next";
+
+function absoluteUrl(siteOrigin: string, pathOrUrl: string): string {
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+    return pathOrUrl;
+  }
+  const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+  return `${siteOrigin}${path}`;
+}
 
 export async function generateMetadata({
   params,
@@ -33,8 +42,9 @@ export async function generateMetadata({
   const description =
     product.description?.slice(0, 140) || "Detalle del producto";
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = getPublicSiteUrl();
   const url = `${siteUrl}/product/${slug}${color ? `?color=${color}` : ""}`;
+  const ogAbsolute = absoluteUrl(siteUrl, finalOg);
 
   return {
     title: product.name,
@@ -43,27 +53,27 @@ export async function generateMetadata({
     openGraph: {
       title: product.name,
       description,
-      images: [{ url: finalOg, width: 1200, height: 630, alt: product.name }],
+      images: [{ url: ogAbsolute, width: 1200, height: 630, alt: product.name }],
       url,
     },
     twitter: {
       card: "summary_large_image",
       title: product.name,
       description,
-      images: [finalOg],
+      images: [ogAbsolute],
     },
   };
 }
 
 export function generateProductJsonLd(p: PublicProductDetail) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tusitio.com";
+  const siteUrl = getPublicSiteUrl();
 
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: p.name,
     description: p.description,
-    image: p.images.map((i: ProductImage) => i.url),
+    image: p.images.map((i: ProductImage) => absoluteUrl(siteUrl, i.url)),
     sku: p.id,
     brand: {
       "@type": "Brand",

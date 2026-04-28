@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { FaFilter, FaSort, FaCheck, FaChevronRight } from "react-icons/fa6";
 
+import { useProductFilters } from "@/features/admin/hooks/use-product-filters";
+
 import { Button, Input, Label } from "@/components/ui";
 import {
   Popover,
@@ -21,7 +23,6 @@ import {
 import { PRODUCT_SORT_OPTIONS } from "@/lib/products/constants";
 import { cn } from "@/lib/utils";
 
-import { useProductFilters } from "@/features/admin/hooks/use-product-filters";
 
 type Category = { id: string; name: string };
 

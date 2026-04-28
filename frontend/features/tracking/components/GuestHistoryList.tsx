@@ -4,17 +4,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
 
 import {
-  formatHistoryReason,
-  formatSnapshotStatusForDisplay,
-  getEventVisuals,
-} from "@/lib/orders/utils";
-import {
   historyRowDisplayQuantity,
   imageUrlForHistoryRow,
   matchOrderItemForHistoryRow,
   parseHistoryDetailItem,
   type HistoryDetailItemRow,
 } from "@/lib/orders/history-items";
+import {
+  formatHistoryReason,
+  formatSnapshotStatusForDisplay,
+  getEventVisuals,
+} from "@/lib/orders/utils";
 import { cn } from "@/lib/utils";
 
 import type { HistoryDetailsJson } from "@/lib/orders/types";

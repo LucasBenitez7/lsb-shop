@@ -2,13 +2,14 @@
 import { useMemo } from "react";
 
 import { AddToCartButton } from "@/features/cart/components/AddToCartButton";
+import { useProductActions } from "@/features/catalog/hooks/use-product-actions";
+
 import { FavoriteButton } from "@/components/ui";
 
 import { colorsMatch } from "@/lib/products/color-matching";
 import { sortVariantsHelper } from "@/lib/products/utils";
 import { cn } from "@/lib/utils";
 
-import { useProductActions } from "@/features/catalog/hooks/use-product-actions";
 
 import type { PublicProductDetail } from "@/lib/products/types";
 

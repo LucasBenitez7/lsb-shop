@@ -1,17 +1,18 @@
-import type {
-  FilterOptions,
-  PublicProductDetail,
-  PublicProductListItem,
-} from "@/types/product";
-import { COLOR_MAP } from "@/lib/products/constants";
 import { APIError, apiGet, type PaginatedResponse } from "@/lib/api/client";
+import { COLOR_MAP } from "@/lib/products/constants";
 
-import type { DrfProduct } from "./drf";
 import { mapDrfProductListItem, mapProductDetail } from "./mappers";
 import {
   buildProductsListQuery,
   type PublicProductsParams,
 } from "./query";
+
+import type { DrfProduct } from "./drf";
+import type {
+  FilterOptions,
+  PublicProductDetail,
+  PublicProductListItem,
+} from "@/types/product";
 
 async function fetchProductListPage(
   params: PublicProductsParams & { page: number },

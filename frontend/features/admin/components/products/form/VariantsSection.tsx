@@ -3,6 +3,8 @@
 import { useFormContext } from "react-hook-form";
 import { FaTrash, FaLayerGroup, FaTriangleExclamation } from "react-icons/fa6";
 
+import { useVariantsTable } from "@/features/admin/hooks/use-variants-table";
+
 import { Button, Input } from "@/components/ui";
 import {
   Table,
@@ -16,7 +18,6 @@ import {
 import { type ProductFormValues } from "@/lib/products/schema";
 import { cn } from "@/lib/utils";
 
-import { useVariantsTable } from "@/features/admin/hooks/use-variants-table";
 
 import { VariantGeneratorDialog } from "./VariantGeneratorDialog";
 

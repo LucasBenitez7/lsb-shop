@@ -9,17 +9,19 @@ import {
   FaTruck,
 } from "react-icons/fa6";
 
+import { AdminFulfillmentActions } from "@/features/admin/components/orders/OrderActions";
+import { RejectReturnButton } from "@/features/admin/components/orders/RejectReturnButton";
 import { OrderSummaryCard } from "@/features/orders/components/OrderSummaryCard";
 import { OrderTracker } from "@/features/orders/components/OrderTracker";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { maskEmailForDemo } from "@/lib/admin/mask-email";
-import { canWriteAdmin, isDemoRole } from "@/lib/roles";
 import { auth } from "@/lib/api/auth/server";
+import { serverGetAdminOrderById } from "@/lib/api/orders/server";
 import { parseCurrency } from "@/lib/currency";
 import { FULFILLMENT_STATUS_CONFIG } from "@/lib/orders/constants";
-import { serverGetAdminOrderById } from "@/lib/api/orders/server";
 import {
   calculateDiscounts,
   formatOrderPaymentMethodLabel,
@@ -28,9 +30,8 @@ import {
   orderLineUnitCompareAtMinor,
 } from "@/lib/orders/utils";
 import { findImageByColorOrFallback } from "@/lib/products/color-matching";
+import { canWriteAdmin, isDemoRole } from "@/lib/roles";
 
-import { RejectReturnButton } from "@/features/admin/components/orders/RejectReturnButton";
-import { AdminFulfillmentActions } from "@/features/admin/components/orders/OrderActions";
 
 export const dynamic = "force-dynamic";
 
@@ -211,6 +212,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
       <div className="space-y-4 font-medium">
         <OrderSummaryCard
           id={order.id}
+          userId={order.userId ?? null}
           createdAt={order.createdAt}
           paymentMethod={formatOrderPaymentMethodLabel(order)}
           contact={{
@@ -263,10 +265,10 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           }}
           currency={currency}
           variant="admin"
+          showContactPhone={!maskEmails}
           adminUserLink={
             order.userId ? `/admin/users/${order.userId}` : undefined
           }
-          userId={order.userId}
         />
       </div>
     </div>

@@ -1,8 +1,9 @@
-import type { FavoriteProductItem } from "@/types/product";
 
-import type { PaginatedResponse } from "@/lib/api/client";
 import { mapDrfProductListItem } from "@/lib/api/products/mappers";
 import { serverFetchJson } from "@/lib/api/server-django";
+
+import type { PaginatedResponse } from "@/lib/api/client";
+import type { FavoriteProductItem } from "@/types/product";
 
 interface FavoriteListRow {
   id: number;

@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { FaPlus } from "react-icons/fa6";
 
-import { PaginationNav } from "@/features/catalog/components/PaginationNav";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-
-import { canWriteAdmin } from "@/lib/roles";
-import { auth } from "@/lib/api/auth/server";
-import { getAdminProducts, getMaxPrice } from "@/lib/api/products/admin";
-import { cn } from "@/lib/utils";
-
 import { ProductListToolbar } from "@/features/admin/components/products/table/ProductListToolbar";
 import { ProductTable } from "@/features/admin/components/products/table/ProductTable";
+import { PaginationNav } from "@/features/catalog/components/PaginationNav";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+
+import { auth } from "@/lib/api/auth/server";
+import { getAdminProducts, getMaxPrice } from "@/lib/api/products/admin";
+import { canWriteAdmin } from "@/lib/roles";
+import { cn } from "@/lib/utils";
+
 
 export const dynamic = "force-dynamic";
 

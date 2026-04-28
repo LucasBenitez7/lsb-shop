@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 import structlog
+from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
@@ -15,6 +16,37 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 User = get_user_model()
+
+
+def sync_primary_emailaddress_with_user(user: UserModel) -> None:
+    """
+    Align django-allauth EmailAddress with User.is_email_verified.
+
+    dj-rest-auth checks EmailAddress.verified on login (mandatory email
+    verification), not User.is_email_verified alone.
+    """
+    addr = EmailAddress.objects.filter(
+        user=user,
+        email__iexact=user.email,
+    ).first()
+    if addr is not None:
+        update_fields: list[str] = []
+        if addr.verified != user.is_email_verified:
+            addr.verified = user.is_email_verified
+            update_fields.append("verified")
+        if not addr.primary:
+            addr.primary = True
+            update_fields.append("primary")
+        if update_fields:
+            addr.save(update_fields=update_fields)
+        return
+    if user.is_email_verified:
+        EmailAddress.objects.create(
+            user=user,
+            email=user.email,
+            verified=True,
+            primary=True,
+        )
 
 
 class InvalidOTP(ShopError):
@@ -51,6 +83,7 @@ class UserService:
             raise ResourceNotFound() from None
         user.is_email_verified = True
         user.save(update_fields=["is_email_verified"])
+        sync_primary_emailaddress_with_user(user)
         log.info("user.email.verified", user_id=user_id)
 
     @staticmethod

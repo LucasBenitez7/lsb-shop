@@ -2,7 +2,7 @@
 
 **Objetivo:** flujo de compra completo desde checkout hasta confirmación, incluyendo panel admin, devoluciones y guest tracking.
 
-**Estado documental (abril 2026):** Fase 5 **cerrada en alcance MVP**; las secciones 1–9 son referencia de diseño; **§14** es el estado real del repo y la lista de **pendientes conscientes** (sin incluir E2E Playwright ni cobertura global como requisito de esta fase — eso va a **Fase 7** en `CONTEXT.md`).
+**Estado documental (abril 2026):** Fase 5 **cerrada en alcance MVP**; las secciones 1–9 son referencia de diseño; **§14** resume el estado de implementación en el repo y decisiones de producto ya integradas.
 
 Este documento complementa `CONTEXT.md` Fase 5 con **detalles del monolito** auditados en `acme-commerce-starter` y decisiones tomadas.
 
@@ -849,9 +849,9 @@ Los correos de **usuarios** reutilizan estos partials con `{% include "orders/em
 
 **Frontend asociado:** `frontend/app/(auth)/verify-email/page.tsx` + `features/auth/components/VerifyEmailPage.tsx` (llamada a `verifyEmail(key)` contra dj-rest-auth).
 
-### Opcional / backlog de producto (no Fase 5 MVP)
+### Extensiones de email (fuera del MVP Fase 5)
 
-Correos aún **no** implementados: tras `POST /orders/` pendiente de pago, `payment_failed`, pedido expirado por beat, cancelación (cliente/admin), envío con `tracking_number`, etc.
+Plantillas adicionales que el monolito podía tener y aquí **no** están en el alcance cerrado del MVP: tras `POST /orders/` pendiente de pago, `payment_failed`, pedido expirado por beat, cancelación (cliente/admin), envío con `tracking_number`, etc.
 
 ### Tests
 

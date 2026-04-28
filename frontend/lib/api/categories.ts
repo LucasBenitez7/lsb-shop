@@ -1,6 +1,7 @@
-import type { Category, CategoryLink } from "@/types/category";
 import { apiGet, type PaginatedResponse } from "@/lib/api/client";
 import { formatDisplayName } from "@/lib/format-display-name";
+
+import type { Category, CategoryLink } from "@/types/category";
 
 interface DrfCategory {
   id: number;
@@ -170,7 +171,7 @@ export async function getFeaturedCategories(
 }
 
 export async function getCategoryOrderList(): Promise<
-  Pick<Category, "id" | "name" | "sortOrder">[]
+  Pick<Category, "id" | "name" | "sortOrder" | "isFeatured">[]
 > {
   try {
     const rows = await fetchCategoryPage(1, 200);
@@ -178,6 +179,7 @@ export async function getCategoryOrderList(): Promise<
       id: String(c.id),
       name: c.name,
       sortOrder: c.sort_order ?? 0,
+      isFeatured: Boolean(c.is_featured),
     }));
   } catch {
     return [];

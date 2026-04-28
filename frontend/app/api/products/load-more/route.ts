@@ -1,12 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import type { PaginatedResponse } from "@/lib/api/client";
 import {
   buildProductsListQuery,
   mapDrfProductListItem,
   type DrfProduct,
   type PublicProductsParams,
 } from "@/lib/api/products";
+
+import type { PaginatedResponse } from "@/lib/api/client";
+import type { NextRequest} from "next/server";
 
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;

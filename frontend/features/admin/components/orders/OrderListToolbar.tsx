@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { FaFilter, FaSort, FaCheck, FaChevronRight } from "react-icons/fa6";
+import { FaFilter, FaSort, FaCheck, FaChevronRight, FaXmark } from "react-icons/fa6";
+
+import { useOrderFilters } from "@/features/orders/hooks/use-order-filters";
 
 import { Button } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -25,7 +28,6 @@ import {
 } from "@/lib/orders/constants";
 import { cn } from "@/lib/utils";
 
-import { useOrderFilters } from "@/features/orders/hooks/use-order-filters";
 
 import type { PaymentStatus, FulfillmentStatus } from "@/types/enums";
 
@@ -34,6 +36,7 @@ export function OrderListToolbar() {
     activeSort,
     activePaymentStatuses,
     activeFulfillmentStatuses,
+    activeUserId,
     updateParams,
     togglePaymentStatus,
     toggleFulfillmentStatus,
@@ -43,34 +46,67 @@ export function OrderListToolbar() {
   const [isFulfillmentOpen, setIsFulfillmentOpen] = useState(false);
 
   const hasActiveFilters =
-    activePaymentStatuses.length > 0 || activeFulfillmentStatuses.length > 0;
+    activePaymentStatuses.length > 0 ||
+    activeFulfillmentStatuses.length > 0 ||
+    Boolean(activeUserId);
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 w-full items-end lg:items-center justify-end">
-      <div className="flex-1 w-full sm:max-w-[500px]">
-        <SearchInput placeholder="Buscar por ID o email..." paramName="query" />
-      </div>
-
-      <div className="flex flex-wrap gap-3 justify-between w-full sm:w-auto items-center">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "relative border border-border h-9",
-                hasActiveFilters && "border-foreground",
-              )}
+    <div className="flex flex-col gap-3 w-full">
+      {activeUserId ? (
+        <div className="flex flex-wrap items-center gap-2 w-full">
+          <Badge variant="secondary" className="font-normal gap-1.5 py-1 pl-2 pr-1">
+            <span className="text-muted-foreground">Pedidos del usuario</span>
+            <span className="font-mono font-medium">#{activeUserId}</span>
+            <button
+              type="button"
+              onClick={() => updateParams({ userId: null })}
+              className="ml-0.5 rounded-xs p-1 hover:bg-neutral-300/60 transition-colors"
+              aria-label="Quitar filtro por usuario"
             >
-              <FaFilter className="size-3.5 text-foreground mr-2" />
-              Filtrar
-            </Button>
-          </PopoverTrigger>
-
-          <PopoverContent
-            className="w-[280px] p-0 translate-x-8 lg:translate-x-0"
-            align="end"
+              <FaXmark className="size-3.5" />
+            </button>
+          </Badge>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 text-muted-foreground"
+            onClick={() => updateParams({ userId: null })}
           >
-            <div className="space-y-1 max-h-[400px] overflow-y-auto">
+            Ver todos los pedidos
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col sm:flex-row gap-3 w-full items-end lg:items-center justify-end">
+        <div className="flex-1 w-full sm:max-w-[500px]">
+          <SearchInput
+            placeholder="Buscar por ID o email..."
+            paramName="query"
+            omitParamsOnSearch={["userId"]}
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-3 justify-between w-full sm:w-auto items-center">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "relative border border-border h-9",
+                  hasActiveFilters && "border-foreground",
+                )}
+              >
+                <FaFilter className="size-3.5 text-foreground mr-2" />
+                Filtrar
+              </Button>
+            </PopoverTrigger>
+
+            <PopoverContent
+              className="w-[280px] p-0 translate-x-8 lg:translate-x-0"
+              align="end"
+            >
+              <div className="space-y-1 max-h-[400px] overflow-y-auto">
               {/* SECCIÓN 1: ESTADO DE PAGO */}
               <div
                 className={cn(
@@ -204,6 +240,7 @@ export function OrderListToolbar() {
                       updateParams({
                         payment_filter: null,
                         fulfillment_filter: null,
+                        userId: null,
                       })
                     }
                   >
@@ -242,6 +279,7 @@ export function OrderListToolbar() {
             ))}
           </SelectContent>
         </Select>
+      </div>
       </div>
     </div>
   );

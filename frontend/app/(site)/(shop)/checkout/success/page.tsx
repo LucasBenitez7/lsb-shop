@@ -2,13 +2,14 @@ import { redirect } from "next/navigation";
 import Stripe from "stripe";
 
 import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
+import { SuccessClient } from "@/features/checkout/components/SuccessClient";
+
 import { Container } from "@/components/ui";
 
 import { serverGetOrderSuccessDetails } from "@/lib/api/account/server";
 import { auth } from "@/lib/api/auth/server";
 import { formatOrderForDisplay } from "@/lib/orders/utils";
 
-import { SuccessClient } from "@/features/checkout/components/SuccessClient";
 
 import type { Metadata } from "next";
 
@@ -19,9 +20,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-});
+const STRIPE_API_VERSION = "2026-02-25.clover" as const;
 
 function isNextRedirectError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
@@ -79,6 +78,16 @@ export default async function SuccessPage({ searchParams }: Props) {
 
   if (payment_intent) {
     try {
+      const apiKey = process.env.STRIPE_SECRET_KEY;
+      if (!apiKey) {
+        console.error(
+          "STRIPE_SECRET_KEY is not set; cannot verify PaymentIntent on success page",
+        );
+        redirect(`${orderDetailPath}?payment=processing`);
+      }
+      const stripe = new Stripe(apiKey, {
+        apiVersion: STRIPE_API_VERSION,
+      });
       const intent = await stripe.paymentIntents.retrieve(payment_intent, {
         expand: ["payment_method"],
       });

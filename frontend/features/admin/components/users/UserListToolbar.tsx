@@ -2,6 +2,8 @@
 
 import { FaSort } from "react-icons/fa6";
 
+import { useUserFilters } from "@/features/admin/hooks/use-user-filters";
+
 import { SearchInput } from "@/components/ui/SearchInput";
 import {
   Select,
@@ -14,7 +16,6 @@ import {
 import { USER_ROLES, USER_SORT_OPTIONS } from "@/lib/admin/constants";
 import { cn } from "@/lib/utils";
 
-import { useUserFilters } from "@/features/admin/hooks/use-user-filters";
 
 export function UserListToolbar() {
   const { activeSort, activeRole, handleSortChange, handleRoleChange } =

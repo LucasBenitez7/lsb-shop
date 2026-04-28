@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 
+import { LoginForm } from "@/features/auth/components/LoginForm";
+
 import { auth } from "@/lib/api/auth/server";
 
-import { LoginForm } from "@/features/auth/components/LoginForm";
 
 import type { Metadata } from "next";
 

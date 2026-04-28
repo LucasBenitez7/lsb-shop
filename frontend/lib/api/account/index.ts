@@ -1,10 +1,12 @@
 import { getMe, resendVerificationEmail } from "@/lib/api/auth";
 import { APIError, apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api/client";
+
 import { mapOrderDetailDRF, mapOrderListItemDRF, mapUserAddressDRF } from "./mappers";
 
 import type { UserAddress, UserAddressDRFResponse } from "@/types/address";
 import type {
   OrderDetailDRFResponse,
+  OrderListItemDRFResponse,
   UserOrderDetail,
   UserOrderListItem,
   UserReturnableItem,
@@ -114,7 +116,7 @@ export async function getUserOrders(
       total_pages: number;
       current_page: number;
       page_size: number;
-      results: import("@/types/order").OrderListItemDRFResponse[];
+      results: OrderListItemDRFResponse[];
     }>(url);
 
     return {

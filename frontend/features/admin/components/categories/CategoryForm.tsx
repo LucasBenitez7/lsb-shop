@@ -1,19 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { FaArrowUpRightFromSquare } from "react-icons/fa6";
 import { toast } from "sonner";
 
+import { SingleImageUpload } from "@/features/admin/components/SingleImageUpload";
+
 import { Button, Input, Label, Switch } from "@/components/ui";
 
-import { SingleImageUpload } from "@/features/admin/components/SingleImageUpload";
-import { getCloudinaryBannerUploadPreset } from "@/lib/cloudinary-upload-presets";
 import {
   createCategoryAction,
   updateCategoryAction,
   type CategoryFormState,
 } from "@/lib/api/categories/mutations";
+import { getCloudinaryBannerUploadPreset } from "@/lib/cloudinary-upload-presets";
 
 import { CategorySortPreview } from "./CategorySortPreview";
 
@@ -27,7 +28,12 @@ type Props = {
     image?: string | null;
     mobileImage?: string | null;
   };
-  existingCategories?: { id: string; name: string; sort: number }[];
+  existingCategories?: {
+    id: string;
+    name: string;
+    sort: number;
+    isFeatured?: boolean;
+  }[];
   readOnly?: boolean;
 };
 
@@ -43,6 +49,7 @@ export function CategoryForm({
   existingCategories = [],
   readOnly,
 }: Props) {
+  const commitSignalRef = useRef(false);
   const [imageUrl, setImageUrl] = useState<string | null>(
     category?.image || null,
   );
@@ -62,9 +69,13 @@ export function CategoryForm({
   >(action, INITIAL_STATE);
 
   useEffect(() => {
-    if (state.message) toast.error(state.message);
+    if (state.message) {
+      toast.error(state.message);
+      commitSignalRef.current = false;
+    }
     if (state.errors && Object.keys(state.errors).length > 0) {
       toast.error("Revisa los campos marcados.");
+      commitSignalRef.current = false;
     }
   }, [state]);
 
@@ -79,7 +90,13 @@ export function CategoryForm({
       </div>
 
       {/* COLUMNA DERECHA*/}
-      <form action={formAction} className="space-y-4">
+      <form
+        action={formAction}
+        onSubmit={() => {
+          commitSignalRef.current = true;
+        }}
+        className="space-y-4"
+      >
         <div className="grid space-y-6 bg-background px-4 py-6 rounded-xs border shadow-sm">
           <div className="space-y-2">
             <Label htmlFor="name" className="w-fit pointer-events-none">
@@ -175,6 +192,8 @@ export function CategoryForm({
                 label="Subir Imagen (4:3)"
                 className="aspect-[4/3] w-full max-w-[500px]"
                 uploadPreset={bannerUploadPreset}
+                disabled={readOnly}
+                commitSignalRef={commitSignalRef}
               />
               <p className="text-xs text-muted-foreground">
                 Se recomienda una imagen en formato rectangular 4:3. Esta imagen
@@ -191,6 +210,8 @@ export function CategoryForm({
                 label="Subir Imagen Mobile"
                 className="aspect-[4/5] w-full max-w-[300px]"
                 uploadPreset={bannerUploadPreset}
+                disabled={readOnly}
+                commitSignalRef={commitSignalRef}
               />
               <p className="text-xs text-muted-foreground">
                 Se recomienda formato vertical 4:5. Si no se sube, se usará la

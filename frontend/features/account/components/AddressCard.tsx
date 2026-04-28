@@ -2,6 +2,8 @@
 
 import { FaTrash, FaPen } from "react-icons/fa6";
 
+import { useAddressActions } from "@/features/account/hooks/use-address-actions";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +21,6 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 import { cn } from "@/lib/utils";
 
-import { useAddressActions } from "@/features/account/hooks/use-address-actions";
 
 import { AddressFormDialog } from "./AddressFormDialog";
 

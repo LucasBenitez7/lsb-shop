@@ -1,13 +1,13 @@
-import type { UserAddress } from "@/types/address";
 import { redirect } from "next/navigation";
 import { FaLock } from "react-icons/fa6";
 
 import { CheckoutContent } from "@/features/checkout/components/CheckoutContent";
+import { CheckoutLocalFooter } from "@/features/checkout/components/CheckoutFooter";
 import { CheckoutForm } from "@/features/checkout/components/CheckoutForm";
+import { CheckoutHeader } from "@/features/checkout/components/CheckoutHeader";
 import { CheckoutProvider } from "@/features/checkout/components/CheckoutProvider";
 import { CheckoutSummary } from "@/features/checkout/components/CheckoutSummary";
-import { CheckoutLocalFooter } from "@/features/checkout/components/CheckoutFooter";
-import { CheckoutHeader } from "@/features/checkout/components/CheckoutHeader";
+
 import { Container } from "@/components/ui";
 
 import { serverGetUserAddresses } from "@/lib/api/account/server";
@@ -15,6 +15,7 @@ import { auth } from "@/lib/api/auth/server";
 import { APIError } from "@/lib/api/client";
 import { isGuestCheckoutGuestParam } from "@/lib/auth/guest-checkout";
 
+import type { UserAddress } from "@/types/address";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";

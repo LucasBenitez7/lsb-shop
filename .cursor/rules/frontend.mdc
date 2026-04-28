@@ -69,7 +69,7 @@ frontend/
 │   │           ├── favoritos/page.tsx
 │   │           └── security/page.tsx
 │   │
-│   ├── (admin)/                    → requires is_staff
+│   ├── (admin)/                    → sesión requerida; rol `admin` o `demo` (`canAccessAdmin` en middleware/layout)
 │   │   ├── layout.tsx              → AdminSidebar + AdminHeader
 │   │   └── admin/
 │   │       ├── page.tsx
@@ -84,7 +84,11 @@ frontend/
 │   │       ├── users/page.tsx
 │   │       └── settings/page.tsx
 │   │
-│   └── api/webhooks/stripe/route.ts   → only API Route that remains
+│   └── api/                          → Route Handlers (secrets / CORS / firmas)
+│       ├── sign-cloudinary-params/route.ts
+│       ├── cloudinary/delete/route.ts
+│       ├── search/route.ts
+│       └── products/load-more/route.ts
 │
 ├── features/                       → components organized by domain
 │   ├── home/components/
@@ -315,7 +319,7 @@ import { serverFetchJson } from "@/lib/api/server-django"
 import { auth } from "@/lib/api/auth/server"
 
 // ── 5. ROUTE HANDLERS (app/api/…/route.ts) ──────────────────────────────────
-// Only when the browser cannot call Django directly (CORS, secrets, etc.)
+// Cuando hace falta secretos en servidor o firmas: p. ej. `sign-cloudinary-params`, `cloudinary/delete`, búsqueda/load-more
 ```
 
 **Decision rule:**

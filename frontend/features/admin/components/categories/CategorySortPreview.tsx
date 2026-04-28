@@ -59,18 +59,19 @@ export function CategorySortPreview({ existingCategories, currentId }: Props) {
                 <span className={cn("truncate font-medium flex-1")}>
                   {cat.name}
                 </span>
-                {cat.isFeatured && (
+                {cat.isFeatured ? (
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-[10px] px-1.5 h-5 border-yellow-500 text-yellow-600 bg-yellow-50 flex-shrink-0",
+                      "text-[10px] px-1.5 h-5 shrink-0 font-medium",
+                      "border-amber-500 bg-amber-50 text-amber-900",
                       isCurrent &&
-                        "border-white/30 text-yellow-200 bg-transparent",
+                        "border-amber-300 bg-amber-400/25 text-amber-50 ring-1 ring-amber-200/80",
                     )}
                   >
                     Destacada
                   </Badge>
-                )}
+                ) : null}
               </div>
 
               <Button

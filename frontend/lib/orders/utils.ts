@@ -1,11 +1,3 @@
-import { PaymentStatus, FulfillmentStatus, ShippingType } from "@/types/enums";
-import type {
-  Order,
-  OrderDisplayData,
-  OrderHistoryEntry,
-  OrderItem,
-  UserReturnableItem,
-} from "@/types/order";
 import {
   FaUser,
   FaUserShield,
@@ -19,13 +11,23 @@ import {
   findStoreLocation,
   findPickupLocation,
 } from "@/lib/locations";
-import { findImageByColorOrFallback } from "@/lib/products/color-matching";
 import {
   SYSTEM_MSGS,
   PAYMENT_STATUS_CONFIG,
   FULFILLMENT_STATUS_CONFIG,
   SPECIAL_STATUS_CONFIG,
 } from "@/lib/orders/constants";
+import { findImageByColorOrFallback } from "@/lib/products/color-matching";
+
+import { PaymentStatus, FulfillmentStatus, ShippingType } from "@/types/enums";
+
+import type {
+  Order,
+  OrderDisplayData,
+  OrderHistoryEntry,
+  OrderItem,
+  UserReturnableItem,
+} from "@/types/order";
 
 const SYSTEM_REASON_MAP: Record<string, string> = {
   [SYSTEM_MSGS.RETURN_ACCEPTED]: "Reembolso procesado",

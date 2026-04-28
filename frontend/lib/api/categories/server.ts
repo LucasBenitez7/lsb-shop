@@ -1,6 +1,6 @@
-import type { PaginatedResponse } from "@/lib/api/client";
 import { serverFetchJson } from "@/lib/api/server-django";
 
+import type { PaginatedResponse } from "@/lib/api/client";
 import type { AdminCategoryFilters, AdminCategoryItem } from "@/types/category";
 
 /** DRF `CategorySerializer` shape (list/detail). */

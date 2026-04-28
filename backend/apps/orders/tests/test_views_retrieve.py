@@ -12,7 +12,7 @@ from apps.products.tests.factories import (
     ProductImageFactory,
     ProductVariantFactory,
 )
-from apps.users.tests.factories import UserFactory
+from apps.users.tests.factories import DemoFactory, UserFactory
 
 
 @pytest.mark.django_db
@@ -80,7 +80,10 @@ class TestOrderRetrieveAPI:
         staff_user = UserFactory(is_staff=True)
         product = ProductFactory()
         variant = ProductVariantFactory(product=product, stock=10, price="5.00")
-        data = _payload(items=[{"variant_id": variant.pk, "quantity": 1}])
+        data = _payload(
+            items=[{"variant_id": variant.pk, "quantity": 1}],
+            phone="+34600112233",
+        )
         order, _ = create_order(user=user, validated_data=data)
 
         api_client.force_authenticate(user=staff_user)
@@ -88,6 +91,25 @@ class TestOrderRetrieveAPI:
 
         assert resp.status_code == status.HTTP_200_OK
         assert resp.data["id"] == order.pk
+        assert resp.data["phone"] == "+34600112233"
+
+    def test_get_200_demo_role_order_detail_omits_phone(self, api_client: APIClient):
+        """Portfolio demo (read-only admin) must not receive customer phone."""
+        buyer = UserFactory()
+        demo = DemoFactory()
+        product = ProductFactory()
+        variant = ProductVariantFactory(product=product, stock=10, price="5.00")
+        data = _payload(
+            items=[{"variant_id": variant.pk, "quantity": 1}],
+            phone="+34600999888",
+        )
+        order, _ = create_order(user=buyer, validated_data=data)
+
+        api_client.force_authenticate(user=demo)
+        resp = api_client.get(f"/api/v1/orders/{order.pk}/")
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["phone"] == ""
 
     def test_get_200_guest_with_valid_payment_intent(self, api_client: APIClient):
         """Guest can view order with correct payment_intent query param."""

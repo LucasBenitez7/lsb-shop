@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Suspense } from "react";
 
 import { AuthProvider } from "@/features/auth/components/AuthProvider";
-import { CartSyncProvider } from "@/features/cart/components/CartSyncProvider";
 import { SessionGuard } from "@/features/auth/components/SessionGuard";
+import { CartSyncProvider } from "@/features/cart/components/CartSyncProvider";
 
 // Development helper — exposes window.__clearDevState() in dev mode
 if (process.env.NODE_ENV === "development") {

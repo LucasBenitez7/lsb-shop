@@ -1,5 +1,5 @@
-import { mapDrfToStoreConfig, type DrfStoreSettings } from "@/lib/api/settings";
 import { buildServerCookieHeader } from "@/lib/api/server-django";
+import { mapDrfToStoreConfig, type DrfStoreSettings } from "@/lib/api/settings";
 
 import type { StoreConfig } from "@/types/store";
 

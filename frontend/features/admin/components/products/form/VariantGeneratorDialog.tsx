@@ -10,6 +10,8 @@ import {
 } from "react-icons/fa6";
 import { ImSpinner8 } from "react-icons/im";
 
+import { useVariantDialog } from "@/features/admin/hooks/use-variant-dialog";
+
 import { Button, Input, Label, Switch } from "@/components/ui";
 import {
   AlertDialog,
@@ -34,7 +36,6 @@ import { Separator } from "@/components/ui/separator";
 
 import { cn } from "@/lib/utils";
 
-import { useVariantDialog } from "@/features/admin/hooks/use-variant-dialog";
 
 import { ColorChip, SizeChip } from "./VariantChips";
 

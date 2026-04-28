@@ -5,12 +5,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 import { toast } from "sonner";
 
-import { createOrder as _createOrder } from "@/lib/api/orders";
 import {
   getOrderSuccessDetails,
   getPaymentIntent,
 } from "@/lib/api/account";
+import { createOrder as _createOrder } from "@/lib/api/orders";
 import { buildCheckoutSuccessHref } from "@/lib/checkout/stripe-return-paths";
+
 import { useCartStore } from "@/store/useCartStore";
 
 const readCartFingerprint = () => {

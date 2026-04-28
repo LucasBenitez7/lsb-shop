@@ -2,11 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FaArrowLeft } from "react-icons/fa6";
 
-import { canWriteAdmin } from "@/lib/roles";
+import { ProductForm } from "@/features/admin/components/products/form/ProductForm";
+
 import { auth } from "@/lib/api/auth/server";
 import { getProductFormDependencies } from "@/lib/api/products/admin";
+import { canWriteAdmin } from "@/lib/roles";
 
-import { ProductForm } from "@/features/admin/components/products/form/ProductForm";
 
 export default async function NewProductPage() {
   const session = await auth();

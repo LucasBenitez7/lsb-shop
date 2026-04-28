@@ -2,10 +2,11 @@
 
 import { FaTriangleExclamation, FaImages } from "react-icons/fa6";
 
+import { useProductImages } from "@/features/admin/hooks/use-product-images";
+
 import { getCloudinaryProductUploadPreset } from "@/lib/cloudinary-upload-presets";
 import { cn } from "@/lib/utils";
 
-import { useProductImages } from "@/features/admin/hooks/use-product-images";
 
 import { ColorUploadButton } from "./ColorUploadButton";
 import { ImageRow } from "./ImageRow";

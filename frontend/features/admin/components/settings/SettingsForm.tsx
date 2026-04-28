@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -16,13 +16,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-import { storeConfigToFormValues } from "@/lib/admin/store-form-map";
 import {
   storeConfigSchema,
   type StoreConfigFormValues,
 } from "@/lib/admin/settings-schema";
+import { storeConfigToFormValues } from "@/lib/admin/store-form-map";
 import { updateStoreConfig } from "@/lib/api/settings";
-
 import { getCloudinaryBannerUploadPreset } from "@/lib/cloudinary-upload-presets";
 
 import { SingleImageUpload } from "../SingleImageUpload";
@@ -38,6 +37,8 @@ interface Props {
 
 export function SettingsForm({ initialData, readOnly }: Props) {
   const [isPending, startTransition] = useTransition();
+  const [uploadCommitVersion, setUploadCommitVersion] = useState(0);
+  const [uploadMountKey, setUploadMountKey] = useState(0);
 
   const defaultValues = useMemo(
     () => storeConfigToFormValues(initialData),
@@ -56,6 +57,7 @@ export function SettingsForm({ initialData, readOnly }: Props) {
         toast.error(res.error);
       } else {
         toast.success("Configuración guardada correctamente");
+        setUploadCommitVersion((v) => v + 1);
       }
     });
   }
@@ -103,7 +105,10 @@ export function SettingsForm({ initialData, readOnly }: Props) {
               />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-[1fr_1fr] items-start">
+            <div
+              className="grid gap-6 md:grid-cols-[1fr_1fr] items-start"
+              key={`hero-images-${uploadMountKey}`}
+            >
               <FormField
                 control={form.control}
                 name="heroImage"
@@ -119,6 +124,8 @@ export function SettingsForm({ initialData, readOnly }: Props) {
                         label="Subir Imagen Desktop"
                         className="aspect-[2/1] w-full"
                         uploadPreset={bannerUploadPreset}
+                        disabled={readOnly}
+                        commitVersion={uploadCommitVersion}
                       />
                     </FormControl>
                     <FormMessage />
@@ -140,6 +147,8 @@ export function SettingsForm({ initialData, readOnly }: Props) {
                           label="Subir Imagen Mobile"
                           className="aspect-[4/5] w-full h-[350px]"
                           uploadPreset={bannerUploadPreset}
+                          disabled={readOnly}
+                          commitVersion={uploadCommitVersion}
                         />
                       </FormControl>
                       <FormMessage />
@@ -175,7 +184,10 @@ export function SettingsForm({ initialData, readOnly }: Props) {
               />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-[1fr_1fr] items-start">
+            <div
+              className="grid gap-6 md:grid-cols-[1fr_1fr] items-start"
+              key={`sale-images-${uploadMountKey}`}
+            >
               <FormField
                 control={form.control}
                 name="saleImage"
@@ -191,6 +203,8 @@ export function SettingsForm({ initialData, readOnly }: Props) {
                         label="Subir Imagen Desktop"
                         className="aspect-[2/1] w-full"
                         uploadPreset={bannerUploadPreset}
+                        disabled={readOnly}
+                        commitVersion={uploadCommitVersion}
                       />
                     </FormControl>
                     <FormMessage />
@@ -212,6 +226,8 @@ export function SettingsForm({ initialData, readOnly }: Props) {
                           label="Subir Imagen Mobile"
                           className="aspect-[4/5] w-full h-[350px]"
                           uploadPreset={bannerUploadPreset}
+                          disabled={readOnly}
+                          commitVersion={uploadCommitVersion}
                         />
                       </FormControl>
                       <FormMessage />
@@ -230,6 +246,7 @@ export function SettingsForm({ initialData, readOnly }: Props) {
                 disabled={isPending}
                 onClick={() => {
                   form.reset(storeConfigToFormValues(initialData));
+                  setUploadMountKey((k) => k + 1);
                   toast.info("Cambios descartados");
                 }}
                 className="w-full sm:w-auto px-5 h-11"

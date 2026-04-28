@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 
+import ChangePasswordForm from "@/features/account/components/ChangePasswordForm";
+
 import { auth } from "@/lib/api/auth/server";
 
-import ChangePasswordForm from "@/features/account/components/ChangePasswordForm";
 
 import type { Metadata } from "next";
 

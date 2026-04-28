@@ -1,6 +1,6 @@
 # Backend — Django + DRF
 
-Python API for **lsb-shop**. Monorepo root: parent directory.
+Python API for **lsb-shop**. **Monorepo overview** (stack, CI, URLs, docs index): **[../README.md](../README.md)**.
 
 ## Local development
 

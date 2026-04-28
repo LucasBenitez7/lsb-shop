@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import type { ChangePasswordValues } from "@/lib/account/schema";
 import { serverMutationJson } from "@/lib/api/server-django";
+
+import type { ChangePasswordValues } from "@/lib/account/schema";
 
 function firstApiErrorMessage(text: string): string {
   try {

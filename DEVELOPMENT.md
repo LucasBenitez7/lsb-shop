@@ -94,19 +94,33 @@ Celery Beat ejecuta tareas programadas (cron):
    ```
 4. Verifica en Cloudinary Dashboard que las imágenes fueron borradas
 
+### Subidas desde el admin Next (categorías / settings)
+
+Las imágenes de portada usan **Cloudinary signed upload** en el cliente (`CldUploadWidget` + `POST /api/sign-cloudinary-params`). El componente **`SingleImageUpload`** registra los `public_id` de la sesión: si el usuario **cancela**, **recarga** o **falla el guardado**, se llama **`POST /api/cloudinary/delete`** (Next) para destruir esos assets. Requiere las mismas variables Cloudinary en el entorno del **servidor Next** (`CLOUDINARY_API_SECRET`, etc. — ver `frontend/.env.example`). Esto **complementa** el worker Celery (tareas `delete_cloudinary_urls_task`, `cleanup_orphaned_cloudinary_images`); no reemplaza el borrado cuando la URL ya está guardada en Django.
+
 ## Deploy API (Railway) — logs y salud
 
-Sin Sentry ni Grafana obligatorio: **`docs/RAILWAY_OBSERVABILITY.md`** (JSON a stdout, `/health/`, variables, usuario demo Unfold).
+Sin Sentry ni Grafana obligatorio: **`docs/RAILWAY_OBSERVABILITY.md`** (JSON a stdout, `/health/`, variables, `ensure_demo_staff` y **`ensure_portfolio_demo`**).
+
+## Probar checkout + Stripe en local (manual)
+
+1. Variables `STRIPE_*` y URL del API en `backend/.env` y `frontend/.env.local` (ver `.env.example` en cada carpeta).
+2. Webhook: `stripe listen --forward-to http://127.0.0.1:8000/api/v1/payments/webhook/stripe/` y copiar el signing secret a `STRIPE_WEBHOOK_SECRET`.
+3. Arrancar Django, Next, Redis y (si hace falta) worker Celery según arriba.
+4. Flujo: tienda → carrito → checkout → pagar con [tarjetas de prueba Stripe](https://docs.stripe.com/testing); comprobar éxito en `/checkout/success` y en el panel de pedidos.
+5. **E2E automatizado:** `frontend/e2e/` (Playwright) — opcional; requiere `.env` alineado con el API (ver `frontend/.env.e2e.example`).
+
+Detalle de dominio pedidos: [`docs/ORDERS_PHASE5_PLAN.md`](docs/ORDERS_PHASE5_PLAN.md) §14.
 
 ## Documentación del repo
 
 Mapa completo en `CONTEXT.md` § *Documentation Index*. Referencias rápidas:
 
+- **README del monorepo (arranque, CI, URLs públicas):** [`README.md`](README.md)
 - **Convenciones `lib/api/`:** [`docs/FRONTEND_API.md`](docs/FRONTEND_API.md)
 - **Contexto general del proyecto (fases, stack):** [`CONTEXT.md`](CONTEXT.md)
 - **Dominio pedidos (Fase 5 + estado real):** [`docs/ORDERS_PHASE5_PLAN.md`](docs/ORDERS_PHASE5_PLAN.md) §14
 - **Dominio catálogo (Fase 2+3):** [`docs/PRODUCTS_DOMAIN.md`](docs/PRODUCTS_DOMAIN.md)
-- **Guía de testing manual (checkout):** [`docs/SPRINT4_TESTING_GUIDE.md`](docs/SPRINT4_TESTING_GUIDE.md)
 
 ## Variables de entorno
 
@@ -118,3 +132,5 @@ CLOUDINARY_API_SECRET=tu_api_secret
 CLOUDINARY_FOLDER_PREFIX=lsb-shop  # opcional
 REDIS_URL=redis://localhost:6379/0
 ```
+
+En **`frontend/.env.local`** (plantilla `frontend/.env.example`), para producción o staging fija al menos `NEXT_PUBLIC_API_URL` y **`NEXT_PUBLIC_SITE_URL`** al dominio real del front (sin barra final), p. ej. `https://shop.lsbstack.com`, para que Open Graph, Twitter, sitemap y JSON-LD usen URLs absolutas correctas.

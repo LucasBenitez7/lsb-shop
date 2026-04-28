@@ -3,9 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { useRouter, useSearchParams } from "next/navigation";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-import { APIError } from "@/lib/api/client";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 import { RegisterForm } from "@/features/auth/components/RegisterForm";
+
+import { APIError } from "@/lib/api/client";
 
 const { mockLogin, mockRegister, mockUpdateMe, mockRefreshAuth } = vi.hoisted(
   () => ({

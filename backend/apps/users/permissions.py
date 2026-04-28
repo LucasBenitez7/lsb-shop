@@ -4,29 +4,29 @@ from apps.users.models import User
 
 
 class IsAdmin(IsAdminUser):
-    """Solo admin (is_staff=True). Alias semántico de IsAdminUser."""
+    """Staff-only (`is_staff=True`). Prefer `IsStoreAdminEditor` for LSB role checks."""
 
     pass
 
 
 class IsOwner(BasePermission):
-    """Permite acceso solo si el objeto pertenece al usuario autenticado."""
+    """Object-level: allow only when `obj.user` matches the authenticated user."""
 
     def has_object_permission(self, request, view, obj) -> bool:
         return hasattr(obj, "user") and obj.user == request.user
 
 
 class IsAdminOrReadOnly(BasePermission):
-    """Admin puede todo. Usuarios autenticados solo lectura."""
+    """Authenticated read; writes require Django staff."""
 
     def has_permission(self, request, view) -> bool:
         if request.method in SAFE_METHODS:
-            return request.user and request.user.is_authenticated
-        return request.user and request.user.is_staff
+            return bool(request.user and request.user.is_authenticated)
+        return bool(request.user and request.user.is_staff)
 
 
 class IsDemo(BasePermission):
-    """Solo usuarios con rol demo — acceso lectura al admin."""
+    """Allow only authenticated users with role `demo`."""
 
     def has_permission(self, request, view) -> bool:
         return (

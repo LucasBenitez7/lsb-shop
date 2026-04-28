@@ -7,6 +7,8 @@ import { ImSpinner8 } from "react-icons/im";
 import { toast } from "sonner";
 
 import { StripeEmbedForm } from "@/features/checkout/components/sections/StripeEmbedForm";
+import { useOrderPayment } from "@/features/orders/hooks/use-order-payment";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,7 +22,6 @@ import {
 
 import { cancelOrder } from "@/lib/api/account";
 import { accountOrderStripeReturnPath } from "@/lib/checkout/stripe-return-paths";
-import { useOrderPayment } from "@/features/orders/hooks/use-order-payment";
 
 import type { OrderStripeReturnParams } from "@/features/orders/hooks/use-order-payment";
 import type { PaymentStatus, FulfillmentStatus } from "@/types/enums";

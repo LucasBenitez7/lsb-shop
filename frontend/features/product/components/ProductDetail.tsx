@@ -1,11 +1,13 @@
 "use client";
 
-import { Gallery } from "./Gallery";
-import { ProductActions } from "./ProductActions";
+import { useProductDetail } from "@/features/product/hooks/use-product-detail";
 
 import { formatCurrency } from "@/lib/currency";
 
-import { useProductDetail } from "@/features/product/hooks/use-product-detail";
+import { Gallery } from "./Gallery";
+import { ProductActions } from "./ProductActions";
+
+
 
 import type { PublicProductDetail } from "@/lib/products/types";
 

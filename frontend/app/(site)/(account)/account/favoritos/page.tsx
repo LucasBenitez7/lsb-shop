@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { FaHeartBroken } from "react-icons/fa";
 
 import { ProductGrid } from "@/features/catalog/components/ProductGrid";
+
 import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/api/auth/server";

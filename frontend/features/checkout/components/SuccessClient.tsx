@@ -5,12 +5,13 @@ import { useEffect } from "react";
 import { FaCheckCircle } from "react-icons/fa";
 
 import { OrderSummaryCard } from "@/features/orders/components/OrderSummaryCard";
+
 import { Button } from "@/components/ui/button";
 
+import { clearCart as clearCartApi } from "@/lib/api/cart";
 import { clearGuestAddress } from "@/lib/checkout/guest-address-storage";
 import { guestTrackingDetailsHref } from "@/lib/tracking/guest-order-link";
 
-import { clearCart as clearCartApi } from "@/lib/api/cart";
 import { useCartStore } from "@/store/useCartStore";
 
 import type { DisplayOrder } from "@/lib/orders/utils";

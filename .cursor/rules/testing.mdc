@@ -308,7 +308,7 @@ test.describe("Checkout flow", () => {
 # Locust — load testing
 
 ```python
-# locustfile.py
+# backend/loadtesting/locustfile.py
 from locust import HttpUser, task, between
 
 
@@ -343,7 +343,7 @@ class ShopUser(HttpUser):
     def browse_categories(self):
         self.client.get("/api/v1/categories/", headers=self.auth_headers())
 
-# CI smoke: locust -f locustfile.py --headless --users 10 --spawn-rate 2 --run-time 30s --host http://localhost:8000
+# CI smoke: cd backend && uv run locust -f loadtesting/locustfile.py --headless --users 10 --spawn-rate 2 --run-time 30s --host http://localhost:8000
 ```
 
 # Coverage requirements

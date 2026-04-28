@@ -3,10 +3,12 @@
 import Link from "next/link";
 
 import { CheckoutHeader } from "@/features/checkout/components/CheckoutHeader";
+
 import { Button } from "@/components/ui/button";
 
-import { useMounted } from "@/hooks/common/use-mounted";
 import { useCartStore } from "@/store/useCartStore";
+
+import { useMounted } from "@/hooks/common/use-mounted";
 
 export function CheckoutContent({ children }: { children: React.ReactNode }) {
   const items = useCartStore((state) => state.items);

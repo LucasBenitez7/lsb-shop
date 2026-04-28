@@ -7,9 +7,11 @@ from apps.users.models import User
 
 class AllowPublicReadStoreAdminWrite(BasePermission):
     """
-    Public read for catalog endpoints; mutations only for staff with admin role.
+    Public read on catalog endpoints; unsafe methods require staff + `User.Role.ADMIN`.
 
-    Demo (and non-admin staff) cannot mutate — matches Next admin behaviour.
+    Stricter than DRF `IsAdminUser` (role-gated).
+
+    Demo cannot mutate — matches Next admin.
     """
 
     def has_permission(self, request, view) -> bool:

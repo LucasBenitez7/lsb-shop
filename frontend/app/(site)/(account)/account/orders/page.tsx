@@ -2,9 +2,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { FaBoxOpen } from "react-icons/fa6";
 
+import { PaginationNav } from "@/features/catalog/components/PaginationNav";
 import { OrderHistoryCard } from "@/features/orders/components/OrderHistoryCard";
 import { OrderListTabs } from "@/features/orders/components/OrderListTabs";
-import { PaginationNav } from "@/features/catalog/components/PaginationNav";
+
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/SearchInput";
 

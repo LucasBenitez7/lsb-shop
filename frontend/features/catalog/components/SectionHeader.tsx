@@ -12,7 +12,6 @@ import { useGridView } from "@/hooks/ui/use-grid-view";
 import { useScrollDirection } from "@/hooks/ui/use-scroll-direction";
 
 import { FilterSheet } from "./FilterSheet";
-
 import { GridViewToggle } from "./GridViewToggle";
 
 import type { FilterOptions } from "@/lib/products/types";

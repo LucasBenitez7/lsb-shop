@@ -9,7 +9,10 @@ import type { UserAddress, UserAddressDRFResponse } from "@/types/address";
 import type {
   OrderDetailDRFResponse,
   OrderHistoryDRFResponse,
+  OrderHistoryEntry,
+  OrderListItemDRFResponse,
   UserOrderDetail,
+  UserOrderListItem,
 } from "@/types/order";
 
 /**
@@ -39,8 +42,8 @@ export function mapUserAddressDRF(addr: UserAddressDRFResponse): UserAddress {
  * Maps order list item from DRF to frontend UserOrderListItem.
  */
 export function mapOrderListItemDRF(
-  item: import("@/types/order").OrderListItemDRFResponse,
-): import("@/types/order").UserOrderListItem {
+  item: OrderListItemDRFResponse,
+): UserOrderListItem {
   return {
     id: String(item.id),
     createdAt: item.created_at,
@@ -88,7 +91,7 @@ export function mapOrderListItemDRF(
 function mapHistoryEntry(
   h: OrderHistoryDRFResponse,
   orderId: string,
-): import("@/types/order").OrderHistoryEntry {
+): OrderHistoryEntry {
   return {
     id: String(h.id),
     orderId,

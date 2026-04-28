@@ -1,6 +1,5 @@
 "use client";
 
-import type { PaymentStatus } from "@/types/enums";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -16,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 
 import { cancelOrderAdminAction } from "@/lib/api/orders/mutations";
+
+import type { PaymentStatus } from "@/types/enums";
 
 // Añadimos paymentStatus a las props
 export function CancelOrderButton({

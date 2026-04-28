@@ -1,11 +1,12 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 import {
   SidebarNavLink,
   type SidebarNavLinkClickAction,
   useSidebarNavLinkHandler,
 } from "./nav";
-import { cn } from "@/lib/utils";
 
 import type { CategoryLink } from "@/types/category";
 
