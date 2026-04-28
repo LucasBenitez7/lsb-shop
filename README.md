@@ -39,7 +39,7 @@ Usa la **tienda** y el **panel admin en Next** (mismo dominio que la storefront)
 
 | Dónde | URL | Email | Contraseña |
 |-------|-----|-------|--------------|
-| **Tienda + panel admin Next** | [shop.lsbstack.com](https://shop.lsbstack.com) · admin: [/admin](https://shop.lsbstack.com/admin) | `demoadmin@shop.lsbstack.com` | `DemoLSB2026!` |
+| **Tienda + panel admin Next** | [shop.lsbstack.com/admin](https://shop.lsbstack.com/admin) | `demoadmin@shop.lsbstack.com` | `DemoLSB2026!` |
 
 ⚠️ En producción conviene que esta cuenta tenga **rol demo o permisos de solo lectura** en el panel Next (catálogo, pedidos, usuarios visibles pero sin borrar datos reales). Si aún no existe el usuario, créalo en el API con ese email/contraseña y el rol que use tu `SessionGuard` / admin Next.
 
