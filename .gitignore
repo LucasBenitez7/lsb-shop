@@ -50,5 +50,8 @@ bruno/
 .cursor/plans/
 scripts/
 
+# Personal backlog / notes (not committed)
+LOCAL-BACKLOG.md
+
 # Payment
 stripe.exe

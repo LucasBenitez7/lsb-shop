@@ -1,5 +1,5 @@
-# Backend only — frontend lint/test/typecheck are not gated here until Vitest
-# debt is cleared (see CONTEXT.md). Run locally: cd frontend && pnpm test:run
+# Backend: lint, types, security scans, pytest + coverage.
+# Frontend gates live in ci-frontend.yml (lint, Vitest, next build).
 name: CI
 
 on:
