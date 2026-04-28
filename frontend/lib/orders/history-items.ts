@@ -10,8 +10,7 @@ import {
   findImageByColorOrFallback,
 } from "@/lib/products/color-matching";
 
-import type { OrderItem } from "@/types/order";
-import type { HistoryItemJson } from "@/types/order";
+import type { OrderItem , HistoryItemJson } from "@/types/order";
 
 /** Raw row from ``OrderHistory.details.items`` (shape varies by event). */
 export type HistoryDetailItemRow = HistoryItemJson & {

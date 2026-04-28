@@ -1,3 +1,9 @@
+import { DEFAULT_CURRENCY } from "@/lib/currency";
+import { formatDisplayName } from "@/lib/format-display-name";
+import { COLOR_MAP } from "@/lib/products/constants";
+
+
+import type { DrfProduct, DrfProductImage, DrfVariant } from "./drf";
 import type {
   AdminProduct,
   ProductImage,
@@ -5,12 +11,6 @@ import type {
   PublicProductDetail,
   PublicProductListItem,
 } from "@/types/product";
-import { DEFAULT_CURRENCY } from "@/lib/currency";
-import { COLOR_MAP } from "@/lib/products/constants";
-
-import { formatDisplayName } from "@/lib/format-display-name";
-
-import type { DrfProduct, DrfProductImage, DrfVariant } from "./drf";
 
 export function priceToCents(price: string | number): number {
   const n = typeof price === "string" ? Number.parseFloat(price) : price;

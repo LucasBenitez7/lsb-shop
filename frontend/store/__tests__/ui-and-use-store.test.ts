@@ -1,8 +1,8 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach } from "vitest";
 
-import { useProductPreferences } from "@/store/useUIStore";
 import { useStore } from "@/store/useStore";
+import { useProductPreferences } from "@/store/useUIStore";
 
 // ─── useProductPreferences (store/ui.ts) ──────────────────────────────────────
 describe("useProductPreferences", () => {

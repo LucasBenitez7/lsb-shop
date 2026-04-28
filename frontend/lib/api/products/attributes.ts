@@ -1,8 +1,9 @@
 "use server";
 
-import type { PresetColor, PresetSize } from "@/lib/products/types";
 import { serverFetchJson, serverMutationJson } from "@/lib/api/server-django";
+
 import type { PaginatedResponse } from "@/lib/api/client";
+import type { PresetColor, PresetSize } from "@/lib/products/types";
 
 // ─── DRF shapes ──────────────────────────────────────────────────────────────
 

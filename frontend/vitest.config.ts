@@ -40,6 +40,10 @@ export default defineConfig({
         "app/layout.tsx",
         "app/providers.tsx",
       ],
+      thresholds: {
+        statements: 80,
+        lines: 80,
+      },
     },
   },
   resolve: {

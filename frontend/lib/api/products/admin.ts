@@ -1,10 +1,11 @@
-import type { AdminProduct } from "@/types/product";
-import type { PaginatedResponse } from "@/lib/api/client";
 import { serverFetchJson } from "@/lib/api/server-django";
 
-import type { DrfProduct } from "./drf";
 import { mapDrfToAdminProduct, priceToCents } from "./mappers";
+
+import type { DrfProduct } from "./drf";
 import type { AdminProductsParams } from "./query";
+import type { PaginatedResponse } from "@/lib/api/client";
+import type { AdminProduct } from "@/types/product";
 
 /** Minimal category row for admin product form / filters. */
 export type AdminProductCategoryOption = { id: string; name: string };

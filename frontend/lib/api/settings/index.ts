@@ -1,7 +1,8 @@
+import { APIError, apiPatch, formatAPIErrorBody } from "@/lib/api/client";
+
 import type { StoreConfigFormValues } from "@/lib/admin/settings-schema";
 import type { StoreConfig } from "@/types/store";
 
-import { APIError, apiPatch, formatAPIErrorBody } from "@/lib/api/client";
 
 /** Django `StoreSettingsSerializer` JSON (snake_case). */
 export interface DrfStoreSettings {
