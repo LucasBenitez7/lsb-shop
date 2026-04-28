@@ -373,3 +373,66 @@ python manage.py makemigrations --check
 # Never edit a migration file after it has been applied to any environment
 # For zero-downtime: add nullable column → deploy → backfill → make required → deploy
 ```
+
+# Cloudinary asset cleanup — the standard pattern
+
+All Cloudinary image uploads must be managed for lifecycle consistency:
+
+1. **When replacing an image**: detect the old URL, queue deletion via `delete_cloudinary_urls_task.delay([old_url])`.
+2. **When deleting a model instance**: collect all image URLs from that instance, queue deletion.
+3. **Orphaned images** (uploaded but never saved): a weekly Celery Beat job (`cleanup_orphaned_cloudinary_images`) scans Cloudinary and removes assets not referenced by any DB row.
+4. **Admin Next (widget uploads)**: el front puede borrar `public_id` abandonados en la misma sesión vía `POST /api/cloudinary/delete` (Next Route Handler con sesión admin/demo). **No** sustituye los puntos 1–3 ni el job semanal; evita basura cuando el usuario recarga o cancela antes de guardar.
+
+```python
+# apps/products/services.py — example: deleting a product
+from apps.core.tasks import delete_cloudinary_urls_task
+
+@transaction.atomic
+def soft_delete_product(*, product: Product) -> None:
+    now = timezone.now()
+
+    # Collect all Cloudinary URLs
+    urls_to_delete: list[str] = []
+    for img in product.images.all():
+        if img.source_url:
+            urls_to_delete.append(img.source_url)
+
+    product.deleted_at = now
+    product.save(update_fields=["deleted_at", "updated_at"])
+
+    # Schedule async deletion (runs after commit)
+    if urls_to_delete:
+        delete_cloudinary_urls_task.delay(urls_to_delete)
+```
+
+```python
+# apps/products/services.py — example: updating category image
+def update_category(*, category: Category, image: str | None = None, ...) -> Category:
+    old_image = (category.image or "").strip()
+    urls_to_delete: list[str] = []
+
+    if image is not None:
+        new_image = image.strip() if image else ""
+        if old_image and old_image != new_image:
+            urls_to_delete.append(old_image)
+        category.image = new_image
+
+    category.save()
+
+    if urls_to_delete:
+        delete_cloudinary_urls_task.delay(urls_to_delete)
+```
+
+Weekly orphan cleanup (already configured):
+
+```python
+# apps/core/tasks.py
+@shared_task
+def cleanup_orphaned_cloudinary_images() -> None:
+    """
+    Runs weekly via Celery Beat (Sundays 3:30am).
+    Compares all Cloudinary assets in FOLDER_PREFIX against DB references.
+    Deletes assets not found in ProductImage.source_url, Category.image,
+    Category.mobile_image, or StoreSettings banners.
+    """
+```

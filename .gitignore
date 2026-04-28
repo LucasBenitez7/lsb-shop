@@ -31,3 +31,27 @@ Thumbs.db
 # IDE
 .vscode/settings.json
 .idea/
+
+# Coverage
+backend/coverage.xml
+.coverage
+htmlcov/
+
+# Playwright (if tests are run from repo root)
+/playwright-report/
+/test-results/
+
+# Merge / editor leftovers
+*.orig
+*.rej
+
+# Local-only tooling and automation (not committed)
+bruno/
+.cursor/plans/
+scripts/
+
+# Personal backlog / notes (not committed)
+LOCAL-BACKLOG.md
+
+# Payment
+stripe.exe

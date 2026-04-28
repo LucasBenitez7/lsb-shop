@@ -1,0 +1,48 @@
+# Frontend: typecheck, Vitest, ESLint, production build (dummy public env in CI).
+name: CI Frontend
+
+on:
+  push:
+    branches: [main, dev, "feat/**"]
+  pull_request:
+    branches: [main, dev]
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  frontend:
+    name: Frontend — typecheck, test, lint, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript
+        run: pnpm run typecheck
+
+      - name: Vitest + coverage (≥80% statements/lines)
+        run: pnpm run test:ci
+
+      - name: ESLint
+        run: pnpm run lint
+
+      - name: Next.js production build
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+          NEXT_PUBLIC_SITE_URL: https://ci.example.invalid
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci_dummy_000000000000000000000000
+        run: pnpm run build

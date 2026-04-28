@@ -1,0 +1,12 @@
+{% autoescape off %}
+{% if greeting_name %}Hola {{ greeting_name }},{% else %}Hola,{% endif %}
+
+¡Te damos la bienvenida! Gracias por unirte a LSB Shop. Para activar tu cuenta y poder iniciar sesión, verifica tu correo con este enlace (válido 24 horas):
+
+{{ verification_url }}
+
+Si no creaste una cuenta, ignora este mensaje.
+
+— LSB Shop
+{{ site_url }}
+{% endautoescape %}

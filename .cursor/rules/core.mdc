@@ -158,28 +158,28 @@ log.error("payment.failed", user_id=user.id, order_id=order.id, error=str(e))
 
 ```python
 # apps/core/exceptions.py
-class ShopException(Exception):
+class ShopError(Exception):
     status_code: int = 500
     default_message: str = "Ha ocurrido un error. Inténtalo de nuevo."
 
-class InsufficientStock(ShopException):
+class InsufficientStock(ShopError):
     status_code = 400
     def __init__(self, product_name: str) -> None:
         self.default_message = f"Stock insuficiente para '{product_name}'."
 
-class ResourceNotFound(ShopException):
+class ResourceNotFound(ShopError):
     status_code = 404
     default_message = "El recurso solicitado no existe."
 
-class PaymentFailed(ShopException):
+class PaymentFailed(ShopError):
     status_code = 402
     default_message = "El pago no pudo procesarse. Verifica tus datos."
 
-class PermissionDenied(ShopException):
+class PermissionDenied(ShopError):
     status_code = 403
     default_message = "No tienes permisos para realizar esta acción."
 
-class CartExpired(ShopException):
+class CartExpired(ShopError):
     status_code = 400
     default_message = "Tu carrito ha expirado. Por favor agrégalo de nuevo."
 ```
@@ -193,15 +193,17 @@ All tool config lives in `backend/pyproject.toml`. Never create separate `.flake
 # API URL structure — always /api/v1/ prefix
 
 ```
-/api/v1/auth/login/             /api/v1/products/
-/api/v1/auth/register/          /api/v1/products/{id}/
-/api/v1/auth/refresh/           /api/v1/products/{id}/archive/
-/api/v1/auth/logout/            /api/v1/categories/
-/api/v1/auth/google/            /api/v1/cart/
-/api/v1/users/me/               /api/v1/cart/items/
-/api/v1/orders/                 /api/v1/payments/webhook/stripe/
-/api/v1/orders/{id}/cancel/     /health/  /api/docs/  /api/redoc/
+/api/v1/auth/login/                 /api/v1/products/
+/api/v1/auth/register/              /api/v1/products/{id}/
+/api/v1/auth/token/refresh/         /api/v1/products/{id}/archive/
+/api/v1/auth/logout/                /api/v1/products/categories/
+/api/v1/auth/google/                /api/v1/cart/
+/api/v1/users/me/                   /api/v1/cart/items/
+/api/v1/orders/                     /api/v1/payments/webhook/stripe/
+/api/v1/orders/{id}/cancel/         /api/v1/admin/stats/   /api/v1/admin/orders/…
+/health/                            /api/docs/  /api/redoc/
 ```
+(Categorías y presets viven bajo el prefijo **`/api/v1/products/`** — ver `apps/products/urls.py`.)
 
 # Code standards — Python
 
@@ -217,7 +219,8 @@ All tool config lives in `backend/pyproject.toml`. Never create separate `.flake
 - `app/` contains ONLY routing files: `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`
 - Components in `features/{domain}/components/` — never inside `app/`
 - No business logic, no Prisma, no Server Actions with business logic, no NextAuth
-- All API calls via `lib/api/` functions
+- All API calls via `lib/api/` functions, organized per domain (`index.ts` client, `server.ts` RSC, `mappers.ts` for shared DRF→app types — do not duplicate mapping). When editing `frontend/lib/api/` or `frontend/types/`, follow `.cursor/rules/frontend-api-dry.mdc` for DRY (extract mappers/helpers only when a second identical use exists or is added).
+- RSC session check: `import { auth } from "@/lib/api/auth/server"` only
 - Zustand for UI state only (modals, sheets) — never server state
 
 # Agent autonomy

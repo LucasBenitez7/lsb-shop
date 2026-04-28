@@ -8,8 +8,8 @@ alwaysApply: false
 
 Next.js 15 · React 19 · TypeScript 5 · Tailwind CSS v4 · Radix UI · App Router
 State: Zustand (UI only) · Forms: React Hook Form + Zod
-HTTP: `lib/api/` (fetch with JWT interceptor) · Payments: Stripe.js Elements
-Icons: Lucide React · Animations: Framer Motion
+Auth: Django JWT in **httpOnly cookies** (dj-rest-auth / SimpleJWT). Browser: `lib/api/client.ts` (refresh + session events). RSC: `serverFetchJson` + `lib/api/auth/server.ts` for `auth()`. Payments: Stripe.js Elements
+Icons: React Icons / Lucide React · Images: Cloudinary (signed uploads)
 
 # The most important rule — where things live
 
@@ -69,7 +69,7 @@ frontend/
 │   │           ├── favoritos/page.tsx
 │   │           └── security/page.tsx
 │   │
-│   ├── (admin)/                    → requires is_staff
+│   ├── (admin)/                    → sesión requerida; rol `admin` o `demo` (`canAccessAdmin` en middleware/layout)
 │   │   ├── layout.tsx              → AdminSidebar + AdminHeader
 │   │   └── admin/
 │   │       ├── page.tsx
@@ -84,7 +84,11 @@ frontend/
 │   │       ├── users/page.tsx
 │   │       └── settings/page.tsx
 │   │
-│   └── api/webhooks/stripe/route.ts   → only API Route that remains
+│   └── api/                          → Route Handlers (secrets / CORS / firmas)
+│       ├── sign-cloudinary-params/route.ts
+│       ├── cloudinary/delete/route.ts
+│       ├── search/route.ts
+│       └── products/load-more/route.ts
 │
 ├── features/                       → components organized by domain
 │   ├── home/components/
@@ -159,14 +163,24 @@ frontend/
 │
 ├── lib/
 │   ├── api/
-│   │   ├── client.ts               → fetch base, JWT headers, refresh
-│   │   ├── auth.ts
-│   │   ├── products.ts
-│   │   ├── cart.ts
-│   │   ├── orders.ts
-│   │   └── users.ts
-│   ├── schemas/                    → Zod — form validation only
-│   └── utils.ts                    → cn(), formatPrice(), formatDate()
+│   │   ├── client.ts               → apiGet/apiPost/apiPatch/apiDelete — browser + credentials; NOT for RSC session reads
+│   │   ├── server-django.ts        → serverFetchJson/serverMutationJson — cookie forwarding to Django (RSC, Server Actions, route handlers)
+│   │   ├── auth/
+│   │   │   ├── index.ts            → client auth endpoints (login/register/logout) via client.ts
+│   │   │   └── server.ts           → `auth()` only — server-only, uses serverFetchJson("/api/v1/users/me/")
+│   │   ├── products/               → drf.ts + mappers.ts + public.ts + admin.ts + mutations.ts + query.ts + index.ts
+│   │   ├── account/
+│   │   │   ├── index.ts            → client calls (apiGet/Post/Patch/Delete)
+│   │   │   ├── server.ts           → server-only reads (serverGetUserAddresses, serverGetOrderSuccessDetails, …)
+│   │   │   └── mappers.ts          → shared DRF → camelCase (NEVER duplicate mapping in index + server)
+│   │   ├── cart/                   → index.ts (+ inline mappers OK if single file, no server twin)
+│   │   ├── categories/             → index + mutations + server as needed
+│   │   ├── orders/                 → index.ts (+ add mappers.ts when server.ts appears or mapping grows)
+│   │   └── {new-domain}/           → prefer: index.ts | server.ts | mappers.ts | drf.ts | mutations.ts
+│   ├── products/
+│   │   ├── schema.ts               → Zod schemas for product forms
+│   │   └── utils.ts                → parseSearchParamFilters, compareSizes…
+│   └── utils.ts                    → cn(), formatCurrency(), formatDate()
 │
 ├── hooks/                          → cross-feature hooks (3+ consumers)
 │   ├── useDebounce.ts
@@ -281,49 +295,59 @@ export async function generateMetadata({ params }): Promise<Metadata> {
 
 All public pages (catalog, product detail, home) must export `generateMetadata`.
 
-# API client — always lib/api/, never raw fetch in components
+# API client — contexts and helpers
+
+Auth uses **JWT in httpOnly cookies** set by Django (`dj-rest-auth`). Do **not** add `Authorization: Bearer` headers from the frontend for normal API calls; rely on `credentials: "include"` via `client.ts` / forwarded cookies via `server-django.ts`.
 
 ```typescript
-// lib/api/client.ts
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
+// ── 1. CLIENT-SIDE (and any code running in the browser) ────────────────────
+// lib/api/client.ts → apiGet, apiPost, apiPatch, apiDelete (wrap apiFetch: refresh, errors)
+// Use for: Client Components, hooks, cart sync, checkout client steps
+import { apiGet } from "@/lib/api/client"
 
-export class APIError extends Error {
-  constructor(public message: string, public status: number) {
-    super(message)
-  }
-}
+// ── 2. PUBLIC Server Components (no user session required) ───────────────────
+// Still OK to use apiGet from a Server Component ONLY when the endpoint is public
+// and you are not relying on browser-only refresh behavior.
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getAccessToken()
+// ── 3. SERVER-ONLY reads/mutations that need the user's Django session ──────
+// lib/api/server-django.ts → serverFetchJson / serverMutationJson
+// Forwards `Cookie` from next/headers — required for account/checkout pages as RSC
+import { serverFetchJson } from "@/lib/api/server-django"
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  })
+// ── 4. RSC “current user” guard ──────────────────────────────────────────────
+// lib/api/auth/server.ts → auth() cached per request — import ONLY from here
+import { auth } from "@/lib/api/auth/server"
 
-  if (res.status === 401) {
-    await refreshToken()
-    return apiFetch(path, options)  // retry once
-  }
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new APIError(error.detail ?? "Algo salió mal.", res.status)
-  }
-
-  return res.json()
-}
-
-// lib/api/products.ts
-export async function getProducts(params?: ProductFilters) {
-  const query = new URLSearchParams(params as Record<string, string>)
-  return apiFetch<PaginatedResponse<Product>>(`/api/v1/products/?${query}`)
-}
+// ── 5. ROUTE HANDLERS (app/api/…/route.ts) ──────────────────────────────────
+// Cuando hace falta secretos en servidor o firmas: p. ej. `sign-cloudinary-params`, `cloudinary/delete`, búsqueda/load-more
 ```
+
+**Decision rule:**
+- Default browser calls → `client.ts`
+- RSC / layout needs session-backed Django JSON → `serverFetchJson` (often via `lib/api/{domain}/server.ts`)
+- Same DRF payload mapped in two places → **one** `mappers.ts` used by both `index.ts` and `server.ts`
+- `auth()` in RSC → `@/lib/api/auth/server` only
+- Mutations from Server Actions → `serverMutationJson` + `"use server"`
+
+See `docs/FRONTEND_API.md` for the canonical write-up.
+
+# DRY — duplicate code in the API layer (when it is worth it)
+
+When editing `lib/api/**` or DRF-related types, also follow `.cursor/rules/frontend-api-dry.mdc` (same globs cover `lib/api` and `types/`).
+
+**Always consolidate when:**
+
+- The same **DRF response** is mapped to app types in **more than one** file → **one** `mappers.ts` (or shared types + one mapper module).
+- **`index.ts` + `server.ts`** exist for the same domain and both touch the same JSON shape → shared mappers, not copy-paste.
+
+**Do not over-abstract when:**
+
+- The mapping exists in **one** place only and there is no second consumer.
+- Extraction would make the data flow harder to follow for a one-off endpoint.
+
+**Quick check before committing API work:** search the folder for repeated `_*` field assignments from the same API response.
+
+For **shared fields between domain interfaces** in `types/*.ts` (bases + `extends`), see section **6** in `.cursor/rules/frontend-api-dry.mdc` — same idea as DRY for API mappers, applied to TypeScript models only where semantics align (not for raw DRF JSON types).
 
 # Naming conventions
 

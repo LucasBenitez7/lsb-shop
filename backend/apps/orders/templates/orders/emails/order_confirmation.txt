@@ -1,0 +1,28 @@
+Hola {{ order.first_name }},
+
+Tu pedido #{{ order.pk }} ha sido confirmado.
+
+Detalles del Pedido N.º {{ order.pk }}
+Método de pago: {{ payment_method_display }}
+Realizado: {{ created_display }}
+
+Datos de contacto
+{{ contact_name }}
+{{ contact_phone_display }}
+{{ order.email }}
+
+{{ shipping_label }}
+{{ shipping_address_plain }}
+
+Productos ({{ line_rows|length }})
+{% for line in line_rows %}- {{ line.name }}{% if line.subtitle %} ({{ line.subtitle }}){% endif %} x{{ line.quantity }} — {% if line.show_compare_discount %}{{ line.compare_line_total_display }} → {% endif %}{{ line.line_total_display }}
+{% endfor %}
+
+Subtotal: {{ subtotal_row_display }}{% if has_order_discount %}
+Descuentos: {{ total_discount_display }}{% endif %}
+Envío: {{ shipping_cost_display }}{% if tax_minor > 0 %}
+Impuestos: {{ tax_display }}{% endif %}
+TOTAL: {{ total_display }}
+
+Ver pedido en la web: {{ order_detail_url }}
+Seguimiento: {{ tracking_url }}

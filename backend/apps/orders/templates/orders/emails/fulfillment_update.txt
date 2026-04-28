@@ -1,0 +1,12 @@
+Hola {{ order.first_name }},
+
+El estado de tu pedido #{{ order.pk }} es ahora: {{ status_display }}.
+
+{% if show_shipping_block %}
+{% if carrier_display %}Transportista: {{ carrier_display }}
+{% endif %}{% if tracking_number_display %}Nº de seguimiento: {{ tracking_number_display }}
+{% endif %}
+{% endif %}{% if show_delivered_block %}Fecha de entrega: {{ delivered_display }}
+{% endif %}
+Ver pedido: {{ order_detail_url }}
+Seguimiento web: {{ tracking_url }}
