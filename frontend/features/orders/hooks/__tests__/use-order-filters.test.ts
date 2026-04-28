@@ -143,4 +143,10 @@ describe("useOrderFilters", () => {
     const calledUrl = mockPush.mock.calls[0][0] as string;
     expect(calledUrl).not.toContain("fulfillment_filter=SHIPPED");
   });
+
+  it("expone activeUserId desde los searchParams", () => {
+    mockSearchParams.set("userId", "7");
+    const { result } = renderHook(() => useOrderFilters());
+    expect(result.current.activeUserId).toBe("7");
+  });
 });

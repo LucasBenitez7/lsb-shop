@@ -6,11 +6,11 @@ import { FaCreditCard } from "react-icons/fa6";
 
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { type CreateOrderInput } from "@/lib/orders/schema";
 import {
   checkoutGuestStripeReturnPath,
   checkoutStripeReturnPath,
 } from "@/lib/checkout/stripe-return-paths";
+import { type CreateOrderInput } from "@/lib/orders/schema";
 
 import { StripeEmbedForm } from "./StripeEmbedForm";
 

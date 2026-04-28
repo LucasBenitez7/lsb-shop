@@ -2,13 +2,14 @@ import { redirect } from "next/navigation";
 import Stripe from "stripe";
 
 import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
+import { SuccessClient } from "@/features/checkout/components/SuccessClient";
+
 import { Container } from "@/components/ui";
 
 import { serverGetOrderSuccessDetails } from "@/lib/api/account/server";
 import { auth } from "@/lib/api/auth/server";
 import { formatOrderForDisplay } from "@/lib/orders/utils";
 
-import { SuccessClient } from "@/features/checkout/components/SuccessClient";
 
 import type { Metadata } from "next";
 

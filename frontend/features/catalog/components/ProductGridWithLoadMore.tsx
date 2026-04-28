@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ImSpinner8 } from "react-icons/im";
 
 import { ProductGrid } from "@/features/catalog/components/ProductGrid";
+
 import { Button } from "@/components/ui/button";
 
 import type { PublicProductListItem } from "@/lib/products/types";

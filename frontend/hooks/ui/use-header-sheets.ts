@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 
-import { useCloseOnNav } from "@/hooks/common/use-close-on-nav";
 import { useCartStore } from "@/store/useCartStore";
+
+import { useCloseOnNav } from "@/hooks/common/use-close-on-nav";
 
 /**
  * Gestiona el estado de los sheets del header (sidebar, búsqueda, carrito),

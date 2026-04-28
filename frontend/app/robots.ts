@@ -1,7 +1,9 @@
+import { getPublicSiteUrl } from "@/lib/site-url";
+
 import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = getPublicSiteUrl();
   const vercelEnv = process.env.VERCEL_ENV ?? "development";
   const isProd = vercelEnv === "production" && !siteUrl.includes("staging.");
 

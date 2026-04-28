@@ -15,6 +15,7 @@ import {
   findVariant,
   sortVariantsHelper,
 } from "@/lib/products/utils";
+
 import type { ProductVariant } from "@/types/product";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────

@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import { ImSpinner8 } from "react-icons/im";
 
 import { CartUndoNotification } from "@/features/cart/components/CartUndoNotification";
+import { useCartLogic } from "@/features/cart/hooks/use-cart-logic";
+
 import { Button, RemoveButton, FavoriteButton } from "@/components/ui";
 import { Image } from "@/components/ui/image";
 
 import { formatCurrency, DEFAULT_CURRENCY } from "@/lib/currency";
 
-import { useCartLogic } from "@/features/cart/hooks/use-cart-logic";
 import { useCartStore } from "@/store/useCartStore";
 
 export default function CartClientPage({

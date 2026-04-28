@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 
-import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
 import { GenericCatalogClient } from "@/features/catalog/components/GenericCatalogClient";
+import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
 
 import { getCategoryBySlug } from "@/lib/api/categories";
 import { getUserFavoriteIds } from "@/lib/api/favorites/server";
-import { PER_PAGE } from "@/lib/pagination";
 import { getFilterOptions, getPublicProducts } from "@/lib/api/products";
+import { PER_PAGE } from "@/lib/pagination";
 import { parseSearchParamFilters } from "@/lib/products/utils";
 
 import type { Metadata } from "next";

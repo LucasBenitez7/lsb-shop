@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
+import { useProductCard } from "@/features/product/hooks/use-product-card";
+
 import { Button, FavoriteButton } from "@/components/ui";
 import { Image } from "@/components/ui/image";
 
@@ -10,7 +12,6 @@ import { formatCurrency, DEFAULT_CURRENCY } from "@/lib/currency";
 import { colorsMatch } from "@/lib/products/color-matching";
 import { cn } from "@/lib/utils";
 
-import { useProductCard } from "@/features/product/hooks/use-product-card";
 
 import type { PublicProductListItem } from "@/lib/products/types";
 

@@ -22,9 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { rejectReturnAction } from "@/lib/api/orders/mutations";
 import { REJECTION_REASONS } from "@/lib/orders/constants";
 
-import { rejectReturnAction } from "@/lib/api/orders/mutations";
 
 export function RejectReturnButton({ orderId }: { orderId: string }) {
   const router = useRouter();

@@ -4,6 +4,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useMemo, useCallback } from "react";
 
 import { colorsMatch } from "@/lib/products/color-matching";
+
 import type { PublicProductDetail } from "@/lib/products/types";
 
 type UseProductDetailProps = {

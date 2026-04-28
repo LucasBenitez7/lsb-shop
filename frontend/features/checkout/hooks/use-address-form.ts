@@ -1,13 +1,13 @@
 "use client";
 
-import type { UserAddress } from "@/types/address";
 import { useTransition, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { toast } from "sonner";
 
+import { upsertAddress } from "@/lib/api/account";
 import { type CreateOrderInput } from "@/lib/orders/schema";
 
-import { upsertAddress } from "@/lib/api/account";
+import type { UserAddress } from "@/types/address";
 
 type Props = {
   initialData?: Partial<UserAddress> | null;

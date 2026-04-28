@@ -1,7 +1,8 @@
-import type { FulfillmentStatus } from "@/types/enums";
 import { FaBox, FaTruckFast, FaCheck } from "react-icons/fa6";
 
 import { cn } from "@/lib/utils";
+
+import type { FulfillmentStatus } from "@/types/enums";
 
 const STEPS = [
   { id: "PREPARING", label: "Preparando", icon: FaBox },

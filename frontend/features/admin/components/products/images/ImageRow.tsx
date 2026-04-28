@@ -1,17 +1,17 @@
 "use client";
 
-import type { FieldArrayWithId } from "react-hook-form";
 import { FaTrash } from "react-icons/fa6";
 
 import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 
-import type { ProductFormValues } from "@/lib/products/schema";
 import { cn } from "@/lib/utils";
 
-import type { CloudinaryUploadWidgetResults } from "next-cloudinary";
-
 import { EditImageButton } from "./EditImageButton";
+
+import type { ProductFormValues } from "@/lib/products/schema";
+import type { CloudinaryUploadWidgetResults } from "next-cloudinary";
+import type { FieldArrayWithId } from "react-hook-form";
 
 type ProductImageField = FieldArrayWithId<ProductFormValues, "images", "id">;
 

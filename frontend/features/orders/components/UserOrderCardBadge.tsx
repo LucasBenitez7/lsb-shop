@@ -1,10 +1,11 @@
-import type { PaymentStatus, FulfillmentStatus } from "@/types/enums";
 import { FaCheck } from "react-icons/fa6";
 
 import { Badge } from "@/components/ui/badge";
 
 import { getUserDisplayStatus } from "@/lib/orders/constants";
 import { cn } from "@/lib/utils";
+
+import type { PaymentStatus, FulfillmentStatus } from "@/types/enums";
 
 type Props = {
   paymentStatus: PaymentStatus;

@@ -1,6 +1,5 @@
 "use client"
 
-import type { FulfillmentStatus, PaymentStatus } from "@/types/enums"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { FaBox, FaTruckFast, FaCheckDouble, FaLock } from "react-icons/fa6"
@@ -25,6 +24,8 @@ import {
 
 import { updateFulfillmentStatusAction } from "@/lib/api/orders/mutations"
 import { SHIPPING_CARRIER_OPTIONS } from "@/lib/orders/shipping-carriers"
+
+import type { FulfillmentStatus, PaymentStatus } from "@/types/enums"
 
 type Props = {
   orderId: string

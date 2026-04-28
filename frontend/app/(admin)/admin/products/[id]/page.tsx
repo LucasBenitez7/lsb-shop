@@ -9,18 +9,17 @@ import {
   FaLayerGroup,
 } from "react-icons/fa6";
 
-import { canWriteAdmin } from "@/lib/roles";
+import { ProductForm } from "@/features/admin/components/products/form/ProductForm";
+import { ArchiveButton } from "@/features/admin/components/products/shared/ArchiveButton";
+import { StatCard } from "@/features/admin/components/products/shared/StatCard";
+
 import { auth } from "@/lib/api/auth/server";
 import {
   getAdminProductById,
   getProductFormDependencies,
   getProductSalesAndReturns,
 } from "@/lib/api/products/admin";
-
-import { StatCard } from "@/features/admin/components/products/shared/StatCard";
-
-import { ProductForm } from "@/features/admin/components/products/form/ProductForm";
-import { ArchiveButton } from "@/features/admin/components/products/shared/ArchiveButton";
+import { canWriteAdmin } from "@/lib/roles";
 
 export default async function EditProductPage({
   params,

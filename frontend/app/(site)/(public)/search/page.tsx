@@ -1,10 +1,10 @@
 import { EmptyState } from "@/features/catalog/components";
-import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
 import { GenericCatalogClient } from "@/features/catalog/components/GenericCatalogClient";
+import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
 
 import { getUserFavoriteIds } from "@/lib/api/favorites/server";
-import { PER_PAGE } from "@/lib/pagination";
 import { getFilterOptions, getPublicProducts } from "@/lib/api/products";
+import { PER_PAGE } from "@/lib/pagination";
 import { parseSearchParamFilters } from "@/lib/products/utils";
 
 import type { Metadata } from "next";

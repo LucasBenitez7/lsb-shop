@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@/features/auth/components/AuthProvider";
 import {
   FaBoxOpen,
   FaMapLocationDot,
@@ -11,6 +10,8 @@ import {
   FaRightFromBracket,
   FaHeart,
 } from "react-icons/fa6";
+
+import { useAuth } from "@/features/auth/components/AuthProvider";
 
 import { Button } from "@/components/ui/button";
 

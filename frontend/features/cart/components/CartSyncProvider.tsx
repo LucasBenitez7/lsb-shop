@@ -4,7 +4,9 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/features/auth/components/AuthProvider";
+
 import { getCart, mergeCart } from "@/lib/api/cart";
+
 import { useCartStore } from "@/store/useCartStore";
 
 /**

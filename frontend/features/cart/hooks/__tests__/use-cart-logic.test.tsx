@@ -2,13 +2,15 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { useRouter } from "next/navigation";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
+import { useAuth } from "@/features/auth/components/AuthProvider";
+import { useCartLogic } from "@/features/cart/hooks/use-cart-logic";
+
 import {
   validateCartStock,
   patchCartItemQuantity,
   removeCartItem,
 } from "@/lib/api/cart";
-import { useAuth } from "@/features/auth/components/AuthProvider";
-import { useCartLogic } from "@/features/cart/hooks/use-cart-logic";
+
 import { useCartStore, type CartItem } from "@/store/useCartStore";
 
 vi.mock("@/features/auth/components/AuthProvider", () => ({

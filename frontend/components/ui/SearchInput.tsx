@@ -13,12 +13,15 @@ type SearchInputProps = {
   placeholder?: string;
   className?: string;
   paramName?: string;
+  /** Query keys removed when applying search (e.g. drop `userId` so text search is global). */
+  omitParamsOnSearch?: string[];
 };
 
 export function SearchInput({
   placeholder = "Buscar...",
   className,
   paramName = "q",
+  omitParamsOnSearch = [],
 }: SearchInputProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -34,6 +37,9 @@ export function SearchInput({
 
   const handleSearch = () => {
     const params = new URLSearchParams(searchParams);
+    for (const key of omitParamsOnSearch) {
+      params.delete(key);
+    }
     params.set("page", "1");
 
     if (term.trim()) {

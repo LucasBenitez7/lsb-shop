@@ -2,11 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FaArrowLeft } from "react-icons/fa6";
 
-import { canWriteAdmin } from "@/lib/roles";
+import { CategoryForm } from "@/features/admin/components/categories/CategoryForm";
+
 import { auth } from "@/lib/api/auth/server";
 import { getCategoryOrderList } from "@/lib/api/categories";
+import { canWriteAdmin } from "@/lib/roles";
 
-import { CategoryForm } from "@/features/admin/components/categories/CategoryForm";
 
 export default async function NewCategoryPage() {
   const session = await auth();
@@ -40,6 +41,7 @@ export default async function NewCategoryPage() {
         id: item.id,
         name: item.name,
         sort: item.sortOrder,
+        isFeatured: item.isFeatured,
       }))} readOnly={false} />
     </div>
   );

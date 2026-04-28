@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -9,11 +10,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { getMe, logout as apiLogout } from "@/lib/api/auth";
-import { isCheckoutAuthLightRoute } from "@/lib/checkout/stripe-return-paths";
 import { APIError } from "@/lib/api/client";
+import { isCheckoutAuthLightRoute } from "@/lib/checkout/stripe-return-paths";
 
 import type { User } from "@/types/user";
 
@@ -59,8 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, refresh]);
 
   const clearSession = useCallback(() => {
     setUser(null);

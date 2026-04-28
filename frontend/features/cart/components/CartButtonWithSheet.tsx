@@ -6,6 +6,8 @@ import { HiOutlineShoppingBag } from "react-icons/hi2";
 import { ImSpinner8 } from "react-icons/im";
 
 import { CartUndoNotification } from "@/features/cart/components/CartUndoNotification";
+import { useCartLogic } from "@/features/cart/hooks/use-cart-logic";
+
 import { Button, RemoveButton } from "@/components/ui";
 import { Image } from "@/components/ui/image";
 import {
@@ -19,10 +21,11 @@ import {
 
 import { formatCurrency, DEFAULT_CURRENCY } from "@/lib/currency";
 
-import { useCartLogic } from "@/features/cart/hooks/use-cart-logic";
+import { useCartStore } from "@/store/useCartStore";
+
 import { useCloseOnNav } from "@/hooks/common/use-close-on-nav";
 import { useMounted } from "@/hooks/common/use-mounted";
-import { useCartStore } from "@/store/useCartStore";
+
 
 export function CartButtonWithSheet() {
   const isOpen = useCartStore((state) => state.isOpen);

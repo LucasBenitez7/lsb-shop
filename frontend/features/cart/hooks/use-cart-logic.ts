@@ -4,13 +4,15 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
+import { useAuth } from "@/features/auth/components/AuthProvider";
+
 import {
   patchCartItemQuantity,
   removeCartItem,
   validateCartStock,
 } from "@/lib/api/cart";
 import { APIError } from "@/lib/api/client";
-import { useAuth } from "@/features/auth/components/AuthProvider";
+
 import { useCartStore } from "@/store/useCartStore";
 import { useStore } from "@/store/useStore";
 

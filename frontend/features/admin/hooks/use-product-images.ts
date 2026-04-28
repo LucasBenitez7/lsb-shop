@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import { colorsMatch } from "@/lib/products/color-matching";
+
 import type { ProductFormValues } from "@/lib/products/schema";
 
 export function useProductImages() {

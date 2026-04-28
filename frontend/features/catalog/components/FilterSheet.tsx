@@ -4,6 +4,8 @@ import { CgClose } from "react-icons/cg";
 import { FaChevronRight } from "react-icons/fa";
 import { VscSettings } from "react-icons/vsc";
 
+import { useFilterSheetState } from "@/features/catalog/hooks/use-filter-sheet-state";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -11,11 +13,10 @@ import { Label } from "@/components/ui/label";
 import { SheetClose, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 
-import { PUBLIC_SORT_OPTIONS } from "@/lib/products/constants";
 import { formatDisplayName } from "@/lib/format-display-name";
+import { PUBLIC_SORT_OPTIONS } from "@/lib/products/constants";
 import { cn } from "@/lib/utils";
 
-import { useFilterSheetState } from "@/features/catalog/hooks/use-filter-sheet-state";
 
 import type { FilterOptions } from "@/lib/products/types";
 

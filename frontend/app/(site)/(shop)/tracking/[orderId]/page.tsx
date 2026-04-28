@@ -5,13 +5,14 @@ import { FaArrowLeft, FaCircleCheck, FaClipboardList } from "react-icons/fa6";
 import { OrderSummaryCard } from "@/features/orders/components/OrderSummaryCard";
 import { OrderTracker } from "@/features/orders/components/OrderTracker";
 import { GuestOrderActions } from "@/features/tracking/components/GuestOrderActions";
+
 import { Container } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { serverGetOrderSuccessDetails } from "@/lib/api/account/server";
-import { parseCurrency } from "@/lib/currency";
 import { verifyGuestAccessOrRedirect } from "@/lib/api/guest/mutations";
+import { parseCurrency } from "@/lib/currency";
 import {
   formatOrderPaymentMethodLabel,
   getOrderShippingDetails,

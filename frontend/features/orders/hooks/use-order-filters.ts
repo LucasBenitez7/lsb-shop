@@ -23,6 +23,8 @@ export function useOrderFilters() {
     ? (fulfillmentParam.split(",") as FulfillmentStatus[])
     : [];
 
+  const activeUserId = searchParams.get("userId");
+
   const updateParams = useCallback(
     (newParams: Record<string, string | null | undefined>) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -71,6 +73,7 @@ export function useOrderFilters() {
     activeSort,
     activePaymentStatuses,
     activeFulfillmentStatuses,
+    activeUserId,
 
     // Acciones
     updateParams,

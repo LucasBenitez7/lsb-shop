@@ -1,13 +1,14 @@
 "use client";
 
-import type { UserAddress } from "@/types/address";
 import { useFormContext } from "react-hook-form";
+
+import { useShippingAddressForm } from "@/features/checkout/hooks/use-address-form";
 
 import { Button, Input, Label, Checkbox } from "@/components/ui";
 
 import { type CreateOrderInput } from "@/lib/orders/schema";
 
-import { useShippingAddressForm } from "@/features/checkout/hooks/use-address-form";
+import type { UserAddress } from "@/types/address";
 
 type Props = {
   initialData?: Partial<UserAddress> | null;

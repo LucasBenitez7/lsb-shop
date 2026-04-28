@@ -29,7 +29,6 @@ import {
   changePasswordSchema,
   type ChangePasswordValues,
 } from "@/lib/account/schema";
-
 import { updatePassword } from "@/lib/api/account/mutations";
 
 export default function ChangePasswordForm() {

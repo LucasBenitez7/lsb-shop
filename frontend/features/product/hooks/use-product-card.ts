@@ -1,8 +1,9 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 
-import { type PublicProductListItem } from "@/lib/products/types";
+import { addCartItem } from "@/lib/api/cart";
 import { colorsMatch } from "@/lib/products/color-matching";
+import { type PublicProductListItem } from "@/lib/products/types";
 import {
   getUniqueColors,
   getUniqueSizes,
@@ -10,10 +11,9 @@ import {
   sortVariantsHelper,
 } from "@/lib/products/utils";
 
-import { addCartItem } from "@/lib/api/cart";
 import { useCartStore } from "@/store/useCartStore";
-import { useProductPreferences } from "@/store/useUIStore";
 import { useStore } from "@/store/useStore";
+import { useProductPreferences } from "@/store/useUIStore";
 
 export function useProductCard(item: PublicProductListItem) {
   const imageContainerRef = useRef<HTMLDivElement>(null);

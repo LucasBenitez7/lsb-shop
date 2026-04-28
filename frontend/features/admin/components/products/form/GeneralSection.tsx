@@ -5,6 +5,8 @@ import { useFormContext } from "react-hook-form";
 import { FaPlus, FaCheck, FaXmark } from "react-icons/fa6";
 import { toast } from "sonner";
 
+import { useProductPricing } from "@/features/admin/hooks/use-product-pricing";
+
 import { Button, Input, Label } from "@/components/ui";
 import {
   Select,
@@ -15,10 +17,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+import { quickCreateCategory } from "@/lib/api/categories/mutations";
 import { cn } from "@/lib/utils";
 
-import { quickCreateCategory } from "@/lib/api/categories/mutations";
-import { useProductPricing } from "@/features/admin/hooks/use-product-pricing";
 
 import type { ProductFormValues } from "@/lib/products/schema";
 

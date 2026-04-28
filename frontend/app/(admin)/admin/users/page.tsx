@@ -1,14 +1,15 @@
 import { type Metadata } from "next";
 
+import { UserListToolbar } from "@/features/admin/components/users/UserListToolbar";
+import { UserTable } from "@/features/admin/components/users/UserTable";
 import { PaginationNav } from "@/features/catalog/components/PaginationNav";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { getAdminUsers } from "@/lib/api/admin";
-import { isDemoRole } from "@/lib/roles";
 import { auth } from "@/lib/api/auth/server";
+import { isDemoRole } from "@/lib/roles";
 
-import { UserListToolbar } from "@/features/admin/components/users/UserListToolbar";
-import { UserTable } from "@/features/admin/components/users/UserTable";
 
 export const metadata: Metadata = {
   title: "Admin | Usuarios",

@@ -1,11 +1,13 @@
 "use client";
 
-import type { MouseEvent, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-import { useSidebarClose } from "./close-context";
 import { cn } from "@/lib/utils";
+
+import { useSidebarClose } from "./close-context";
+
+import type { MouseEvent, ReactNode } from "react";
 
 export type SidebarNavLinkClickAction = (href: string, e: MouseEvent) => void;
 

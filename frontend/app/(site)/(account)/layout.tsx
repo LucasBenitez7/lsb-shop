@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AccountSidebar } from "@/features/account/components/AccountSidebar";
+
 import { Container } from "@/components/ui";
 
 import { auth } from "@/lib/api/auth/server";

@@ -1,12 +1,12 @@
 import { GenericCatalogClient } from "@/features/catalog/components/GenericCatalogClient";
 
 import { getUserFavoriteIds } from "@/lib/api/favorites/server";
-import { PER_PAGE } from "@/lib/pagination";
 import {
   getFilterOptions,
   getPublicProducts,
   NOVEDADES_RECENT_DAYS,
 } from "@/lib/api/products";
+import { PER_PAGE } from "@/lib/pagination";
 import {
   parseSearchParamFilters,
   parseSort,

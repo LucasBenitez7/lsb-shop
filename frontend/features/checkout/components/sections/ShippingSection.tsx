@@ -1,6 +1,5 @@
 "use client";
 
-import type { UserAddress } from "@/types/address";
 import {
   FaTruck,
   FaPlus,
@@ -10,15 +9,18 @@ import {
   FaLocationDot,
 } from "react-icons/fa6";
 
+import { useShippingSection } from "@/features/checkout/hooks/use-shipping-section";
+
 import { Button, Label } from "@/components/ui";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { SHIPPING_METHODS } from "@/lib/locations";
 
-import { useShippingSection } from "@/features/checkout/hooks/use-shipping-section";
 
 import { ShippingAddressForm } from "./ShippingAddressForm";
+
+import type { UserAddress } from "@/types/address";
 
 type Props = {
   savedAddresses: UserAddress[];

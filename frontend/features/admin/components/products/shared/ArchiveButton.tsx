@@ -19,9 +19,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
+import { toggleProductArchive } from "@/lib/api/products/mutations";
 import { cn } from "@/lib/utils";
 
-import { toggleProductArchive } from "@/lib/api/products/mutations";
 
 type Props = {
   productId: string;

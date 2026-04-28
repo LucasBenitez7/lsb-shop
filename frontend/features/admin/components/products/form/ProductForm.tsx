@@ -2,9 +2,10 @@
 
 import { type ProductFormValues } from "@/lib/products/schema";
 
+import { ImagesSection } from "../images/ImagesSection";
+
 import { ProductFormProvider } from "./ProductFormProvider";
 import { DangerZone, GeneralSection, VariantsSection } from "./sections";
-import { ImagesSection } from "../images/ImagesSection";
 
 type ProductWithId = ProductFormValues & { id: string };
 

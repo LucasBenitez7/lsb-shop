@@ -1,12 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import type { PaginatedResponse } from "@/lib/api/client";
 import {
   buildProductsListQuery,
   mapDrfProductListItem,
   type DrfProduct,
   type PublicProductsParams,
 } from "@/lib/api/products";
+
+import type { PaginatedResponse } from "@/lib/api/client";
+import type { NextRequest} from "next/server";
 
 /**
  * Lightweight product search for the header SearchSheet (client fetch).

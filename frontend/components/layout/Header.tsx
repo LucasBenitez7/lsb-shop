@@ -14,17 +14,19 @@ import {
 } from "react-icons/fa6";
 import { RiMenu2Line } from "react-icons/ri";
 
+import { useAuth } from "@/features/auth/components/AuthProvider";
 import { CartButtonWithSheet } from "@/features/cart/components/CartButtonWithSheet";
+
 import { SearchSheet } from "@/components/layout/SearchSheet";
 import { Sheet, SheetContent, SheetTitle, Button } from "@/components/ui";
+
+import { formatUserDisplayName } from "@/lib/users/utils";
 
 import { useMounted } from "@/hooks/common/use-mounted";
 import { useHeaderSheets } from "@/hooks/ui/use-header-sheets";
 
 import { SidebarCloseProvider, SiteSidebar } from "./sidebar";
 
-import { useAuth } from "@/features/auth/components/AuthProvider";
-import { formatUserDisplayName } from "@/lib/users/utils";
 
 import type { CategoryLink } from "@/types/category";
 

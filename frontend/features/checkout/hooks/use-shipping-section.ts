@@ -1,6 +1,5 @@
 "use client";
 
-import type { UserAddress } from "@/types/address";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -11,6 +10,8 @@ import {
   saveGuestAddress,
 } from "@/lib/checkout/guest-address-storage";
 import { type CreateOrderInput } from "@/lib/orders/schema";
+
+import type { UserAddress } from "@/types/address";
 
 export function useShippingSection(
   savedAddresses: UserAddress[],

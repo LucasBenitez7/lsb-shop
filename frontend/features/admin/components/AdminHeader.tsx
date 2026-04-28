@@ -7,6 +7,8 @@ import { CgClose } from "react-icons/cg";
 import { FaUserShield } from "react-icons/fa6";
 import { RiMenu2Line } from "react-icons/ri";
 
+import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
+
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -15,10 +17,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-import { useCloseOnNav } from "@/hooks/common/use-close-on-nav";
 import { formatUserDisplayName } from "@/lib/users/utils";
 
-import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
+import { useCloseOnNav } from "@/hooks/common/use-close-on-nav";
+
 
 import type { User } from "@/types/user";
 

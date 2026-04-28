@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
-import { capitalize, sortSizes } from "@/lib/products/utils";
+import { useVariantGenerator } from "@/features/admin/hooks/use-variant-generator";
 
 import {
   getPresetSizes,
@@ -12,7 +12,8 @@ import {
   deletePresetSize,
   deletePresetColor,
 } from "@/lib/api/products/attributes";
-import { useVariantGenerator } from "@/features/admin/hooks/use-variant-generator";
+import { capitalize, sortSizes } from "@/lib/products/utils";
+
 
 import type { ProductFormValues } from "@/lib/products/schema";
 import type { PresetSize, PresetColor } from "@/lib/products/types";
