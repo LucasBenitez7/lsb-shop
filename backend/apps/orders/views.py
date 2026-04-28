@@ -24,6 +24,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.exceptions import ResourceNotFound
+from apps.core.permissions import IsStoreStaffReader
 from apps.orders.list_filters import (
     apply_fulfillment_status_multi_filter,
     apply_order_list_sort,
@@ -58,6 +59,15 @@ from apps.products.models import Product, ProductImage, ProductVariant
 from apps.users.constants import GUEST_SESSION_COOKIE
 from apps.users.models import User
 from apps.users.services import GuestService, InvalidOTP
+
+
+def _can_read_any_order_as_staff_or_demo(user) -> bool:
+    """Staff or demo role may read any order (admin Next / support)."""
+    if user is None or not user.is_authenticated:
+        return False
+    if getattr(user, "is_staff", False):
+        return True
+    return getattr(user, "role", None) == User.Role.DEMO
 
 
 class OrderListCreateView(APIView):
@@ -264,7 +274,7 @@ class OrderRetrieveView(APIView):
                 if session.email.strip().lower() == order.email.strip().lower():
                     guest_session_ok = True
 
-        if user and user.is_staff:
+        if user and _can_read_any_order_as_staff_or_demo(user):
             pass
         elif user:
             if order.user_id != user.pk:
@@ -318,7 +328,7 @@ class OrderPaymentIntentView(APIView):
     def get(self, request, pk: int) -> Response:
         order = get_object_or_404(Order, pk=pk)
         user = request.user
-        if not user.is_staff and order.user_id != user.pk:
+        if not _can_read_any_order_as_staff_or_demo(user) and order.user_id != user.pk:
             raise PermissionDenied()
 
         try:
@@ -533,8 +543,8 @@ class AdminOrderFulfillmentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk: int) -> Response:
-        if not request.user.is_staff:
-            raise PermissionDenied("Staff access required.")
+        if not request.user.is_staff or request.user.role == User.Role.DEMO:
+            raise PermissionDenied("Admin access required (demo cannot mutate).")
 
         order = get_object_or_404(Order, pk=pk)
         serializer = OrderFulfillmentUpdateSerializer(
@@ -586,8 +596,8 @@ class AdminOrderProcessReturnView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk: int) -> Response:
-        if not request.user.is_staff:
-            raise PermissionDenied("Staff access required.")
+        if not request.user.is_staff or request.user.role == User.Role.DEMO:
+            raise PermissionDenied("Admin access required (demo cannot mutate).")
 
         order = get_object_or_404(
             Order.objects.prefetch_related("items"),
@@ -637,8 +647,8 @@ class AdminOrderRejectReturnView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk: int) -> Response:
-        if not request.user.is_staff:
-            raise PermissionDenied("Staff access required.")
+        if not request.user.is_staff or request.user.role == User.Role.DEMO:
+            raise PermissionDenied("Admin access required (demo cannot mutate).")
 
         order = get_object_or_404(Order.objects.prefetch_related("items"), pk=pk)
         serializer = OrderRejectReturnSerializer(data=request.data)
@@ -681,12 +691,9 @@ class AdminOrderRejectReturnView(APIView):
 class AdminDashboardStatsView(APIView):
     """GET /api/v1/admin/stats/ — KPI aggregates for the Next admin dashboard."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreStaffReader]
 
     def get(self, request) -> Response:
-        if not request.user.is_staff:
-            raise PermissionDenied("Staff access required.")
-
         paid_like = (
             PaymentStatus.PAID,
             PaymentStatus.PARTIALLY_REFUNDED,
@@ -815,7 +822,10 @@ class AdminOrderListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request) -> Response:
-        if not request.user.is_staff:
+        if not (
+            request.user.is_staff
+            or getattr(request.user, "role", None) == User.Role.DEMO
+        ):
             raise PermissionDenied("Staff access required.")
 
         page = int(request.query_params.get("page", 1))

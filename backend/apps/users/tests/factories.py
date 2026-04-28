@@ -32,7 +32,14 @@ class AdminFactory(UserFactory):
 
 
 class DemoFactory(UserFactory):
-    """Read-only admin: must be staff to match production demo accounts."""
+    """Portfolio-style demo: Next admin read-only, no Django ``/admin/`` access."""
+
+    role = User.Role.DEMO
+    is_staff = False
+
+
+class DemoStaffFactory(UserFactory):
+    """Unfold support user (``ensure_demo_staff``): staff + demo + view-only perms."""
 
     role = User.Role.DEMO
     is_staff = True

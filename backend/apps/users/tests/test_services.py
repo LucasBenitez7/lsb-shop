@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from allauth.account.models import EmailAddress
 from django.utils import timezone
 
 from apps.core.exceptions import ResourceNotFound
@@ -60,6 +61,18 @@ class TestUserService:
         UserService.verify_email(user.id)
         user.refresh_from_db()
         assert user.is_email_verified is True
+
+    def test_verify_email_syncs_allauth_emailaddress(self) -> None:
+        user = UserFactory(is_email_verified=False, email="syncsvc@example.com")
+        EmailAddress.objects.create(
+            user=user,
+            email=user.email,
+            verified=False,
+            primary=True,
+        )
+        UserService.verify_email(user.id)
+        addr = EmailAddress.objects.get(user=user, email__iexact=user.email)
+        assert addr.verified is True
 
     def test_verify_email_missing_user_raises(self) -> None:
         with pytest.raises(ResourceNotFound):

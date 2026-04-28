@@ -24,6 +24,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.users.models import User
+from apps.users.services import sync_primary_emailaddress_with_user
 
 # Apps registered in django-unfold admin for support (read-only).
 _VIEW_APPS = ("users", "products", "orders", "favorites", "core")
@@ -78,6 +79,7 @@ class Command(BaseCommand):
         if password:
             user.set_password(password)
         user.save()
+        sync_primary_emailaddress_with_user(user)
 
         perms = list(_view_permissions_queryset())
         user.user_permissions.set(perms)

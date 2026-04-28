@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.conf import settings
 from rest_framework import serializers
 
@@ -13,6 +15,7 @@ from apps.orders.models import (
 from apps.orders.services import fetch_payment_intent_status
 from apps.products.color_matching import colors_equivalent
 from apps.products.models import ProductImage
+from apps.users.models import User
 
 
 def resolve_order_item_display_image_url(
@@ -361,6 +364,18 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         if pm == "card":
             return "Tarjeta"
         return (obj.payment_method or "").strip() or "Tarjeta"
+
+    def to_representation(self, instance: Order) -> dict[str, Any]:
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        viewer = getattr(request, "user", None) if request is not None else None
+        if (
+            viewer is not None
+            and getattr(viewer, "is_authenticated", False)
+            and getattr(viewer, "role", None) == User.Role.DEMO
+        ):
+            data["phone"] = ""
+        return data
 
 
 class OrderItemMinimalSerializer(serializers.ModelSerializer):
