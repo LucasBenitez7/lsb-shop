@@ -55,12 +55,20 @@ Comando idempotente (contraseña obligatoria **solo la primera vez** que se crea
 
 ```bash
 # En Railway: Release phase / one-off shell con las mismas vars que el servicio web
-export DEMO_STAFF_EMAIL=demo-staff@tu-dominio.com
-export DEMO_STAFF_PASSWORD='...'   # primera vez obligatorio
+# Correo sugerido alineado con la tienda pública: demo-staff@shop.lsbstack.com
+# (o el dominio de correo que uséis). La contraseña solo en variables secretas de Railway — nunca en el repo.
+export DEMO_STAFF_EMAIL=demo-staff@shop.lsbstack.com
+export DEMO_STAFF_PASSWORD='...'   # primera vez obligatorio; generar valor largo aleatorio
 python manage.py ensure_demo_staff
 ```
 
 Crea o actualiza un usuario con `role=demo`, `is_staff=True`, **solo permisos `view_*`** sobre modelos de `users`, `products`, `orders`, `favorites`, `core` (sin add/change/delete). Ver `apps/users/management/commands/ensure_demo_staff.py`.
+
+---
+
+### 4.1 Usuario portfolio (solo panel Next, sin Django `/admin/`)
+
+Para demos en README / reclutadores: comando **`ensure_portfolio_demo`** con env **`PORTFOLIO_DEMO_EMAIL`** / **`PORTFOLIO_DEMO_PASSWORD`** (contraseña obligatoria solo en la primera creación). Crea `role=demo`, **`is_staff=False`** — accede al panel **Next** `/admin/` en solo lectura; **no** puede entrar en django-unfold. Detalle: `README.md` y `backend/.env.example`.
 
 ---
 
@@ -70,4 +78,5 @@ Crea o actualiza un usuario con `role=demo`, `is_staff=True`, **solo permisos `v
 - [ ] Stripe webhook llegando al servicio web (logs `stripe.webhook.event_handled`).
 - [ ] Worker procesando cola (logs de tareas o Flower si lo usáis).
 - [ ] `ensure_demo_staff` ejecutado al menos una vez con secretos en Railway.
+- [ ] (Opcional) `ensure_portfolio_demo` en el mismo shell si usáis usuario portfolio en Vercel / README.
 - [ ] Usuario demo probado en `https://<api>/admin/` según [`UNFOLD_SUPPORT_WORKFLOW.md`](UNFOLD_SUPPORT_WORKFLOW.md).

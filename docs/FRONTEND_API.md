@@ -33,6 +33,18 @@ Each API domain under `lib/api/{domain}/` should follow this pattern where appli
 - **Server Component / Route Handler** that needs the user’s Django session → `serverFetchJson` / `serverMutationJson` from `lib/api/server-django.ts`.
 - Never call `apiFetch` from code that runs without a `window` unless you know it is safe (it is designed for the browser).
 
+## Next.js Route Handlers (`app/api/**/route.ts`)
+
+Usar solo cuando hace falta **secreto en servidor** o un proxy acotado (no duplicar negocio de Django):
+
+| Ruta | Propósito |
+|------|-----------|
+| `POST /api/sign-cloudinary-params` | Firma uploads del widget Cloudinary (preset firmado). |
+| `POST /api/cloudinary/delete` | `cloudinary.uploader.destroy` por `public_id` — sesión **admin o demo** (`canAccessAdmin`); limpia subidas de widget abandonadas en el admin Next. |
+| Otras (`search`, `products/load-more`, …) | Proxies o helpers puntuales documentados en su archivo. |
+
+Stripe y demás APIs de dominio siguen en **Django** (`/api/v1/...`), no en Route Handlers salvo decisión explícita.
+
 ## Orders — retrieve y checkout
 
 - **Listado usuario:** `GET /api/v1/orders/` (autenticado) — `lib/api/account/index.ts` (`getUserOrders`, etc.).
@@ -41,7 +53,6 @@ Each API domain under `lib/api/{domain}/` should follow this pattern where appli
 ## Related docs
 
 - **`CONTEXT.md`** — visión del proyecto; tabla **Documentation Index** (todos los `.md` y cuándo usarlos).
-- **`docs/ORDERS_PHASE5_PLAN.md`** — plan orders + **§14** (estado / backlog Fase 5).
-- **`docs/SPRINT4_TESTING_GUIDE.md`** — prueba manual checkout / Stripe.
+- **`docs/ORDERS_PHASE5_PLAN.md`** — plan orders + **§14** (estado de implementación Fase 5).
 - **`docs/PRODUCTS_DOMAIN.md`** — dominio catálogo (API + reglas).
-- **`DEVELOPMENT.md`** — servicios locales, Celery, env.
+- **`DEVELOPMENT.md`** — servicios locales, Celery, env, prueba manual checkout + Stripe.

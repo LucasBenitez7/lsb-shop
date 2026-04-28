@@ -11,6 +11,8 @@ El admin de Django (**django-unfold**) en **`/admin/`** del backend es **apoyo**
 
 Credenciales: el email configurado en `DEMO_STAFF_EMAIL` y la contraseña definida al crear el usuario (`DEMO_STAFF_PASSWORD`).
 
+> **No confundir** con el usuario **portfolio** (`ensure_portfolio_demo`, `is_staff=False`): ese solo entra al **panel Next** en el dominio del frontend; **no** usa este flujo de Unfold.
+
 ---
 
 ## 2. Qué puede hacer este usuario

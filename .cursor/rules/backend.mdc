@@ -381,6 +381,7 @@ All Cloudinary image uploads must be managed for lifecycle consistency:
 1. **When replacing an image**: detect the old URL, queue deletion via `delete_cloudinary_urls_task.delay([old_url])`.
 2. **When deleting a model instance**: collect all image URLs from that instance, queue deletion.
 3. **Orphaned images** (uploaded but never saved): a weekly Celery Beat job (`cleanup_orphaned_cloudinary_images`) scans Cloudinary and removes assets not referenced by any DB row.
+4. **Admin Next (widget uploads)**: el front puede borrar `public_id` abandonados en la misma sesión vía `POST /api/cloudinary/delete` (Next Route Handler con sesión admin/demo). **No** sustituye los puntos 1–3 ni el job semanal; evita basura cuando el usuario recarga o cancela antes de guardar.
 
 ```python
 # apps/products/services.py — example: deleting a product
