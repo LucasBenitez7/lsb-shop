@@ -1,5 +1,12 @@
 FROM python:3.13.2-slim
 
+# cryptography / cffi (pulled by django-allauth Google) needs OpenSSL + libffi; slim may miss them or compile cffi from sdist.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_SYSTEM_PYTHON=1
