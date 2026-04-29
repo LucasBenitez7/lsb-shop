@@ -46,7 +46,7 @@ Replaces the previous monolith `acme-commerce-starter` (Next.js full-stack). The
 | HTTP client | `lib/api/` (convenciones en [docs/FRONTEND_API.md](docs/FRONTEND_API.md)) |
 | Tests (front) | Vitest (umbrales cobertura **statements/lines ≥80%** en `vitest.config.ts`; CI usa `pnpm run test:ci`) + Playwright en `frontend/e2e/` (E2E no gateado en CI por defecto) |
 | Tests (back) | pytest + pytest-django + factory_boy; cobertura **`apps/` ≥80%** vía `[tool.coverage.report] fail_under` en `backend/pyproject.toml` |
-| CI/CD | GitHub Actions: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (backend) + [`.github/workflows/ci-frontend.yml`](.github/workflows/ci-frontend.yml) (lint, typecheck, Vitest+coverage, **`next build`**) + [`.github/workflows/trivy.yml`](.github/workflows/trivy.yml) + [`.github/workflows/release-please.yml`](.github/workflows/release-please.yml); [`.github/dependabot.yml`](.github/dependabot.yml) (Actions, npm, pip) → deploy **Railway** (API) + **Vercel** (front) |
+| CI/CD | GitHub Actions: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (backend) + [`.github/workflows/ci-frontend.yml`](.github/workflows/ci-frontend.yml) (lint, typecheck, Vitest+coverage, **`next build`**) + [`.github/workflows/trivy.yml`](.github/workflows/trivy.yml); [`.github/dependabot.yml`](.github/dependabot.yml) (Actions, npm, pip) → deploy **Railway** (API) + **Vercel** (front) |
 
 ## Architecture
 
@@ -653,7 +653,7 @@ Decisiones deliberadas de no implementar ahora, documentadas para no perderlas.
 - **Backend:** Ruff, format, mypy, Bandit, Safety (`|| true` en CI), pytest con cobertura `apps/` ≥80% y Codecov; fichero `backend/loadtesting/locustfile.py` + comprobación de sintaxis en tests.
 - **Frontend:** ESLint 9 flat (`eslint.config.mjs`), `typecheck`, Vitest con cobertura (umbrales ≥80% statements/lines), **`next build`** en [`.github/workflows/ci-frontend.yml`](.github/workflows/ci-frontend.yml).
 - **Seguridad y deps:** [`.github/workflows/trivy.yml`](.github/workflows/trivy.yml) (escaneo FS; severidad CRITICAL/HIGH sin bloquear el merge por defecto) y [`.github/dependabot.yml`](.github/dependabot.yml) (Actions, npm, pip).
-- **Versionado:** [`.github/workflows/release-please.yml`](.github/workflows/release-please.yml) + `release-please-config.json` + `.release-please-manifest.json` + `CHANGELOG.md` en merges a `main`.
+- **Versionado:** manual (`CHANGELOG.md`, tags o GitHub Releases según el equipo).
 - **Permisos DRF:** catálogo sigue `AllowPublicReadStoreAdminWrite` (mutaciones solo `role=ADMIN` staff); `GET /api/v1/admin/stats/` usa `IsStoreStaffReader` (admin + demo lectura).
 
 Despliegue (Railway, Vercel, webhooks Stripe/Cloudinary en prod) y decisiones de producto siguen la guía de `DEVELOPMENT.md` y `docs/RAILWAY_OBSERVABILITY.md` — no se duplican como checklist en este archivo.
@@ -737,8 +737,6 @@ Documentos markdown del repo (cuál abrir según la tarea):
 | **`DEVELOPMENT.md`** | Arranque local (Postgres, Redis, Django, Next, Celery, env) **y** pasos para probar checkout + Stripe a mano (sustituye referencias a una guía Sprint 4 que no existió como archivo en repo). | Configurar entorno, depurar servicios o validar compra/webhooks/E2E local. |
 | **`.github/workflows/ci.yml`** | CI backend: Ruff, format, mypy, Bandit, Safety (`|| true`), pytest + cobertura. | Cada PR / push. |
 | **`.github/workflows/ci-frontend.yml`** | CI front: ESLint, `typecheck`, Vitest+coverage, `next build`. | Cada PR / push. |
-| **`.github/workflows/trivy.yml`** | Escaneo Trivy del filesystem (severidad alta). | `main` / `dev` / PR. |
-| **`.github/workflows/release-please.yml`** | Release Please (manifest) en `main`. | Versionado y `CHANGELOG.md`. |
 | **`.github/dependabot.yml`** | Actualizaciones de dependencias (Actions, npm, pip). | Mantener deps al día. |
 
 **Cursor / IA:** en tareas de un dominio, referencia el doc concreto (`@docs/ORDERS_PHASE5_PLAN.md`) en lugar de asumir contratos.
@@ -751,5 +749,5 @@ Documentos markdown del repo (cuál abrir según la tarea):
 - `dev` → integration branch, main working branch
 - `feat/*` → individual features, branch from `dev`, PR back to `dev`
 - `feat/*` → `dev`: **Squash and merge**
-- `dev` → `main`: **Merge commit** (for release-please)
-- Conventional commits required on all branches
+- `dev` → `main`: **Merge commit** or squash (team preference)
+- Conventional commits recommended on all branches

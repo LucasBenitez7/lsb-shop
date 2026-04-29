@@ -52,7 +52,7 @@ Aplicación orientada a producción (no un tutorial): separación clara front / 
 - **Autenticación completa** — registro, login, Google OAuth, JWT en cookies httpOnly, roles (`admin`, `user`, `demo`) y rutas protegidas en Next según sesión.
 - **Integración real de pagos** — Stripe Payment Intents + webhooks en Django para confirmación asíncrona, reanudación tras redirect, manejo de fallos y caducidad de pedidos.
 - **Suite de tests** — pytest + factory_boy (backend con cobertura ≥80%); Vitest + Testing Library (frontend con cobertura ≥80%); Playwright (E2E opcional, no gateado en CI por defecto).
-- **Pipeline CI/CD** — GitHub Actions: lint → typecheck → tests backend → tests frontend → **`next build`** → Trivy + Dependabot + Release Please.
+- **Pipeline CI/CD** — GitHub Actions: lint → typecheck → tests backend → tests frontend → **`next build`** → Trivy + Dependabot.
 - **Dos superficies de administración** — **panel Next** (`/admin/`) para operación diaria; **django-unfold** en el dominio del API para soporte interno (fuera del demo público del README).
 - **Emails transaccionales** — bienvenida, verificación, reset de contraseña, confirmación de pedido — plantillas Django + Celery (alineadas al flujo del monolito previo `acme-commerce-starter`).
 - **Despliegue real** — Vercel (storefront) + Railway (API, PostgreSQL, Redis, worker Celery), webhooks Stripe configurados en producción.
@@ -330,7 +330,7 @@ Las plantillas **`backend/.env.example`** y **`frontend/.env.example`** son la r
 
 ---
 
-## 🧪 CI, seguridad y releases
+## 🧪 CI y seguridad
 
 | Workflow | Qué hace |
 |----------|----------|
@@ -338,7 +338,6 @@ Las plantillas **`backend/.env.example`** y **`frontend/.env.example`** son la r
 | [ci-frontend.yml](.github/workflows/ci-frontend.yml) | Frontend: ESLint, `typecheck`, Vitest con cobertura ≥80%, **`pnpm run build`**. |
 | [trivy.yml](.github/workflows/trivy.yml) | Escaneo Trivy del repo (modo filesystem, severidad CRITICAL/HIGH); por defecto **no** falla el job (`exit-code: "0"`). |
 | [dependabot.yml](.github/dependabot.yml) | PRs automáticos de actualización de dependencias (GitHub Actions, npm en `frontend/`, pip en `backend/`). |
-| [release-please.yml](.github/workflows/release-please.yml) | Versionado automático y generación de `CHANGELOG.md` en `main` usando commits convencionales. |
 
 **Carga (Locust):** definición en [`backend/loadtesting/locustfile.py`](./backend/loadtesting/locustfile.py). La CI valida que el fichero compile; las pruebas de carga reales se ejecutan manualmente contra un API levantado (local o staging).
 
@@ -410,9 +409,9 @@ Tras el primer deploy, ejecuta el comando **una vez** en Railway (release comman
 | Rama | Uso |
 |------|-----|
 | **`dev`** | Integración continua; PRs desde `feat/*` con **squash merge** recomendado. |
-| **`main`** | Línea de producción; integración desde `dev` con **merge commit** para que Release Please funcione. |
+| **`main`** | Línea de producción; integración desde `dev` (merge commit o squash, según preferencia del equipo). |
 
-Se recomiendan **commits convencionales** (`feat:`, `fix:`, `chore:`, `docs:`, …) para que Release Please genere entradas claras en **`CHANGELOG.md`**.
+Se recomiendan **commits convencionales** (`feat:`, `fix:`, `chore:`, `docs:`, …) para historial y `CHANGELOG.md` legibles.
 
 ---
 

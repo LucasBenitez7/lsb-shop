@@ -2,8 +2,8 @@
 
 All notable changes to this project are documented in this file.
 
-Release versioning is managed by [Release Please](https://github.com/googleapis/release-please) on merges to `main`.
+Versions and release notes are updated **manually** (tags / GitHub Releases as you prefer).
 
 ## 0.1.0
 
-Initial changelog baseline for automated releases.
+Initial changelog baseline.
