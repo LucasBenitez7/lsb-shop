@@ -153,7 +153,7 @@ bash backend/release.sh
 
 O directamente en **Custom Start Command** (si solo quieres migraciones):
 ```bash
-uv run --no-dev python manage.py migrate --noinput && uv run --no-dev gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4
+uv run --no-dev python manage.py migrate --noinput && uv run --no-dev gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 4
 ```
 
 **Contenido de `backend/release.sh`:**
@@ -225,7 +225,7 @@ Para demos en README / reclutadores: comando **`ensure_portfolio_demo`** con env
 - [ ] **Vincular servicios:** Postgres y Redis vinculados con Web, Worker y Beat.
 - [ ] **Release Command:** Configurado en Web (`bash backend/release.sh` o comando directo).
 - [ ] **Start Commands:**
-  - Web: `uv run --no-dev gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4`
+  - Web: `uv run --no-dev gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 4` (Railway injects `PORT`; use `${PORT:-8000}` in shell one-liners if you need a local default)
   - Worker: `uv run --no-dev celery -A config worker --loglevel=info`
   - Beat: `uv run --no-dev celery -A config beat --loglevel=info`
 - [ ] **Variables:** Todas las env vars obligatorias configuradas en Railway.

@@ -40,6 +40,7 @@ RUN DJANGO_SETTINGS_MODULE=config.settings.production \
     RESEND_API_KEY=re_build_placeholder_not_used_at_image_build \
     uv run --no-dev python manage.py collectstatic --noinput
 
+# Railway sets $PORT at runtime; local Docker defaults to 8000.
 EXPOSE 8000
 
-CMD ["uv", "run", "--no-dev", "gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4"]
+CMD ["sh", "-c", "uv run --no-dev gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 4"]
