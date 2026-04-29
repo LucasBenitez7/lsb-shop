@@ -20,9 +20,9 @@ RUN uv sync --no-dev
 
 COPY . .
 
-# Django imports settings before collectstatic; decouple requires these at import time.
-# Railway (or any host) must set real secrets at runtime — they override this layer.
-ENV DJANGO_SETTINGS_MODULE=config.settings.production \
+# One-shot env for collectstatic only (decouple + Django import chain). Not persisted as image ENV.
+# Real values come from Railway at container runtime.
+RUN DJANGO_SETTINGS_MODULE=config.settings.production \
     SECRET_KEY=docker-build-only-not-for-production-use-real-secret-in-host-xxxxx \
     DB_NAME=build \
     DB_USER=build \
@@ -35,9 +35,8 @@ ENV DJANGO_SETTINGS_MODULE=config.settings.production \
     CLOUDINARY_API_SECRET=build-placeholder-cloudinary-secret-min-16chars \
     STRIPE_SECRET_KEY=sk_test_build00000000000000000000000000000000000000000000 \
     STRIPE_WEBHOOK_SECRET=whsec_build00000000000000000000000000000000000000 \
-    RESEND_API_KEY=re_build_placeholder_not_used_at_image_build
-
-RUN uv run --no-dev python manage.py collectstatic --noinput
+    RESEND_API_KEY=re_build_placeholder_not_used_at_image_build \
+    uv run --no-dev python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
