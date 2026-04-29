@@ -22,11 +22,13 @@ COPY . .
 
 # One-shot env for collectstatic only (decouple + Django import chain). Not persisted as image ENV.
 # Real values come from Railway at container runtime.
+# Railway injects DATABASE_URL at runtime; image build uses DB_* placeholders only.
 RUN DJANGO_SETTINGS_MODULE=config.settings.production \
     SECRET_KEY=docker-build-only-not-for-production-use-real-secret-in-host-xxxxx \
     DB_NAME=build \
     DB_USER=build \
     DB_PASSWORD=build \
+    REDIS_URL=redis://localhost:6379/0 \
     GOOGLE_CALLBACK_URL=http://127.0.0.1:8000/accounts/google/login/callback/ \
     GOOGLE_CLIENT_ID=0.apps.googleusercontent.com \
     GOOGLE_CLIENT_SECRET=build-placeholder-not-for-production \
