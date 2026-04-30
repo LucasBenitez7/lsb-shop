@@ -1,15 +1,63 @@
+import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 import structlog
 from celery.schedules import crontab
 from decouple import config
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 def _env_truthy(value: str) -> bool:
     return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+
+def _normalize_redis_url(url: str) -> str:
+    """Ensure explicit DB index; Railway URLs often end at :6379 with no /0."""
+    stripped = url.strip()
+    if not stripped:
+        return stripped
+    parts = urlsplit(stripped)
+    if parts.scheme not in ("redis", "rediss"):
+        return stripped
+    path = parts.path or ""
+    if path in ("", "/"):
+        return urlunsplit(
+            (parts.scheme, parts.netloc, "/0", parts.query, parts.fragment),
+        )
+    return stripped
+
+
+def _redis_url_from_env() -> str:
+    """
+    Single Redis URL for cache + Celery.
+
+    If REDIS_URL exists in the environment but is empty (Railway mis-reference),
+    python-decouple returns ''. django-redis then raises "Missing connections string".
+    Celery then falls back to amqp://guest@localhost (RabbitMQ) — pyamqp + refused.
+    """
+    settings_module = os.environ.get("DJANGO_SETTINGS_MODULE", "")
+    is_production = settings_module.endswith(".production")
+    raw = str(config("REDIS_URL", default="")).strip()
+    if not raw:
+        if is_production:
+            raise ImproperlyConfigured(
+                "REDIS_URL is missing or empty. On Railway: open your Redis service, "
+                "copy the REDIS_URL (or equivalent), add it to the Django web service "
+                "variables — same reference the worker uses. "
+                "Do not leave REDIS_URL blank.",
+            )
+        raw = "redis://127.0.0.1:6379/0"
+    normalized = _normalize_redis_url(raw)
+    if not normalized.startswith(("redis://", "rediss://")):
+        raise ImproperlyConfigured(
+            "REDIS_URL must start with redis:// or rediss://. "
+            "Current value is invalid.",
+        )
+    return normalized
 
 
 SECRET_KEY = config("SECRET_KEY")
@@ -98,21 +146,31 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME"),
-        "USER": config("DB_USER"),
-        "PASSWORD": config("DB_PASSWORD"),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5432"),
+# Railway injects DATABASE_URL automatically when you link Postgres service.
+# Fallback to individual DB_* vars for local dev / other hosts.
+_database_url = config("DATABASE_URL", default="")
+if _database_url:
+    import dj_database_url
+
+    DATABASES = {"default": dj_database_url.parse(_database_url)}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config("DB_NAME"),
+            "USER": config("DB_USER"),
+            "PASSWORD": config("DB_PASSWORD"),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+        }
     }
-}
+
+_redis_url = _redis_url_from_env()
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": config("REDIS_URL", default="redis://localhost:6379/0"),
+        "LOCATION": _redis_url,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
@@ -241,9 +299,9 @@ CORS_ALLOWED_ORIGINS = config(
 )
 CORS_ALLOW_CREDENTIALS = True
 
-# Celery
-CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = config("REDIS_URL", default="redis://localhost:6379/0")
+# Celery — same broker as default cache (single normalized REDIS_URL)
+CELERY_BROKER_URL = _redis_url
+CELERY_RESULT_BACKEND = _redis_url
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
