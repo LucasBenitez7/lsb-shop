@@ -83,6 +83,7 @@ DJANGO_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
+    "anymail",
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt",
@@ -347,13 +348,11 @@ ORDER_PENDING_EXPIRY_MINUTES = int(
     config("ORDER_PENDING_EXPIRY_MINUTES", default=60, cast=int)
 )
 
-# Email
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = config("EMAIL_HOST", default="smtp.resend.com")
-EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="resend")
-EMAIL_HOST_PASSWORD = config("RESEND_API_KEY")
+# Email — Resend HTTP API (Railway blocks outbound SMTP ports)
+EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
+ANYMAIL = {
+    "RESEND_API_KEY": config("RESEND_API_KEY"),
+}
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@lsbshop.com")
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
 

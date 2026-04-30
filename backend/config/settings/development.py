@@ -19,12 +19,10 @@ MIDDLEWARE += [
 
 INTERNAL_IPS = ["127.0.0.1"]
 
-# Email: sin Resend → consola (Celery imprime el cuerpo).
-# Con RESEND_API_KEY → SMTP real (bandeja).
+# Email: without RESEND_API_KEY → console (Celery prints bodies).
+# With key → same as production: Anymail Resend HTTP API (no SMTP).
 _resend_key = config("RESEND_API_KEY", default="").strip()
-if _resend_key:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-else:
+if not _resend_key:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Celery — default eager in dev: transactional emails run in-process (no worker needed).
