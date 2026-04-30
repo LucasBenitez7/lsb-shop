@@ -34,7 +34,7 @@ class LivenessHealthCheckView(HealthCheckView):
             specs.append(
                 (
                     "health_check.contrib.celery.Ping",
-                    {"timeout": timedelta(seconds=2)},
+                    {"timeout": timedelta(seconds=10)},
                 ),
             )
         for spec in specs:
