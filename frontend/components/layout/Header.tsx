@@ -87,8 +87,9 @@ export function Header({
       return;
     }
 
-    // Has session → toggle dropdown (on mobile where hover doesn't work)
-    setAccountMenuOpen((prev) => !prev);
+    // Has session → account page (desktop menu still opens on hover)
+    setAccountMenuOpen(false);
+    router.push("/account");
   }
 
   async function handleSignOut() {
