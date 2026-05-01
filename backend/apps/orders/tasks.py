@@ -70,6 +70,10 @@ def send_order_confirmation(self, order_id: int) -> None:
         log.error("order.confirmation.order_missing", order_id=order_id)
         return
 
+    if order.is_cancelled:
+        log.warning("order.confirmation.skipped_cancelled", order_id=order_id)
+        return
+
     try:
         send_order_confirmation_mail(order)
         log.info("order.confirmation.sent", order_id=order_id)
@@ -142,6 +146,14 @@ def apply_payment_intent_succeeded(payment_intent: dict) -> None:
         except Order.DoesNotExist:
             log.warning(
                 "orders.payment_intent.order_not_found",
+                payment_intent_id=pi_id,
+            )
+            return
+
+        if order.is_cancelled:
+            log.warning(
+                "orders.payment_intent.order_cancelled",
+                order_id=order.pk,
                 payment_intent_id=pi_id,
             )
             return
@@ -234,6 +246,14 @@ def apply_payment_intent_failed(payment_intent: dict) -> None:
         except Order.DoesNotExist:
             log.warning(
                 "orders.payment_intent_failed.order_not_found",
+                payment_intent_id=pi_id,
+            )
+            return
+
+        if order.is_cancelled:
+            log.warning(
+                "orders.payment_intent_failed.order_cancelled",
+                order_id=order.pk,
                 payment_intent_id=pi_id,
             )
             return

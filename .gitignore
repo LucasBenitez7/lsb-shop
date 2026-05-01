@@ -23,6 +23,7 @@ dist/
 .env
 .env.local
 .env.*.local
+backend/.env.railway.json
 
 # OS
 .DS_Store
@@ -49,6 +50,9 @@ htmlcov/
 bruno/
 .cursor/plans/
 scripts/
+
+# Import neon catalog (one-time seed, not committed)
+backend/apps/products/management/
 
 # Personal backlog / notes (not committed)
 LOCAL-BACKLOG.md
